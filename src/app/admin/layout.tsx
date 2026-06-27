@@ -56,6 +56,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setHydrated(true);
   }, []);
 
+  const [sessionVerified, setSessionVerified] = useState(false);
+
   const isAdmin = user?.email === 'admin@thelondon.co.uk';
 
   useEffect(() => {
@@ -65,8 +67,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.push('/admin/login');
     } else if (user.email !== 'admin@thelondon.co.uk') {
       router.push('/');
+    } else {
+      // Verify session cookie on the server
+      fetch('/api/admin-auth')
+        .then((res) => {
+          if (!res.ok) throw new Error('Invalid session');
+          setSessionVerified(true);
+        })
+        .catch(() => {
+          logout();
+          router.push('/admin/login');
+        });
     }
-  }, [user, router, pathname, hydrated]);
+  }, [user, router, pathname, hydrated, logout]);
 
   const activeOrders = orders.filter((o) => o.status === 'preparing' || o.status === 'out for delivery').length;
 
@@ -89,7 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
-  if (!hydrated || !user) {
+  if (!hydrated || !user || !sessionVerified) {
     return (
       <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--black)' }}>
         <p style={{ color:'var(--text-secondary)', fontFamily:'var(--font-sans)', fontSize:'0.875rem' }}>Authenticating...</p>

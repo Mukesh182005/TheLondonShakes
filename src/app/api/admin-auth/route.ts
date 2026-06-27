@@ -74,6 +74,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function GET(request: NextRequest) {
+  const session = request.cookies.get(ADMIN_COOKIE)?.value;
+  if (session === 'authenticated') {
+    return NextResponse.json({ authenticated: true });
+  }
+  return NextResponse.json({ authenticated: false }, { status: 401 });
+}
+
 export async function DELETE() {
   const response = NextResponse.json({ success: true });
   // Clear the cookie on logout
