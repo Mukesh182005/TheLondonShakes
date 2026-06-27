@@ -1,0 +1,71 @@
+import type { Metadata } from "next";
+import { Cormorant_Garamond, Inter, EB_Garamond } from 'next/font/google';
+import "./globals.css";
+import ClientLayout from "@/components/ClientLayout";
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-cormorant',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const ebGaramond = EB_Garamond({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-eb-garamond',
+  display: 'swap',
+});
+
+export const metadata: Metadata = {
+  title: "The London Shakes — Premium Shakes, Burgers & Café",
+  description: "The London Shakes — Premium thick shakes, gourmet burgers, crispy waffles, and artisan café experiences. Order online or reserve your table today.",
+  keywords: ["The London Shakes", "thick shakes", "burgers", "waffles", "café", "restaurant", "order online"],
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    title: "The London Shakes — Premium Shakes, Burgers & Café",
+    description: "Premium thick shakes, gourmet burgers, crispy waffles, and artisan café experiences. Order online or reserve your table today.",
+    type: "website",
+    siteName: "The London Shakes",
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The London Shakes — Premium Shakes, Burgers & Café",
+    description: "Premium thick shakes, gourmet burgers, crispy waffles, and artisan café experiences.",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className={`h-full ${cormorant.variable} ${inter.variable} ${ebGaramond.variable}`}>
+      <body className="min-h-full bg-black">
+        <ClientLayout>{children}</ClientLayout>
+      </body>
+    </html>
+  );
+}

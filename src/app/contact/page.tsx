@@ -1,0 +1,161 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useCMSStore } from '@/store/restaurantStore';
+import { restaurantInfo as initialRestaurantInfo } from '@/data/restaurantData';
+import { Phone, Mail, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
+
+const InstagramIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+  </svg>
+);
+
+export default function ContactPage() {
+  const storeRestaurantInfo = useCMSStore((s) => s.restaurantInfo);
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  const restaurantInfo = isMounted ? storeRestaurantInfo : initialRestaurantInfo;
+
+  const [form, setForm] = useState({ name:'', email:'', phone:'', subject:'', message:'' });
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSent(true);
+  };
+
+  return (
+    <main className="page-wrapper">
+      {/* Hero */}
+      <div style={{ padding:'64px 0 48px', background:`radial-gradient(ellipse 60% 50% at 50% 50%, rgba(197,168,92,0.05) 0%, transparent 70%), var(--black)`, borderBottom:'1px solid var(--dark-border)' }}>
+        <div className="container" style={{ textAlign:'center' }}>
+          <div className="eyebrow" style={{ justifyContent:'center' }}>Get In Touch</div>
+          <h1 className="display-md">Contact <em style={{ color:'var(--gold)', fontStyle:'italic' }}>Us</em></h1>
+        </div>
+      </div>
+
+      <div className="container" style={{ padding:'72px var(--container-px)' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1.5fr', gap:'72px', alignItems:'start' }}>
+
+          {/* Info Panel */}
+          <div>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.6rem', color:'var(--cream)', marginBottom:'32px' }}>
+              Come <em style={{ color:'var(--gold)', fontStyle:'italic' }}>find us</em>
+            </h2>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:'24px', marginBottom:'40px' }}>
+              {[
+                { icon:<MapPin size={18} />, title:'Address', content: restaurantInfo.location.fullAddress },
+                { icon:<Phone size={18} />, title:'Phone', content: restaurantInfo.contact.phone, href:`tel:${restaurantInfo.contact.phone}` },
+                { icon:<Mail size={18} />, title:'Email', content: restaurantInfo.contact.email, href:`mailto:${restaurantInfo.contact.email}` },
+                { icon:<InstagramIcon />, title:'Instagram', content: restaurantInfo.contact.instagram, href:`https://instagram.com/${restaurantInfo.contact.instagram.replace('@','')}` },
+              ].map((item, i) => (
+                <div key={i} style={{ display:'flex', gap:'16px', alignItems:'flex-start' }}>
+                  <div style={{ width:'44px', height:'44px', background:'rgba(197,168,92,0.08)', border:'1px solid rgba(197,168,92,0.2)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--gold)', flexShrink:0 }}>
+                    {item.icon}
+                  </div>
+                  <div>
+                    <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--text-secondary)', marginBottom:'4px' }}>
+                      {item.title}
+                    </p>
+                    {item.href ? (
+                      <a href={item.href} style={{ fontSize:'0.9rem', color:'var(--cream)', textDecoration:'none', transition:'color 0.2s ease' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--gold)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--cream)')}>
+                        {item.content}
+                      </a>
+                    ) : (
+                      <p style={{ fontSize:'0.9rem', color:'var(--cream)', lineHeight:1.5 }}>{item.content}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Hours */}
+            <div style={{ padding:'24px', background:'var(--dark-surface)', border:'1px solid var(--dark-border)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px' }}>
+                <Clock size={15} color="var(--gold)" />
+                <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--gold)' }}>Hours</p>
+              </div>
+              {restaurantInfo.hours.map((h, i) => (
+                <div key={i}>
+                  <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.84rem', fontWeight:600, color:'var(--cream)', marginBottom:'4px' }}>{h.days}</p>
+                  <p style={{ fontSize:'0.8rem', color:'var(--text-secondary)' }}>{h.lunch}</p>
+                  <p style={{ fontSize:'0.8rem', color:'var(--text-secondary)' }}>{h.dinner}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Contact Form */}
+          <div>
+            {sent ? (
+              <div style={{ textAlign:'center', padding:'80px 40px', border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.06)' }}>
+                <CheckCircle size={48} color="#10b981" style={{ margin:'0 auto 20px' }} />
+                <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.6rem', color:'var(--cream)', marginBottom:'8px' }}>
+                  Message Sent
+                </h3>
+                <p style={{ color:'var(--text-secondary)', fontSize:'0.875rem' }}>
+                  We'll get back to you within 24 hours.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'16px' }}>
+                  <div>
+                    <label className="form-label">Name *</label>
+                    <input value={form.name} onChange={(e) => setForm({ ...form, name:e.target.value })} placeholder="Your name" required />
+                  </div>
+                  <div>
+                    <label className="form-label">Phone</label>
+                    <input value={form.phone} onChange={(e) => setForm({ ...form, phone:e.target.value })} placeholder="+91 ..." type="tel" />
+                  </div>
+                </div>
+                <div style={{ marginBottom:'16px' }}>
+                  <label className="form-label">Email *</label>
+                  <input value={form.email} onChange={(e) => setForm({ ...form, email:e.target.value })} placeholder="your@email.com" type="email" required />
+                </div>
+                <div style={{ marginBottom:'16px' }}>
+                  <label className="form-label">Subject</label>
+                  <select value={form.subject} onChange={(e) => setForm({ ...form, subject:e.target.value })}>
+                    <option value="">Select a subject</option>
+                    <option>General Inquiry</option>
+                    <option>Private Event Booking</option>
+                    <option>Feedback</option>
+                    <option>Reservation Query</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom:'24px' }}>
+                  <label className="form-label">Message *</label>
+                  <textarea value={form.message} onChange={(e) => setForm({ ...form, message:e.target.value })} rows={5} placeholder="How can we help?" required style={{ resize:'none' }} />
+                </div>
+                <button type="submit" className="btn-gold" style={{ width:'100%' }}>
+                  <span>Send Message</span>
+                  <Send size={13} style={{ position:'relative', zIndex:1 }} />
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        {/* Map Placeholder */}
+        <div style={{ marginTop:'72px', height:'300px', background:'linear-gradient(160deg, #0a0a0a, #141414)', border:'1px solid var(--dark-border)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:'12px' }}>
+          <MapPin size={32} color="var(--gold)" opacity={0.4} />
+          <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--text-secondary)' }}>
+            Premtala, Silchar — 788001
+          </p>
+          <a href="https://maps.google.com/?q=Premtala,Silchar" target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ fontSize:'0.62rem', padding:'10px 24px' }}>
+            Open in Google Maps
+          </a>
+        </div>
+      </div>
+    </main>
+  );
+}
