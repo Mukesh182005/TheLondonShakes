@@ -52,16 +52,18 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ success: true });
 
-    const isSecure = request.nextUrl.protocol === 'https:';
+    const hostname = request.nextUrl.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isSecure = !isLocalhost && (request.nextUrl.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https');
 
     // Set a cookie that:
     // - httpOnly: cannot be read by JavaScript
-    // - secure: only sent over HTTPS (use false for local dev)
-    // - sameSite: strict protects against CSRF
+    // - secure: only sent over HTTPS (disabled for local dev)
+    // - sameSite: lax protects against CSRF while allowing navigation redirects
     response.cookies.set(ADMIN_COOKIE, 'authenticated', {
       httpOnly: true,
       secure:   isSecure,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge:   COOKIE_MAX_AGE,
       path:     '/',
     });
