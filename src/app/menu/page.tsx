@@ -1065,13 +1065,13 @@ export default function MenuPage() {
               <div style={{
                 position: 'relative',
                 height: '340px',
-                background: (item as any).image ? '#000' : undefined,
+                background: item.image ? '#000' : undefined,
               }}
-              className={!(item as any).image ? `food-photo ${item.gradient}` : 'food-photo'}
+              className={!item.image ? `food-photo ${item.gradient}` : 'food-photo'}
               >
-                {(item as any).image ? (
+                {item.image ? (
                   <img
-                    src={(item as any).image}
+                    src={item.image}
                     alt={item.name}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />

@@ -33,21 +33,6 @@ export default function SettingsPage() {
   const clearOrders          = useRestaurantStore((s) => s.clearOrders);
   const isMounted            = useIsMounted();
 
-  // Sync states with Zustand store data on client mount/hydration
-  useEffect(() => {
-    if (isMounted) {
-      setInfo({ ...restaurantInfo });
-      setContact({ ...restaurantInfo.contact });
-      setLocation({ ...restaurantInfo.location });
-      setHours(restaurantInfo.hours[0] || { days: 'Mon–Sun', lunch: '11:00', dinner: '22:00' });
-      setChefInfo({ ...chef });
-      setHomepage({ ...homepageData });
-      setCategories([...menuCategories]);
-    }
-  }, [isMounted, restaurantInfo, chef, homepageData, menuCategories]);
-
-
-
   // Local form state — restaurant
   const [info, setInfo] = useState({ ...restaurantInfo });
   // Flatten contact/location for easier editing
@@ -66,6 +51,19 @@ export default function SettingsPage() {
 
   const [saved, setSaved] = useState(false);
   const [tab, setTab]     = useState<'restaurant' | 'chef' | 'homepage' | 'payments' | 'server' | 'gutters'>('restaurant');
+
+  // Sync states with Zustand store data on client mount/hydration
+  useEffect(() => {
+    if (isMounted) {
+      setInfo({ ...restaurantInfo });
+      setContact({ ...restaurantInfo.contact });
+      setLocation({ ...restaurantInfo.location });
+      setHours(restaurantInfo.hours[0] || { days: 'Mon–Sun', lunch: '11:00', dinner: '22:00' });
+      setChefInfo({ ...chef });
+      setHomepage({ ...homepageData });
+      setCategories([...menuCategories]);
+    }
+  }, [isMounted, restaurantInfo, chef, homepageData, menuCategories]);
   const maintenanceMode = useCMSStore((s) => s.maintenanceMode);
   const setMaintenanceMode = useCMSStore((s) => s.setMaintenanceMode);
   const acceptingOrders = useCMSStore((s) => s.acceptingOrders);

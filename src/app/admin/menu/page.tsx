@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useCMSStore } from '@/store/restaurantStore';
 import ImageUploader from '@/components/ImageUploader';
 import { Plus, Pencil, Trash2, X, Check, ChevronDown } from 'lucide-react';
-import type { MenuItem } from '@/data/restaurantData';
+import type { MenuItem, MenuItemPortions } from '@/data/restaurantData';
 
 const INPUT_STYLE: React.CSSProperties = {
   width: '100%', padding: '10px 14px',
@@ -364,7 +364,7 @@ export default function MenuEditorPage() {
                                 ...form.portions,
                                 [size]: { ...config, available: e.target.checked }
                               };
-                              setForm((f) => ({ ...f, portions: updatedPortions as any }));
+                              setForm((f) => ({ ...f, portions: updatedPortions as MenuItemPortions }));
                             }}
                             style={{ accentColor: 'var(--gold)' }}
                           />
@@ -385,7 +385,7 @@ export default function MenuEditorPage() {
                                 ...form.portions,
                                 [size]: { ...config, price: Number(e.target.value) }
                               };
-                              setForm((f) => ({ ...f, portions: updatedPortions as any }));
+                              setForm((f) => ({ ...f, portions: updatedPortions as MenuItemPortions }));
                             }}
                           />
                         </div>
