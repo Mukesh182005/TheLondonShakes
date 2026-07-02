@@ -27,7 +27,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter]     = useState<string>('all');
 
-  let filtered = [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  let filtered = orders.toSorted((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   if (search.trim()) {
     const q = search.toLowerCase();

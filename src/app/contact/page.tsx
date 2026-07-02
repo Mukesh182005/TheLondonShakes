@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useCMSStore } from '@/store/restaurantStore';
+import React, { useState } from 'react';
+import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import { restaurantInfo as initialRestaurantInfo } from '@/data/restaurantData';
 import { Phone, Mail, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
 
@@ -15,10 +15,7 @@ const InstagramIcon = () => (
 
 export default function ContactPage() {
   const storeRestaurantInfo = useCMSStore((s) => s.restaurantInfo);
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
   const restaurantInfo = isMounted ? storeRestaurantInfo : initialRestaurantInfo;
 
   const [form, setForm] = useState({ name:'', email:'', phone:'', subject:'', message:'' });
@@ -30,9 +27,26 @@ export default function ContactPage() {
   };
 
   return (
-    <main className="page-wrapper">
-      {/* Hero */}
-      <div style={{ padding:'64px 0 48px', background:`radial-gradient(ellipse 60% 50% at 50% 50%, rgba(197,168,92,0.05) 0%, transparent 70%), var(--black)`, borderBottom:'1px solid var(--dark-border)' }}>
+    <main className="page-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
+      {/* Background Image Layer */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundImage: "url('/london-contact-bg.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        opacity: 0.5,
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
+
+      {/* Main Content Wrapper */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* Hero */}
+        <div style={{ padding:'64px 0 48px', background:`radial-gradient(ellipse 60% 50% at 50% 50%, rgba(197,168,92,0.05) 0%, transparent 70%), transparent`, borderBottom:'1px solid var(--dark-border)' }}>
         <div className="container" style={{ textAlign:'center' }}>
           <div className="eyebrow" style={{ justifyContent:'center' }}>Get In Touch</div>
           <h1 className="display-md">Contact <em style={{ color:'var(--gold)', fontStyle:'italic' }}>Us</em></h1>
@@ -145,16 +159,69 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Map Placeholder */}
-        <div style={{ marginTop:'72px', height:'300px', background:'linear-gradient(160deg, #0a0a0a, #141414)', border:'1px solid var(--dark-border)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:'12px' }}>
-          <MapPin size={32} color="var(--gold)" opacity={0.4} />
-          <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--text-secondary)' }}>
-            Premtala, Silchar — 788001
-          </p>
-          <a href="https://maps.google.com/?q=Premtala,Silchar" target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ fontSize:'0.62rem', padding:'10px 24px' }}>
-            Open in Google Maps
-          </a>
+        {/* Google Maps Embed */}
+        <div style={{ marginTop:'72px', border:'1px solid rgba(197,168,92,0.3)', overflow:'hidden' }}>
+
+          {/* Header bar */}
+          <div style={{
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'space-between',
+            padding:        '14px 20px',
+            background:     '#1C1915',
+            borderBottom:   '1px solid rgba(197,168,92,0.2)',
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+              <MapPin size={15} color="var(--gold)" />
+              <span style={{
+                fontFamily:    'var(--font-sans)',
+                fontSize:      '0.62rem',
+                fontWeight:    700,
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                color:         'var(--gold)',
+              }}>
+                The London Shakes — Silchar
+              </span>
+            </div>
+            <a
+              href="https://www.google.com/maps/place/The+London+Shakes+Silchar/@24.8227801,92.7972719,17z"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily:    'var(--font-sans)',
+                fontSize:      '0.58rem',
+                fontWeight:    600,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color:         'rgba(197,168,92,0.7)',
+                textDecoration:'none',
+                transition:    'color 0.2s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--gold)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(197,168,92,0.7)')}
+            >
+              Open in Maps ↗
+            </a>
+          </div>
+
+          {/* Iframe */}
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3645.6!2d92.7972719!3d24.8227801!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x374e4bd43e738f43%3A0x49c55481d3cdbd9f!2sThe%20London%20Shakes%20Silchar!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+            width="100%"
+            height="380"
+            style={{
+              border:      0,
+              display:     'block',
+              filter:      'grayscale(35%) contrast(1.1) brightness(0.88) sepia(15%)',
+            }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title="The London Shakes — Silchar location on Google Maps"
+          />
         </div>
+      </div>
       </div>
     </main>
   );

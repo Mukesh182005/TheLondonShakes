@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Clock, Star, Plus, Search, Pencil, Trash2, X, Check, ChevronDown } from 'lucide-react';
+import { useIsMounted } from '@/store/restaurantStore';
 
 type Staff = {
   id:         string;
@@ -51,8 +52,18 @@ const EMPTY_FORM: EditForm = {
 };
 
 export default function HRPage() {
-  const [isMounted, setIsMounted] = useState(false);
-  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const isMounted = useIsMounted();
+  const [staffList, setStaffList] = useState<Staff[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('thelondon-staff-list:v1');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return STAFF;
+  });
 
   const [query, setQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -60,23 +71,9 @@ export default function HRPage() {
   const [form, setForm] = useState<EditForm>(EMPTY_FORM);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
 
-  useEffect(() => {
-    setIsMounted(true);
-    const saved = localStorage.getItem('thelondon-staff-list');
-    if (saved) {
-      try {
-        setStaffList(JSON.parse(saved));
-      } catch {
-        setStaffList(STAFF);
-      }
-    } else {
-      setStaffList(STAFF);
-    }
-  }, []);
-
   const saveStaffList = (list: Staff[]) => {
     setStaffList(list);
-    localStorage.setItem('thelondon-staff-list', JSON.stringify(list));
+    localStorage.setItem('thelondon-staff-list:v1', JSON.stringify(list));
   };
 
   const activeStaff = isMounted ? staffList : STAFF;

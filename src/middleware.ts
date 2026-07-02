@@ -1,41 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ADMIN_COOKIE = 'tls_admin_session';
+const ADMIN_COOKIE       = 'tls_admin_session';
+const MAINTENANCE_COOKIE = 'tls_maintenance';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ── Maintenance Mode Gate ──────────────────────────────────────────────────
+  // If tls_maintenance cookie is 'true', redirect all public pages to /maintenance
+  const isMaintenanceMode = request.cookies.get(MAINTENANCE_COOKIE)?.value === 'true';
+  const isAdminRoute      = pathname.startsWith('/admin');
+  const isApiRoute        = pathname.startsWith('/api');
+  const isMaintenancePage = pathname === '/maintenance';
+  const isStaticAsset     = pathname.startsWith('/_next') || pathname.startsWith('/favicon');
+
+  if (isMaintenanceMode && !isAdminRoute && !isApiRoute && !isMaintenancePage && !isStaticAsset) {
+    return NextResponse.redirect(new URL('/maintenance', request.url));
+  }
+
+  // ── Admin Auth Gate ────────────────────────────────────────────────────────
   // Only protect /admin routes (but NOT /admin/login itself)
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+  if (isAdminRoute && pathname !== '/admin/login') {
     const session = request.cookies.get(ADMIN_COOKIE)?.value;
 
     if (session !== 'authenticated') {
-      // Redirect to admin login, preserving intended destination
       const loginUrl = new URL('/admin/login', request.url);
       loginUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(loginUrl);
     }
   }
 
-  // Add security headers to all responses
+  // ── Security Headers ───────────────────────────────────────────────────────
   const response = NextResponse.next();
-
-  // Prevent clickjacking
   response.headers.set('X-Frame-Options', 'DENY');
-
-  // Prevent MIME type sniffing
   response.headers.set('X-Content-Type-Options', 'nosniff');
-
-  // Control referrer information
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-
-  // Disable unnecessary browser features
   response.headers.set(
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
   );
-
-  // XSS protection for older browsers
   response.headers.set('X-XSS-Protection', '1; mode=block');
 
   return response;
@@ -43,7 +46,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all routes except static files and API routes
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|event-waffle\\.png|event-shake\\.png|event-acoustic\\.png|events-bg\\.png).*)',
   ],
 };

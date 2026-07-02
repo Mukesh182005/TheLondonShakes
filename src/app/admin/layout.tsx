@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useRestaurantStore } from '@/store/restaurantStore';
+import { useRestaurantStore, useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import {
   LayoutDashboard, ShoppingBag, Calendar, UtensilsCrossed,
   MapPin, Users, Truck, ClipboardList, BarChart2, Settings,
-  LogOut, ChevronRight, Menu, X, AlertCircle, Image as ImageIcon,
+  LogOut, ChevronRight, Menu, X, AlertCircle, Image as ImageIcon, Eye, Power,
 } from 'lucide-react';
 
 const navGroups = [
@@ -27,6 +27,7 @@ const navGroups = [
     label: 'Management',
     items: [
       { label: 'Menu Editor',     href: '/admin/menu',      icon: ClipboardList },
+      { label: 'Events Manager',  href: '/admin/events',    icon: Calendar },
       { label: 'Gallery Manager', href: '/admin/gallery',   icon: ImageIcon },
       { label: 'Table Orders',    href: '/admin/table-orders', icon: ClipboardList },
       { label: 'Customers',       href: '/admin/customers', icon: Users },
@@ -50,10 +51,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const orders   = useRestaurantStore((s) => s.orders);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useIsMounted();
+  const [isMobile, setIsMobile] = useState(false);
+  const maintenanceMode = useCMSStore((s) => s.maintenanceMode);
 
   useEffect(() => {
-    setHydrated(true);
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const [sessionVerified, setSessionVerified] = useState(false);
@@ -234,6 +240,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p style={{ fontSize:'0.68rem', color:'var(--text-secondary)' }}>
               {isAdmin ? 'Administrator' : user.membershipStatus}
             </p>
+            {/* Maintenance status badge */}
+            <div style={{
+              marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '4px 8px',
+              background: maintenanceMode ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
+              border: `1px solid ${maintenanceMode ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.25)'}`,
+            }}>
+              <div style={{
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: maintenanceMode ? '#ef4444' : '#10b981',
+                boxShadow: `0 0 0 2px ${maintenanceMode ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}`,
+              }} />
+              <span style={{ fontSize: '0.58rem', color: maintenanceMode ? '#ef4444' : '#10b981', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                {maintenanceMode ? 'Offline' : 'Live'}
+              </span>
+            </div>
           </div>
         )}
         <button
@@ -266,9 +288,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'var(--black)' }}>
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex" style={{ height:'100%' }}>
-        {sidebarContent}
-      </div>
+      {!isMobile && (
+        <div style={{ height:'100%' }}>
+          {sidebarContent}
+        </div>
+      )}
 
       {/* Mobile Sidebar Overlay */}
       {mobileOpen && (
@@ -300,22 +324,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
             {/* Mobile hamburger */}
-            <button
-              className="lg:hidden"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              style={{ background:'transparent', border:'none', color:'var(--text-secondary)', cursor:'pointer', display:'flex' }}
-            >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+            {isMobile && (
+              <button
+                onClick={() => setMobileOpen(!mobileOpen)}
+                style={{ background:'transparent', border:'none', color:'var(--text-secondary)', cursor:'pointer', display:'flex' }}
+              >
+                {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            )}
 
             {/* Collapse toggle — desktop */}
-            <button
-              className="hidden lg:flex"
-              onClick={() => setCollapsed(!collapsed)}
-              style={{ background:'transparent', border:'none', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center' }}
-            >
-              <ChevronRight size={16} style={{ transform: collapsed ? 'rotate(0)' : 'rotate(180deg)', transition:'transform 0.3s ease' }} />
-            </button>
+            {!isMobile && (
+              <button
+                onClick={() => setCollapsed(!collapsed)}
+                style={{ background:'transparent', border:'none', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center' }}
+              >
+                <ChevronRight size={16} style={{ transform: collapsed ? 'rotate(0)' : 'rotate(180deg)', transition:'transform 0.3s ease' }} />
+              </button>
+            )}
 
             {/* Breadcrumb */}
             <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
@@ -349,22 +375,49 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             )}
 
-            <Link href="/" style={{
-              fontFamily:    'var(--font-sans)',
-              fontSize:      '0.65rem',
-              fontWeight:    600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color:         'var(--text-secondary)',
-              textDecoration:'none',
-              padding:       '6px 12px',
-              border:        '1px solid var(--dark-border-2)',
-              transition:    'all 0.2s ease',
-            }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--cream)')}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)')}
+            {/* Maintenance mode status pill */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '5px 10px',
+              background: maintenanceMode ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.06)',
+              border: `1px solid ${maintenanceMode ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.2)'}`,
+            }}>
+              <Power size={10} color={maintenanceMode ? '#ef4444' : '#10b981'} />
+              <span style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: maintenanceMode ? '#ef4444' : '#10b981' }}>
+                {maintenanceMode ? 'Offline' : 'Live'}
+              </span>
+            </div>
+
+            {/* Preview Site button */}
+            <Link
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                fontFamily:    'var(--font-sans)',
+                fontSize:      '0.65rem',
+                fontWeight:    600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color:         'var(--gold)',
+                textDecoration:'none',
+                padding:       '6px 14px',
+                border:        '1px solid rgba(197,168,92,0.35)',
+                background:    'rgba(197,168,92,0.05)',
+                transition:    'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(197,168,92,0.12)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.6)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(197,168,92,0.05)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.35)';
+              }}
             >
-              View Site
+              <Eye size={12} />
+              Preview Site
             </Link>
           </div>
         </header>

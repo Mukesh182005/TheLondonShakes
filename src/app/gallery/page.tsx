@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Image as ImageIcon, Upload } from 'lucide-react';
-import { useCMSStore } from '@/store/restaurantStore';
+import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import type { GalleryItem } from '@/store/restaurantStore';
 
 const categories = [
@@ -16,10 +16,7 @@ const categories = [
 
 export default function GalleryPage() {
   const storeGalleryItems = useCMSStore((s) => s.galleryItems);
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
   
   const galleryItems = isMounted ? storeGalleryItems : [];
 
@@ -31,26 +28,42 @@ export default function GalleryPage() {
     : galleryItems.filter((item) => item.category === activeCat);
 
   return (
-    <div className="page-wrapper" style={{ background: 'var(--black)', color: 'var(--text-primary)' }}>
+    <div className="page-wrapper" style={{ background: 'var(--black)', color: 'var(--text-primary)', position: 'relative', overflow: 'hidden' }}>
+      {/* Background Image Layer */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundImage: "url('/london-gallery-bg.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        opacity: 0.3,
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
 
-      {/* Page Header */}
-      <div
-        style={{
-          background: 'linear-gradient(180deg, #0a060b 0%, var(--dark-bg) 100%)',
-          padding: '80px 0 60px',
-          textAlign: 'center',
-          borderBottom: '1px solid rgba(201, 168, 76, 0.08)',
-        }}
-      >
-        <div className="container">
-          <div className="section-eyebrow" style={{ justifyContent: 'center' }}>Visual Moments</div>
-          <h1 className="section-title">The Media <em>Gallery</em></h1>
-          <div className="gold-divider" />
+      {/* Main Content Wrapper */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* Page Header */}
+        <div
+          style={{
+            background: 'linear-gradient(180deg, var(--void) 0%, transparent 100%)',
+            padding: '80px 0 60px',
+            textAlign: 'center',
+            borderBottom: '1px solid var(--dark-border)',
+          }}
+        >
+          <div className="container">
+            <div className="section-eyebrow" style={{ justifyContent: 'center' }}>Visual Moments</div>
+            <h1 className="section-title" style={{ color: 'var(--cream)' }}>The Media <em>Gallery</em></h1>
+            <div className="gold-divider" />
+          </div>
         </div>
-      </div>
 
       {/* Media Filter Tabs */}
-      <div style={{ background: '#0a0a0a', borderBottom: '1px solid rgba(201, 168, 76, 0.1)', padding: '12px 0' }}>
+      <div style={{ background: 'var(--charcoal)', borderBottom: '1px solid var(--dark-border)', padding: '12px 0' }}>
         <div className="container flex justify-start md:justify-center overflow-x-auto gap-2 py-2">
           {categories.map((cat) => (
             <button
@@ -114,7 +127,7 @@ export default function GalleryPage() {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'linear-gradient(0deg, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.2) 60%, transparent 100%)',
+                      background: 'linear-gradient(0deg, rgba(28,24,21,0.95) 0%, rgba(28,24,21,0.3) 60%, transparent 100%)',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'flex-end',
@@ -127,7 +140,7 @@ export default function GalleryPage() {
                     <span style={{ fontSize: '0.62rem', color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>
                       {item.category.toUpperCase()}
                     </span>
-                    <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--cream)' }}>
+                    <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--on-dark)' }}>
                       {item.title}
                     </h4>
                   </div>
@@ -164,7 +177,7 @@ export default function GalleryPage() {
               onClick={() => setLightboxItem(null)}
               style={{
                 position: 'absolute', top: '-48px', right: '0',
-                background: 'none', border: 'none', color: 'var(--cream)',
+                background: 'none', border: 'none', color: 'var(--on-dark)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
               }}
               className="hover:text-gold transition-colors"
@@ -196,7 +209,7 @@ export default function GalleryPage() {
             </div>
 
             {/* Caption */}
-            <div style={{ padding: '32px', background: '#0d0d0d', borderTop: '1px solid var(--dark-border)' }}>
+            <div style={{ padding: '32px', background: 'var(--black)', borderTop: '1px solid var(--dark-border)' }}>
               <span style={{ fontSize: '0.62rem', color: 'var(--gold)', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
                 {lightboxItem.category} — Media Entry
               </span>
@@ -217,6 +230,7 @@ export default function GalleryPage() {
           to   { opacity: 1; transform: scale(1); }
         }
       `}</style>
+      </div>
     </div>
   );
 }

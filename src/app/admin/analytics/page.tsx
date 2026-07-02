@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
 
   const topItems = Object.entries(itemMap)
     .map(([name, data]) => ({ name, ...data }))
-    .sort((a, b) => b.qty - a.qty)
+    .toSorted((a, b) => b.qty - a.qty)
     .slice(0, 5);
 
   return (

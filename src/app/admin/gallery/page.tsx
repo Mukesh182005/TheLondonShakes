@@ -56,7 +56,10 @@ export default function AdminGalleryPage() {
   };
 
   const handleSave = () => {
-    if (!form.title.trim()) return;
+    if (!form.title.trim()) {
+      alert('Please enter a photo title.');
+      return;
+    }
     if (editingId) {
       updateGalleryItem(editingId, form);
     } else {

@@ -42,19 +42,42 @@ export default function MenuEditorPage() {
   const filteredItems = menuItems.filter((i) => i.category === activeTab);
 
   const openAdd = () => {
-    setForm({ ...EMPTY_FORM, category: activeTab });
+    setForm({
+      ...EMPTY_FORM,
+      category: activeTab,
+      portions: {
+        small: { available: true, price: 0 },
+        medium: { available: true, price: 0 },
+        large: { available: true, price: 0 },
+      }
+    });
     setEditingId(null);
     setShowForm(true);
   };
 
   const openEdit = (item: MenuItem) => {
-    setForm({ ...item });
+    const defaultPortions = {
+      small: { available: true, price: Math.round(item.price * 0.8) },
+      medium: { available: true, price: item.price },
+      large: { available: true, price: Math.round(item.price * 1.3) },
+    };
+    setForm({
+      ...item,
+      portions: item.portions || defaultPortions,
+    });
     setEditingId(item.id);
     setShowForm(true);
   };
 
   const handleSave = () => {
-    if (!form.name.trim() || !form.price) return;
+    if (!form.name.trim()) {
+      alert('Please enter a dish name.');
+      return;
+    }
+    if (!form.price || form.price <= 0) {
+      alert('Please enter a valid price greater than 0.');
+      return;
+    }
     if (editingId) {
       updateMenuItem(editingId, form);
     } else {
@@ -285,7 +308,18 @@ export default function MenuEditorPage() {
                   <input
                     type="number" style={INPUT_STYLE} value={form.price || ''}
                     placeholder="0"
-                    onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
+                    onChange={(e) => {
+                      const newPrice = Number(e.target.value);
+                      setForm((f) => {
+                        const p = f.portions || { small: { available: true, price: 0 }, medium: { available: true, price: 0 }, large: { available: true, price: 0 } };
+                        const updatedPortions = {
+                          small: { available: p.small.available, price: p.small.price || Math.round(newPrice * 0.8) },
+                          medium: { available: p.medium.available, price: p.medium.price || newPrice },
+                          large: { available: p.large.available, price: p.large.price || Math.round(newPrice * 1.3) },
+                        };
+                        return { ...f, price: newPrice, portions: updatedPortions };
+                      });
+                    }}
                   />
                 </div>
                 <div>
@@ -305,6 +339,59 @@ export default function MenuEditorPage() {
                     </select>
                     <ChevronDown size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
                   </div>
+                </div>
+              </div>
+
+              {/* Portions Configuration */}
+              <div style={{ border: '1px solid var(--dark-border)', padding: '16px', background: 'rgba(255,255,255,0.01)' }}>
+                <h3 style={{ ...LABEL, color: 'var(--gold)', marginBottom: '12px', fontSize: '0.68rem' }}>Portion Options & Custom Prices</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {(['small', 'medium', 'large'] as const).map((size) => {
+                    const config = form.portions?.[size] || { available: true, price: 0 };
+                    return (
+                      <div key={size} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: '16px', alignItems: 'center' }}>
+                        <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize', color: 'var(--cream)' }}>
+                          {size} Size
+                        </span>
+                        
+                        {/* Availability Checkbox */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
+                          <input
+                            type="checkbox"
+                            checked={config.available}
+                            onChange={(e) => {
+                              const updatedPortions = {
+                                ...form.portions,
+                                [size]: { ...config, available: e.target.checked }
+                              };
+                              setForm((f) => ({ ...f, portions: updatedPortions as any }));
+                            }}
+                            style={{ accentColor: 'var(--gold)' }}
+                          />
+                          <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Available</span>
+                        </label>
+                        
+                        {/* Price Input */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>₹</span>
+                          <input
+                            type="number"
+                            style={{ ...INPUT_STYLE, padding: '6px 10px' }}
+                            value={config.price || ''}
+                            disabled={!config.available}
+                            placeholder="Price"
+                            onChange={(e) => {
+                              const updatedPortions = {
+                                ...form.portions,
+                                [size]: { ...config, price: Number(e.target.value) }
+                              };
+                              setForm((f) => ({ ...f, portions: updatedPortions as any }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

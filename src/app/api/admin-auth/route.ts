@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 //  Admin password is read from environment variable.
 //  Set ADMIN_PASSWORD in .env.local (never commit this file).
 // ──────────────────────────────────────────────────────────────
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'LondonShakes@2024';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_COOKIE   = 'tls_admin_session';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
@@ -40,6 +40,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'Too many login attempts. Please wait 1 minute.' },
       { status: 429 }
+    );
+  }
+
+  if (!ADMIN_PASSWORD) {
+    console.error('ADMIN_PASSWORD environment variable is not configured.');
+    return NextResponse.json(
+      { error: 'Internal server configuration error' },
+      { status: 500 }
     );
   }
 

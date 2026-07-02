@@ -208,7 +208,7 @@ export default function AdminLoginPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#000000',
+        background: 'var(--black)',
         color: 'var(--cream)',
         fontFamily: 'var(--font-sans)',
         display: 'flex',
@@ -277,11 +277,11 @@ export default function AdminLoginPage() {
         style={{
           width: '100%',
           maxWidth: '420px',
-          background: 'rgba(10, 11, 13, 0.75)',
-          border: '1px solid rgba(197, 168, 92, 0.15)',
+          background: 'var(--dark-card)',
+          border: '1px solid var(--dark-border)',
           backdropFilter: 'blur(20px)',
           padding: '48px 40px',
-          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8)',
+          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.6)',
           position: 'relative',
           zIndex: 1,
         }}

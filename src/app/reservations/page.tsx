@@ -11,7 +11,7 @@ import { Calendar as CalendarIcon, Clock, Users, MessageSquare, CheckCircle, Gif
 const reservationSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().min(10, { message: 'Please provide a valid 10+ digit contact number.' }),
-  email: z.string().email({ message: 'Please provide a valid email address.' }),
+  email: z.email({ message: 'Please provide a valid email address.' }),
   date: z.string().min(1, { message: 'Please select a date.' }),
   time: z.string().min(1, { message: 'Please select a time slot.' }),
   guests: z.string().min(1, { message: 'Please select guest count.' }),
@@ -78,58 +78,123 @@ export default function ReservationsPage() {
 
   if (submitted) {
     return (
-      <div className="page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--black)' }}>
-        <div style={{ textAlign: 'center', padding: '60px var(--container-px)', maxWidth: '600px' }}>
+      <div className="page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--black)', padding: '40px 20px', position: 'relative', overflow: 'hidden' }}>
+        {/* Background Image Layer */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: "url('/london-reservations-bg.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.3,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }} />
+
+        {/* Ticket Wrapper */}
+        <div style={{ 
+          background: 'var(--dark-card)', 
+          border: '1px solid rgba(197, 168, 92, 0.25)', 
+          padding: '48px 36px', 
+          maxWidth: '550px',
+          width: '100%',
+          textAlign: 'center',
+          position: 'relative',
+          boxShadow: '0 30px 60px rgba(0,0,0,0.6), 0 0 40px rgba(197, 168, 92, 0.05)',
+          zIndex: 1,
+        }}>
+          {/* Internal double gold border */}
+          <div style={{
+            position: 'absolute',
+            inset: '12px',
+            border: '1px solid rgba(197, 168, 92, 0.08)',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Ticket notch cutouts */}
+          <div style={{
+            position: 'absolute',
+            left: '-10px',
+            top: '32%',
+            width: '20px',
+            height: '20px',
+            borderRadius: '50%',
+            background: 'var(--black)',
+            borderRight: '1px solid rgba(197, 168, 92, 0.25)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            right: '-10px',
+            top: '32%',
+            width: '20px',
+            height: '20px',
+            borderRadius: '50%',
+            background: 'var(--black)',
+            borderLeft: '1px solid rgba(197, 168, 92, 0.25)',
+          }} />
+
           <div 
             style={{ 
-              width: '80px', 
-              height: '80px', 
+              width: '64px', 
+              height: '64px', 
               background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))', 
               borderRadius: '50%', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              margin: '0 auto 32px' 
+              margin: '0 auto 28px',
+              boxShadow: '0 0 20px rgba(197, 168, 92, 0.3)',
             }}
           >
-            <CheckCircle size={36} color="var(--black)" />
+            <CheckCircle size={28} color="var(--black)" />
           </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', color: 'var(--gold)', marginBottom: '12px' }}>
-            Reservation Confirmed
+
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.4rem', color: 'var(--gold)', marginBottom: '8px', fontWeight: 300 }}>
+            Booking Confirmed
           </h2>
-          <div style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-secondary)', fontSize: '0.8rem', letterSpacing: '0.2em', marginBottom: '32px' }}>
-            BOOKING REFERENCE: #{bookingRef}
+          <div style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-secondary)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.22em', marginBottom: '28px' }}>
+            PASS CODE: #{bookingRef}
           </div>
+
+          {/* Ticket Coupon Dotted Separator */}
+          <div style={{
+            borderTop: '1.5px dashed rgba(197, 168, 92, 0.18)',
+            height: 0,
+            margin: '20px -36px 28px',
+          }} />
           
-          <div style={{ background: '#0d0d0d', border: '1px solid rgba(201,168,76,0.15)', padding: '32px', textAlign: 'left', marginBottom: '32px' }}>
-            {[['Guest Name', selectedValues.name], 
-              ['Date', selectedValues.date], 
-              ['Time Slot', selectedValues.time], 
-              ['Guests Count', `${selectedValues.guests} Guests`], 
-              ['Occasion', selectedValues.occasion || 'None']
+          <div style={{ background: 'rgba(14, 13, 11, 0.4)', border: '1px solid rgba(197,168,92,0.12)', padding: '24px', textAlign: 'left', marginBottom: '28px' }}>
+            {[['GUEST NAME', selectedValues.name], 
+              ['DATE', selectedValues.date], 
+              ['TIME SLOT', selectedValues.time], 
+              ['TABLE SIZE', `${selectedValues.guests} Guests`], 
+              ['OCCASION', selectedValues.occasion || 'None']
              ].map(([label, val]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--dark-border-2)' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{label}</span>
-                <span style={{ color: 'var(--cream)', fontSize: '0.84rem', fontWeight: 600 }}>{val}</span>
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(197, 168, 92, 0.05)' }}>
+                <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em' }}>{label}</span>
+                <span style={{ color: 'var(--cream)', fontFamily: 'var(--font-serif)', fontSize: '0.88rem', fontWeight: 400 }}>{val}</span>
               </div>
             ))}
             {selectedValues.requests && (
-              <div style={{ marginTop: '16px', background: 'var(--black)', padding: '12px', border: '1px solid var(--dark-border)' }}>
-                <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--gold)', marginBottom: '4px' }}>
-                  Special Requests
+              <div style={{ marginTop: '16px', background: 'var(--black)', padding: '12px', border: '1px solid rgba(197,168,92,0.08)' }}>
+                <div style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--gold)', marginBottom: '4px' }}>
+                  Special Wishes
                 </div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic', lineHeight: 1.5 }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', fontStyle: 'italic', lineHeight: 1.5 }}>
                   &ldquo;{selectedValues.requests}&rdquo;
                 </p>
               </div>
             )}
           </div>
           
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: '32px', fontFamily: 'var(--font-serif)', lineHeight: 1.6 }}>
-            A confirmation email containing your digital reservation pass has been dispatched to <strong style={{ color: 'var(--gold)' }}>{selectedValues.email}</strong>.
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '32px', fontFamily: 'var(--font-serif)', lineHeight: 1.6 }}>
+            A digital invitation containing your table details has been dispatched to <strong style={{ color: 'var(--gold)', fontWeight: 400 }}>{selectedValues.email}</strong>.
           </p>
           
-          <button className="btn-gold" onClick={handleReset}>
+          <button className="btn-gold" onClick={handleReset} style={{ width: '100%' }}>
             <span>Make Another Booking</span>
           </button>
         </div>
@@ -138,21 +203,49 @@ export default function ReservationsPage() {
   }
 
   return (
-    <div className="page-wrapper" style={{ background: 'var(--black)', color: 'var(--text-primary)' }}>
-      {/* Page Header */}
-      <div 
-        style={{ 
-          background: 'linear-gradient(180deg, #0f0a04 0%, var(--dark-bg) 100%)', 
-          padding: '80px 0 60px', 
-          textAlign: 'center',
-          borderBottom: '1px solid rgba(201, 168, 76, 0.08)'
-        }}
-      >
+    <div className="page-wrapper" style={{ background: 'var(--black)', color: 'var(--text-primary)', position: 'relative', overflow: 'hidden' }}>
+      {/* Background Image Layer */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundImage: "url('/london-reservations-bg.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        opacity: 0.3,
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
+
+      {/* Main Content Wrapper */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* Page Header */}
+        <div 
+          style={{ 
+            background: 'linear-gradient(180deg, var(--void) 0%, transparent 100%)', 
+            padding: '100px 0 60px', 
+            textAlign: 'center',
+            borderBottom: '1px solid rgba(197, 168, 92, 0.12)',
+            position: 'relative'
+          }}
+        >
+        {/* Subtle decorative gold line */}
+        <div style={{
+          position: 'absolute',
+          bottom: '4px',
+          left: '20px',
+          right: '20px',
+          height: '1px',
+          background: 'rgba(197, 168, 92, 0.05)',
+        }} />
+
         <div className="container">
-          <div className="section-eyebrow" style={{ justifyContent: 'center' }}>Secure Your Spot</div>
+          <div className="eyebrow" style={{ justifyContent: 'center' }}>Secure Your Spot</div>
           <h1 className="section-title">Reserve a <em>Table</em></h1>
           <div className="gold-divider" />
-          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '16px auto 0', lineHeight: 1.6 }}>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '16px auto 0', lineHeight: 1.6, fontStyle: 'italic' }}>
             Join us for an evening of exceptional culinary craft. Reservations open 30 days in advance.
           </p>
         </div>
@@ -163,8 +256,21 @@ export default function ReservationsPage() {
         <div className="container">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             {/* Reservation Form */}
-            <div>
-              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+            <div style={{
+              background: 'var(--dark-card)',
+              border: '1px solid rgba(197, 168, 92, 0.12)',
+              padding: '40px 32px',
+              position: 'relative',
+            }}>
+              {/* Internal borders */}
+              <div style={{
+                position: 'absolute',
+                inset: '12px',
+                border: '1px solid rgba(197, 168, 92, 0.04)',
+                pointerEvents: 'none',
+              }} />
+
+              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" style={{ position: 'relative', zIndex: 2 }}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Name */}
                   <div className="md:col-span-2">
@@ -172,6 +278,7 @@ export default function ReservationsPage() {
                     <input 
                       type="text" 
                       placeholder="Your full name"
+                      style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
                       {...register('name')}
                     />
                     {errors.name && <span className="text-red-500 text-xs mt-1">{errors.name.message}</span>}
@@ -183,6 +290,7 @@ export default function ReservationsPage() {
                     <input 
                       type="tel" 
                       placeholder="Contact number"
+                      style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
                       {...register('phone')}
                     />
                     {errors.phone && <span className="text-red-500 text-xs mt-1">{errors.phone.message}</span>}
@@ -194,6 +302,7 @@ export default function ReservationsPage() {
                     <input 
                       type="email" 
                       placeholder="you@example.com"
+                      style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
                       {...register('email')}
                     />
                     {errors.email && <span className="text-red-500 text-xs mt-1">{errors.email.message}</span>}
@@ -205,6 +314,7 @@ export default function ReservationsPage() {
                     <input 
                       type="date" 
                       min={new Date().toISOString().split('T')[0]}
+                      style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
                       {...register('date')}
                     />
                     {errors.date && <span className="text-red-500 text-xs mt-1">{errors.date.message}</span>}
@@ -213,7 +323,7 @@ export default function ReservationsPage() {
                   {/* Time Slot */}
                   <div>
                     <label className="form-label">Select Time *</label>
-                    <select {...register('time')}>
+                    <select style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }} {...register('time')}>
                       <option value="">Choose slot</option>
                       {timeSlots.map(t => (
                         <option key={t} value={t}>{t}</option>
@@ -225,7 +335,7 @@ export default function ReservationsPage() {
                   {/* Guest Count */}
                   <div>
                     <label className="form-label">Guests Count *</label>
-                    <select {...register('guests')}>
+                    <select style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }} {...register('guests')}>
                       {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
                         <option key={n} value={n.toString()}>
                           {n} {n === 1 ? 'Guest' : 'Guests'}
@@ -238,7 +348,7 @@ export default function ReservationsPage() {
                   {/* Occasion */}
                   <div>
                     <label className="form-label">Occasion</label>
-                    <select {...register('occasion')}>
+                    <select style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }} {...register('occasion')}>
                       {occasions.map(o => (
                         <option key={o} value={o}>{o}</option>
                       ))}
@@ -251,7 +361,7 @@ export default function ReservationsPage() {
                     <textarea 
                       placeholder="Allergen notices, accessibility requests, or celebration milestones..."
                       rows={4}
-                      style={{ resize: 'vertical' }}
+                      style={{ resize: 'vertical', background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
                       {...register('requests')}
                     />
                   </div>
@@ -270,54 +380,80 @@ export default function ReservationsPage() {
 
             {/* Sidebar Details */}
             <div className="flex flex-col gap-8">
-              <div style={{ background: '#0d0d0d', border: '1px solid rgba(201,168,76,0.15)', padding: '40px' }}>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--gold)', marginBottom: '32px' }}>
+              <div style={{ background: 'var(--dark-card)', border: '1px solid rgba(197, 168, 92, 0.12)', padding: '40px 32px', position: 'relative' }}>
+                {/* Internal decoration border */}
+                <div style={{
+                  position: 'absolute',
+                  inset: '12px',
+                  border: '1px solid rgba(197, 168, 92, 0.04)',
+                  pointerEvents: 'none',
+                }} />
+
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--gold)', marginBottom: '32px', fontWeight: 400, position: 'relative', zIndex: 2 }}>
                   Dining Policies
                 </h3>
                 
-                {[
-                  { Icon: CalendarIcon, title: 'Cancellation Policy', desc: 'Complimentary cancellations up to 24 hours prior to booking.' },
-                  { Icon: Clock, title: 'Grace Period', desc: 'Tables are held for 15 minutes past the reserved arrival time.' },
-                  { Icon: Users, title: 'Group Requests', desc: 'For parties larger than 8, please contact our private events team.' },
-                  { Icon: MessageSquare, title: 'Cellar Experience', desc: 'Request our Sommelier-hosted cellar table in your special comments.' }
-                ].map(({ Icon, title, desc }) => (
-                  <div key={title} style={{ display: 'flex', gap: '16px', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--dark-border-2)' }}>
-                    <div style={{ width: '40px', height: '40px', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Icon size={16} color="var(--gold)" />
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--cream)', fontSize: '0.85rem', marginBottom: '4px' }}>
-                        {title}
+                <div style={{ position: 'relative', zIndex: 2 }}>
+                  {[
+                    { Icon: CalendarIcon, title: 'Cancellation Policy', desc: 'Complimentary cancellations up to 24 hours prior to booking.' },
+                    { Icon: Clock, title: 'Grace Period', desc: 'Tables are held for 15 minutes past the reserved arrival time.' },
+                    { Icon: Users, title: 'Group Requests', desc: 'For parties larger than 8, please contact our private events team.' },
+                    { Icon: MessageSquare, title: 'Sommelier Experience', desc: 'Request our Sommelier-hosted cellar table in your special comments.' }
+                  ].map(({ Icon, title, desc }) => (
+                    <div key={title} style={{ display: 'flex', gap: '16px', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid rgba(197, 168, 92, 0.08)' }}>
+                      <div style={{ width: '40px', height: '40px', background: 'rgba(197, 168, 92, 0.05)', border: '1px solid rgba(197, 168, 92, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon size={16} color="var(--gold)" />
                       </div>
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: 1.5 }}>
-                        {desc}
+                      <div>
+                        <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--cream)', fontSize: '0.85rem', marginBottom: '4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                          {title}
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: 1.5, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>
+                          {desc}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
               {/* Special Accent Panel */}
               <div 
                 style={{ 
-                  background: 'linear-gradient(135deg, #1c1003, #0a0a0a)', 
-                  border: '1px solid rgba(201,168,76,0.3)', 
-                  padding: '32px' 
+                  background: 'linear-gradient(135deg, var(--void) 0%, var(--black) 100%)', 
+                  border: '1px solid rgba(197, 168, 92, 0.22)', 
+                  padding: '36px',
+                  position: 'relative'
                 }}
               >
-                <Gift size={24} color="var(--gold)" style={{ marginBottom: '16px' }} />
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--cream)', marginBottom: '12px' }}>
-                  Gastronomy Membership
-                </h4>
-                <p style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-secondary)', lineHeight: 1.8, fontSize: '0.92rem' }}>
-                  Sign in or create an account before reserving to earn double dining tier points on your reservations. Accumulated points unlock secret tasting seats.
-                </p>
+                {/* Double frame overlay */}
+                <div style={{
+                  position: 'absolute',
+                  inset: '8px',
+                  border: '1px solid rgba(197, 168, 92, 0.05)',
+                  pointerEvents: 'none',
+                }} />
+
+                <div style={{ position: 'relative', zIndex: 2 }}>
+                  <Gift size={24} color="var(--gold)" style={{ marginBottom: '16px' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                    <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: 'var(--cream)', margin: 0, fontWeight: 400 }}>
+                      Gastronomy Membership
+                    </h4>
+                    <span style={{ fontSize: '0.55rem', background: 'rgba(197,168,92,0.1)', color: 'var(--gold)', padding: '2px 6px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: '1px solid rgba(197,168,92,0.2)' }}>
+                      Coming Soon
+                    </span>
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-secondary)', lineHeight: 1.8, fontSize: '0.9rem', fontStyle: 'italic' }}>
+                    Sign in or create an account before reserving to earn double dining tier points on your reservations. Accumulated points unlock secret tasting seats.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
+      </div>
     </div>
   );
 }

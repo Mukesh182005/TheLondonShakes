@@ -1,5 +1,16 @@
 // Centralized data for The London Shakes - Milkshakes, Waffles & Quick Bites
 
+export interface PortionConfig {
+  available: boolean;
+  price: number;
+}
+
+export interface MenuItemPortions {
+  small: PortionConfig;
+  medium: PortionConfig;
+  large: PortionConfig;
+}
+
 export interface MenuItem {
   id: string;
   category: string;
@@ -12,6 +23,7 @@ export interface MenuItem {
   allergens: string[];
   gradient: string; // Background gradient class for food photo simulation
   image?: string | null;
+  portions?: MenuItemPortions;
 }
 
 export interface MenuCategory {
@@ -19,17 +31,13 @@ export interface MenuCategory {
   label: string;
   icon: string;
   desc: string;
+  gutterImageLeftTop?: string | null;
+  gutterImageLeftBottom?: string | null;
+  gutterImageRightTop?: string | null;
+  gutterImageRightBottom?: string | null;
 }
 
-export interface Testimonial {
-  id: number;
-  name: string;
-  role: string;
-  review: string;
-  rating: number;
-  initials: string;
-  occasion: string;
-}
+
 
 export interface UpcomingEvent {
   id: string;
@@ -88,6 +96,7 @@ export const restaurantInfo = {
   hours: [
     { days: "Monday — Sunday", lunch: "11:00 — 16:00", dinner: "16:00 — 22:00" }
   ],
+  aboutImage: null as string | null,
   awards: [
     { year: "2025", award: "Best Milkshake Brand", org: "Silchar Food Awards" },
     { year: "2024", award: "Most Popular Hangout Spot", org: "Local Diner Rankings" },
@@ -106,12 +115,13 @@ export const restaurantInfo = {
 export const chef = {
   name: "Abhik",
   title: "Founder And CEO",
-  bio: "Born into a lineage of spice merchants and open-hearth cooks, Abhik's path was set early. He studied culinary arts in London, later refining his technique in Paris under Alain Ducasse, and in Chicago at the world-renowned wood-fired hearths. In 2021, Abhik merged his love for robust global textures with premium ingredients to launch The London Shakes, securing high local praise within eighteen months.",
-  philosophy: "\"Fine dining shouldn't lose its soul. We cook with premium blends, fresh milk, and stone-baked ovens. It's comfort food, yet we refine it to its absolute limits. Every plate should be robust, surprising, and unforgettable.\"",
+  image: null as string | null,
+  bio: "With a deep passion for fine desserts and European café culture, Abhik set out to redefine local dining in Silchar. Having studied hospitality and culinary arts in London and worked with leading pastry chefs and café directors, he brought back global standards of service and recipe craft. In 2021, Abhik merged his love for premium thick shakes, gourmet burgers, and freshly baked waffles to launch The London Shakes Silchar, securing high local praise within eighteen months.",
+  philosophy: "\"Dessert and café experiences shouldn't lose their soul. We craft every shake with premium real ingredients, fresh dairy, and artisan toppings. It's comfort food, elevated to its absolute limit.\"",
   education: [
     "Le Cordon Bleu London — Grand Diplôme, 2012",
-    "Stage at Asador Etxebarri, Spain — Wood-Fired Technique, 2014",
-    "Sous Chef under Thomas Keller, The French Laundry, 2016"
+    "Masterclass in Modern Dessert & Beverage Formulation, 2015",
+    "Operations Lead, Premium UK Dessert Franchise, 2017"
   ],
   media: ["Vogue British", "The Times", "Local Gastronomy Editorial", "Chef's Table UK", "BBC Good Food"],
   signature: [
@@ -296,35 +306,7 @@ export const menuItems: MenuItem[] = [
   }
 ];
 
-export const testimonials: Testimonial[] = [
-  {
-    id: 1,
-    name: "Sarah Jenkins",
-    role: "Local Food Blogger",
-    review: "The KitKat Shake is an absolute masterpiece. The London Shakes has created a gorgeous hangout spot in Silchar where dessert is truly an art form.",
-    rating: 5,
-    initials: "SJ",
-    occasion: "Birthday Get-Together"
-  },
-  {
-    id: 2,
-    name: "Rohit Sen",
-    role: "Regular Guest",
-    review: "Best place in Premtala for waffles and burgers. The Ice Cream Waffle is hot, crispy, and the vanilla ice cream pairing is sublime.",
-    rating: 5,
-    initials: "RS",
-    occasion: "Evening Hangout"
-  },
-  {
-    id: 3,
-    name: "Elena Roy",
-    role: "Silchar Food Reviewer",
-    review: "A premium shakes experience. The visual aesthetics, the dark premium tone, and their signature Strawberry Monster shake are top-notch.",
-    rating: 5,
-    initials: "ER",
-    occasion: "Weekend Meetup"
-  }
-];
+
 
 export const upcomingEvents: UpcomingEvent[] = [
   {
@@ -337,7 +319,8 @@ export const upcomingEvents: UpcomingEvent[] = [
     price: "₹199 onwards",
     capacity: "Walk-ins welcome",
     gradient: "linear-gradient(135deg, #0e0514, #190924, #0e0514)",
-    type: "waffles"
+    type: "waffles",
+    image: "/event-waffle.png"
   },
   {
     id: "ev2",
@@ -349,7 +332,8 @@ export const upcomingEvents: UpcomingEvent[] = [
     price: "À la carte",
     capacity: "All are welcome",
     gradient: "linear-gradient(135deg, #1c0507, #300c11, #1c0507)",
-    type: "shakes"
+    type: "shakes",
+    image: "/event-shake.png"
   },
   {
     id: "ev3",
@@ -361,7 +345,8 @@ export const upcomingEvents: UpcomingEvent[] = [
     price: "Free Entry",
     capacity: "Res. recommended",
     gradient: "linear-gradient(135deg, #060a12, #0d1526, #060a12)",
-    type: "music"
+    type: "music",
+    image: "/event-acoustic.png"
   }
 ];
 
@@ -399,3 +384,37 @@ export const privateEventTypes: PrivateEventType[] = [
 ];
 
 export const giftCardAmounts = [250, 500, 1000, 2000, 5000];
+
+export interface HomepageData {
+  heroEyebrow: string;
+  heroTitleLine1: string;
+  heroTitleLine2: string;
+  heroTitleItalic: string;
+  heroTagline: string;
+  heroBgImage: string | null;
+  illustrationImage: string | null;
+  illustrationEyebrow: string;
+  illustrationTitleRegular: string;
+  illustrationTitleItalic: string;
+  illustrationDescription: string;
+  aboutEyebrow: string;
+  aboutQuote: string;
+  aboutBgImage: string | null;
+}
+
+export const initialHomepageData: HomepageData = {
+  heroEyebrow: "Silchar · Est. 2021",
+  heroTitleLine1: "The",
+  heroTitleLine2: "London",
+  heroTitleItalic: "Shakes",
+  heroTagline: "Premium Thick Shakes, Gourmet Burgers & Artisan Café Experiences",
+  heroBgImage: "/cafe-interior-3.jpg",
+  illustrationImage: "/illustration.png",
+  illustrationEyebrow: "✦ Silchar's Finest ✦",
+  illustrationTitleRegular: "Crafted with",
+  illustrationTitleItalic: "magic",
+  illustrationDescription: "Every shake, burger & dessert made from scratch with love, seasonal ingredients, and a touch of London flair.",
+  aboutEyebrow: "About the space",
+  aboutQuote: "We built a café that honours British heritage while celebrating the bold spirit of Silchar's food culture.",
+  aboutBgImage: "/cafe-interior-4.jpg",
+};

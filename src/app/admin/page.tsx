@@ -47,6 +47,23 @@ function StatCard({ label, value, sub, color = 'var(--gold)', icon }: {
   );
 }
 
+const statusColor: Record<string, string> = {
+  confirmed:          '#3b82f6',
+  preparing:          '#f59e0b',
+  'out for delivery': '#8b5cf6',
+  delivered:          '#10b981',
+  cancelled:          '#ef4444',
+};
+
+const quickLinks = [
+  { label:'Kitchen Display', href:'/admin/kds',          icon: UtensilsCrossed, color:'#f59e0b' },
+  { label:'Floor Plan',       href:'/admin/floor',         icon: Users,          color:'#10b981' },
+  { label:'Reservations',     href:'/admin/reservations',  icon: Calendar,       color:'#3b82f6' },
+  { label:'Deliveries',       href:'/admin/delivery',      icon: Truck,          color:'#8b5cf6' },
+  { label:'Menu Editor',      href:'/admin/menu',          icon: ShoppingBag,    color:'var(--gold)' },
+  { label:'Site Settings',    href:'/admin/settings',      icon: Star,           color:'#ec4899' },
+];
+
 export default function AdminDashboard() {
   const orders      = useRestaurantStore((s) => s.orders);
 
@@ -56,26 +73,9 @@ export default function AdminDashboard() {
   const preparing   = orders.filter((o) => o.status === 'preparing').length;
   const pending     = orders.filter((o) => o.status === 'confirmed').length;
 
-  const recentOrders = [...orders].sort((a, b) =>
+  const recentOrders = orders.toSorted((a, b) =>
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   ).slice(0, 6);
-
-  const statusColor: Record<string, string> = {
-    confirmed:          '#3b82f6',
-    preparing:          '#f59e0b',
-    'out for delivery': '#8b5cf6',
-    delivered:          '#10b981',
-    cancelled:          '#ef4444',
-  };
-
-  const quickLinks = [
-    { label:'Kitchen Display', href:'/admin/kds',          icon: UtensilsCrossed, color:'#f59e0b' },
-    { label:'Floor Plan',       href:'/admin/floor',         icon: Users,          color:'#10b981' },
-    { label:'Reservations',     href:'/admin/reservations',  icon: Calendar,       color:'#3b82f6' },
-    { label:'Deliveries',       href:'/admin/delivery',      icon: Truck,          color:'#8b5cf6' },
-    { label:'Menu Editor',      href:'/admin/menu',          icon: ShoppingBag,    color:'var(--gold)' },
-    { label:'Site Settings',    href:'/admin/settings',      icon: Star,           color:'#ec4899' },
-  ];
 
   return (
     <div>

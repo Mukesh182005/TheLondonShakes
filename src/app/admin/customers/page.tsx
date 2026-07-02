@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { Users, ShoppingBag, TrendingUp, Search, ChevronDown } from 'lucide-react';
 
+const statusColor: Record<string, string> = { vip: '#f59e0b', regular: '#3b82f6', new: '#10b981' };
+
 export default function CustomersPage() {
   const orders       = useRestaurantStore((s) => s.orders);
   const reservations = useRestaurantStore((s) => s.reservations);
@@ -68,18 +70,18 @@ export default function CustomersPage() {
     else c.status = 'new';
   });
 
-  let customers = Object.values(profileMap);
+  let customersList = Object.values(profileMap);
 
   // Search
   if (search.trim()) {
     const q = search.toLowerCase();
-    customers = customers.filter((c) =>
+    customersList = customersList.filter((c) =>
       c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q)
     );
   }
 
   // Sort
-  customers.sort((a, b) => {
+  const customers = customersList.toSorted((a, b) => {
     if (sortBy === 'spent')  return b.totalSpent - a.totalSpent;
     if (sortBy === 'orders') return b.totalOrders - a.totalOrders;
     return a.name.localeCompare(b.name);
@@ -88,8 +90,6 @@ export default function CustomersPage() {
   const totalCustomers = customers.length;
   const vipCount       = customers.filter((c) => c.status === 'vip').length;
   const totalRevenue   = customers.reduce((s, c) => s + c.totalSpent, 0);
-
-  const statusColor: Record<string, string> = { vip: '#f59e0b', regular: '#3b82f6', new: '#10b981' };
 
   return (
     <div>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useSyncExternalStore } from 'react';
 import { 
   MenuItem, 
   MenuCategory,
@@ -10,7 +11,9 @@ import {
   chef as initialChef,
   upcomingEvents as initialUpcomingEvents,
   menuCategories as initialMenuCategories,
-  privateEventTypes as initialPrivateEventTypes
+  privateEventTypes as initialPrivateEventTypes,
+  HomepageData,
+  initialHomepageData
 } from '../data/restaurantData';
 
 export interface GalleryItem {
@@ -40,6 +43,8 @@ export interface CartItem {
   price: number;
   qty: number;
   gradient: string;
+  image?: string | null;
+  size?: 'small' | 'medium' | 'large';
 }
 
 export interface User {
@@ -79,10 +84,32 @@ export interface Order {
     city: string;
   };
   status: 'confirmed' | 'preparing' | 'out for delivery' | 'delivered' | 'cancelled';
-  paymentMethod: 'upi' | 'cod' | 'card_on_delivery';
+  paymentMethod: 'upi' | 'cod' | 'card_on_delivery' | 'pay_later';
   upiTxnId?: string;
   paymentStatus: 'unpaid' | 'pending_verification' | 'paid';
   createdAt: string;
+}
+
+export interface BillAdditive {
+  id: string;
+  name: string;
+  type: 'percentage' | 'flat';
+  value: number;
+}
+
+export interface TableOrder {
+  tableNumber: string;
+  items: (CartItem & { notes?: string })[];
+  customerName: string;
+  covers: number;
+  status: 'open' | 'billed' | 'paid';
+  openedAt: string;
+  additives?: BillAdditive[];
+  orderId?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  paymentMethod?: 'upi' | 'cod' | 'card_on_delivery' | 'pay_later';
+  customerAlert?: string;
 }
 
 // ── Store 1: Dynamic Customer/Transaction Store ──
@@ -93,7 +120,7 @@ export interface RestaurantState {
 
   cart: {
     items: CartItem[];
-    type: 'pickup' | 'delivery';
+    type: 'pickup' | 'delivery' | 'dine-in';
     address: {
       name: string;
       phone: string;
@@ -107,7 +134,7 @@ export interface RestaurantState {
   removeFromCart: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
   clearCart: () => void;
-  setOrderType: (type: 'pickup' | 'delivery') => void;
+  setOrderType: (type: 'pickup' | 'delivery' | 'dine-in') => void;
   setDeliveryAddress: (address: RestaurantState['cart']['address']) => void;
 
   reservations: Reservation[];
@@ -115,10 +142,19 @@ export interface RestaurantState {
   cancelReservation: (id: string) => void;
 
   orders: Order[];
-  placeOrder: (paymentMethod?: Order['paymentMethod'], upiTxnId?: string, customSettings?: { type: Order['type']; tableNumber?: string; customerName?: string }) => string;
+  placeOrder: (paymentMethod?: Order['paymentMethod'], upiTxnId?: string, customSettings?: { type: Order['type']; tableNumber?: string; customerName?: string; adminPlaced?: boolean }) => string;
   updateOrderStatus: (id: string, status: Order['status']) => void;
   updateOrder: (id: string, status: Order['status']) => void;
   updateOrderPaymentStatus: (id: string, status: Order['paymentStatus']) => void;
+  clearOrders: () => void;
+
+  tableOrders: TableOrder[];
+  setTableOrders: (orders: TableOrder[] | ((prev: TableOrder[]) => TableOrder[])) => void;
+
+  activeOrderId: string | null;
+  setActiveOrderId: (id: string | null) => void;
+  modifyOrderItems: (orderId: string, items: CartItem[], changeType: 'add' | 'delete') => void;
+  lockOrder: (orderId: string) => void;
 }
 
 export const useRestaurantStore = create<RestaurantState>()(
@@ -152,14 +188,15 @@ export const useRestaurantStore = create<RestaurantState>()(
       },
       addToCart: (item) => {
         set((state) => {
-          const existing = state.cart.items.find((i) => i.id === item.id);
+          const cartItemId = item.size ? `${item.id}-${item.size}` : item.id;
+          const existing = state.cart.items.find((i) => i.id === cartItemId);
           let newItems;
           if (existing) {
             newItems = state.cart.items.map((i) =>
-              i.id === item.id ? { ...i, qty: i.qty + 1 } : i
+              i.id === cartItemId ? { ...i, qty: i.qty + 1 } : i
             );
           } else {
-            newItems = [...state.cart.items, { ...item, qty: 1 }];
+            newItems = [...state.cart.items, { ...item, id: cartItemId, qty: 1 }];
           }
           return { cart: { ...state.cart, items: newItems } };
         });
@@ -247,8 +284,54 @@ export const useRestaurantStore = create<RestaurantState>()(
           createdAt: new Date().toISOString(),
         };
 
+        let updatedTableOrders = [...get().tableOrders];
+        if (newOrder.type === 'dine-in' && newOrder.tableNumber && !customSettings?.adminPlaced) {
+          const tableNum = newOrder.tableNumber;
+          const existingIndex = updatedTableOrders.findIndex(t => t.tableNumber === tableNum);
+          const customerName = newOrder.customerName || `Guest (${tableNum})`;
+          
+          if (existingIndex !== -1) {
+            const existingTable = updatedTableOrders[existingIndex];
+            const mergedItems = [...existingTable.items];
+            newOrder.items.forEach(newItem => {
+              const itemIndex = mergedItems.findIndex(i => i.id === newItem.id);
+              if (itemIndex !== -1) {
+                mergedItems[itemIndex] = {
+                  ...mergedItems[itemIndex],
+                  qty: mergedItems[itemIndex].qty + newItem.qty
+                };
+              } else {
+                mergedItems.push({ ...newItem });
+              }
+            });
+            updatedTableOrders = updatedTableOrders.map((t, idx) => 
+              idx === existingIndex 
+                ? { ...t, items: mergedItems, customerName: t.customerName || customerName, status: 'open' as const, paymentMethod: t.paymentMethod || newOrder.paymentMethod }
+                : t
+            );
+          } else {
+            const newTableOrder: TableOrder = {
+              tableNumber: tableNum,
+              items: newOrder.items.map(item => ({ ...item })),
+              customerName,
+              covers: 2,
+              status: 'open',
+              openedAt: newOrder.createdAt,
+              orderId: newOrder.id,
+              customerPhone: newOrder.address.phone,
+              customerEmail: newOrder.address.email,
+              paymentMethod: newOrder.paymentMethod,
+              additives: [
+                { id: 'default-gst', name: 'GST (5%)', type: 'percentage', value: 5 }
+              ]
+            };
+            updatedTableOrders = [...updatedTableOrders, newTableOrder];
+          }
+        }
+
         set((state) => ({
           orders: [newOrder, ...state.orders],
+          tableOrders: updatedTableOrders,
         }));
         get().clearCart();
         return id;
@@ -268,12 +351,109 @@ export const useRestaurantStore = create<RestaurantState>()(
           orders: state.orders.map((o) => (o.id === id ? { ...o, paymentStatus: status } : o)),
         }));
       },
+      clearOrders: () => {
+        set({ 
+          orders: [],
+          tableOrders: [],
+          activeOrderId: null,
+        });
+      },
+
+      tableOrders: [],
+      setTableOrders: (orders) => {
+        set((state) => ({
+          tableOrders: typeof orders === 'function' ? orders(state.tableOrders) : orders,
+        }));
+      },
+
+      activeOrderId: null,
+      setActiveOrderId: (id) => {
+        set({ activeOrderId: id });
+      },
+
+      modifyOrderItems: (orderId, items, changeType) => {
+        const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+        
+        set((state) => {
+          // 1. Update the order in state.orders
+          const updatedOrders = state.orders.map((o) => {
+            if (o.id === orderId) {
+              const deliveryFee = o.type === 'dine-in' ? 0 : (o.type === 'delivery' ? 30 : 0);
+              return {
+                ...o,
+                items,
+                total: subtotal + deliveryFee,
+              };
+            }
+            return o;
+          });
+
+          // 2. Update the corresponding table order in state.tableOrders
+          const updatedTableOrders = state.tableOrders.map((to) => {
+            if (to.orderId === orderId) {
+              const alertMsg = changeType === 'add' ? 'Dish added by customer' : 'Dish deleted by customer';
+              return {
+                ...to,
+                items: items.map(i => ({ ...i })),
+                customerAlert: alertMsg,
+              };
+            }
+            return to;
+          });
+
+          return {
+            orders: updatedOrders,
+            tableOrders: updatedTableOrders,
+          };
+        });
+      },
+      lockOrder: (orderId) => {
+        set((state) => {
+          const lockedTime = new Date(Date.now() - 120 * 1000).toISOString();
+          
+          const updatedOrders = state.orders.map((o) => {
+            if (o.id === orderId) {
+              return {
+                ...o,
+                createdAt: lockedTime,
+              };
+            }
+            return o;
+          });
+
+          const updatedTableOrders = state.tableOrders.map((to) => {
+            if (to.orderId === orderId) {
+              return {
+                ...to,
+                openedAt: lockedTime,
+              };
+            }
+            return to;
+          });
+
+          return {
+            orders: updatedOrders,
+            tableOrders: updatedTableOrders,
+          };
+        });
+      },
     }),
     {
       name: 'thelondon-restaurant-store',
     }
   )
 );
+
+export type TableStatus = 'available' | 'occupied' | 'reserved' | 'cleaning';
+
+export interface FloorTable {
+  id: string;
+  number: number;
+  seats: number;
+  status: TableStatus;
+  guestName?: string;
+  since?: string;
+}
 
 // ── Store 2: Administrative/CMS Store ──
 export interface CMSState {
@@ -308,6 +488,21 @@ export interface CMSState {
   updateGalleryItem: (id: string, updated: Partial<GalleryItem>) => void;
   deleteGalleryItem: (id: string) => void;
   reorderGalleryItems: (items: GalleryItem[]) => void;
+  maintenanceMode: boolean;
+  setMaintenanceMode: (val: boolean) => void;
+
+  acceptingOrders: boolean;
+  setAcceptingOrders: (val: boolean) => void;
+
+  homepageData: HomepageData;
+  updateHomepageData: (data: Partial<HomepageData>) => void;
+
+  tables: FloorTable[];
+  addTable: (seats: number) => void;
+  deleteTable: (id: string) => void;
+  updateTableStatus: (id: string, status: TableStatus) => void;
+  updateTableSeats: (id: string, seats: number) => void;
+  resetTables: () => void;
 }
 
 export const useCMSStore = create<CMSState>()(
@@ -441,9 +636,88 @@ export const useCMSStore = create<CMSState>()(
         set((state) => ({ galleryItems: state.galleryItems.filter((g) => g.id !== id) }));
       },
       reorderGalleryItems: (items) => set({ galleryItems: items }),
+
+      maintenanceMode: false,
+      setMaintenanceMode: (val) => set({ maintenanceMode: val }),
+
+      acceptingOrders: true,
+      setAcceptingOrders: (val) => set({ acceptingOrders: val }),
+
+      homepageData: initialHomepageData,
+      updateHomepageData: (data) => set((state) => ({ homepageData: { ...state.homepageData, ...data } })),
+
+      tables: [
+        { id: 't1',  number: 1,  seats: 2, status: 'available' },
+        { id: 't2',  number: 2,  seats: 4, status: 'available' },
+        { id: 't3',  number: 3,  seats: 4, status: 'available' },
+        { id: 't4',  number: 4,  seats: 6, status: 'available' },
+        { id: 't5',  number: 5,  seats: 2, status: 'available' },
+        { id: 't6',  number: 6,  seats: 4, status: 'available' },
+        { id: 't7',  number: 7,  seats: 2, status: 'available' },
+        { id: 't8',  number: 8,  seats: 8, status: 'available' },
+        { id: 't9',  number: 9,  seats: 4, status: 'available' },
+        { id: 't10', number: 10, seats: 2, status: 'available' },
+        { id: 't11', number: 11, seats: 4, status: 'available' },
+        { id: 't12', number: 12, seats: 6, status: 'available' },
+      ],
+      addTable: (seats) => {
+        set((state) => {
+          const maxNum = state.tables.reduce((max, t) => t.number > max ? t.number : max, 0);
+          const newTable: FloorTable = {
+            id: 't-' + Math.random().toString(36).substring(2, 8),
+            number: maxNum + 1,
+            seats,
+            status: 'available'
+          };
+          return { tables: [...state.tables, newTable] };
+        });
+      },
+      deleteTable: (id) => {
+        set((state) => ({
+          tables: state.tables.filter((t) => t.id !== id)
+        }));
+      },
+      updateTableStatus: (id, status) => {
+        set((state) => ({
+          tables: state.tables.map((t) => t.id === id ? { ...t, status } : t)
+        }));
+      },
+      updateTableSeats: (id, seats) => {
+        set((state) => ({
+          tables: state.tables.map((t) => t.id === id ? { ...t, seats } : t)
+        }));
+      },
+      resetTables: () => {
+        set({
+          tables: [
+            { id: 't1',  number: 1,  seats: 2, status: 'available' },
+            { id: 't2',  number: 2,  seats: 4, status: 'available' },
+            { id: 't3',  number: 3,  seats: 4, status: 'available' },
+            { id: 't4',  number: 4,  seats: 6, status: 'available' },
+            { id: 't5',  number: 5,  seats: 2, status: 'available' },
+            { id: 't6',  number: 6,  seats: 4, status: 'available' },
+            { id: 't7',  number: 7,  seats: 2, status: 'available' },
+            { id: 't8',  number: 8,  seats: 8, status: 'available' },
+            { id: 't9',  number: 9,  seats: 4, status: 'available' },
+            { id: 't10', number: 10, seats: 2, status: 'available' },
+            { id: 't11', number: 11, seats: 4, status: 'available' },
+            { id: 't12', number: 12, seats: 6, status: 'available' },
+          ]
+        });
+      },
     }),
     {
       name: 'thelondon-cms-store',
     }
   )
 );
+
+const emptySubscribe = () => () => {};
+
+export function useIsMounted(): boolean {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+}

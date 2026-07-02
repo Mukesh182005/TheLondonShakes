@@ -6,11 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
-    "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "next": "^15.5.19",
@@ -18,7 +18,6 @@
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.77.0",
     "react-hot-toast": "^2.6.0",
-    "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },

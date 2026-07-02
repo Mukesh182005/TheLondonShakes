@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
-import { useRestaurantStore } from '@/store/restaurantStore';
+import { useRestaurantStore, useCMSStore } from '@/store/restaurantStore';
 
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const router = useRouter();
@@ -11,6 +11,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const updateQty = useRestaurantStore((state) => state.updateQty);
   const removeFromCart = useRestaurantStore((state) => state.removeFromCart);
   const setOrderType = useRestaurantStore((state) => state.setOrderType);
+  const acceptingOrders = useCMSStore((state) => state.acceptingOrders);
 
   const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.qty, 0);
 
@@ -77,25 +78,25 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
         {/* Order Type Toggle */}
         <div style={{ padding: '20px 32px', borderBottom: '1px solid var(--dark-border)' }}>
-          <div className="grid grid-cols-2 gap-2 bg-[#111] p-1 border border-dark-border">
-            {(['pickup', 'delivery'] as const).map((type) => (
+          <div className="grid grid-cols-3 gap-2 bg-[var(--dark-surface)] p-1 border border-[var(--dark-border)]">
+            {(['pickup', 'delivery', 'dine-in'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setOrderType(type)}
                 style={{
                   padding: '10px 0',
                   fontSize: '0.68rem',
-                  letterSpacing: '0.15em',
+                  letterSpacing: '0.1em',
                   textTransform: 'uppercase',
                   fontWeight: 600,
                   cursor: 'pointer',
                   border: 'none',
                   background: cart.type === type ? 'var(--gold)' : 'transparent',
-                  color: cart.type === type ? 'var(--black)' : 'var(--text-secondary)',
+                  color: cart.type === type ? 'var(--cream)' : 'var(--text-secondary)',
                   transition: 'all 0.3s ease',
                 }}
               >
-                {type}
+                {type === 'dine-in' ? 'In-Café' : type}
               </button>
             ))}
           </div>
@@ -130,14 +131,29 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   }}
                 >
                   {/* Photo Simulation */}
-                  <div
-                    className={`food-photo ${item.gradient}`}
-                    style={{
-                      width: '64px',
-                      height: '64px',
-                      flexShrink: 0,
-                    }}
-                  />
+                  {item.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      style={{
+                        width: '64px',
+                        height: '64px',
+                        objectFit: 'cover',
+                        flexShrink: 0,
+                        border: '1px solid var(--dark-border)',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className={`food-photo ${item.gradient}`}
+                      style={{
+                        width: '64px',
+                        height: '64px',
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
 
                   {/* Title & Controls */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -161,7 +177,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     </div>
 
                     <div className="flex justify-between items-center mt-2">
-                      <div className="flex items-center bg-[#111] border border-dark-border-2">
+                      <div className="flex items-center bg-[var(--dark-surface)] border border-[var(--dark-border)]">
                         <button
                           onClick={() => updateQty(item.id, item.qty - 1)}
                           style={{
@@ -171,11 +187,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             color: 'var(--text-secondary)',
                             cursor: 'pointer',
                           }}
-                          className="hover:text-cream"
+                          className="hover:text-[var(--cream)]"
                         >
                           <Minus size={10} />
                         </button>
-                        <span style={{ fontSize: '0.8rem', width: '20px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.8rem', width: '20px', textAlign: 'center', color: 'var(--cream)' }}>
                           {item.qty}
                         </span>
                         <button
@@ -187,7 +203,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             color: 'var(--text-secondary)',
                             cursor: 'pointer',
                           }}
-                          className="hover:text-cream"
+                          className="hover:text-[var(--cream)]"
                         >
                           <Plus size={10} />
                         </button>
@@ -215,7 +231,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             style={{
               padding: '24px 32px 40px',
               borderTop: '1px solid var(--dark-border)',
-              background: '#0a0a0a',
+              background: 'var(--dark-surface)',
             }}
           >
             <div className="flex justify-between items-center mb-6">
@@ -231,15 +247,37 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 ₹{subtotal}
               </span>
             </div>
+            {!acceptingOrders && (
+              <div 
+                style={{ 
+                  background: 'rgba(239, 68, 68, 0.08)', 
+                  border: '1px solid rgba(239, 68, 68, 0.2)', 
+                  padding: '12px', 
+                  marginBottom: '16px',
+                  textAlign: 'center'
+                }}
+              >
+                <p style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 600, margin: 0 }}>
+                  We are not taking orders at this time.
+                </p>
+              </div>
+            )}
             <button
               onClick={() => {
+                if (!acceptingOrders) return;
                 onClose();
                 router.push('/order');
               }}
+              disabled={!acceptingOrders}
               className="btn-gold"
-              style={{ width: '100%', padding: '16px 0' }}
+              style={{ 
+                width: '100%', 
+                padding: '16px 0',
+                opacity: acceptingOrders ? 1 : 0.5,
+                cursor: acceptingOrders ? 'pointer' : 'not-allowed'
+              }}
             >
-              <span>Proceed to Checkout</span>
+              <span>{acceptingOrders ? 'Proceed to Checkout' : 'Orders Paused'}</span>
             </button>
           </div>
         )}
