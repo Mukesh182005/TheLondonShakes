@@ -102,7 +102,7 @@ export default function Navbar() {
 
   const isHome    = pathname === '/';
   const cartCount = cart.items.reduce((n, i) => n + i.qty, 0);
-  const isAdmin   = user?.email === 'admin@thelondon.co.uk';
+  const isAdmin   = user?.email === 'thelondonshakesilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk';
 
   useEffect(() => {
     if (!isHome) { setNavVisible(true); return; }
@@ -163,11 +163,12 @@ export default function Navbar() {
           width:    '100%',
           maxWidth: 'var(--container-max)',
           margin:   '0 auto',
-          padding:  '0 var(--container-px)',
-          display:  'grid',
-          gridTemplateColumns: isMobile ? '1fr auto 1fr' : 'minmax(0, 1fr) auto minmax(0, 1fr)',
+          padding:  isMobile ? '0 16px' : '0 var(--container-px)',
+          display:  isMobile ? 'flex' : 'grid',
+          justifyContent: isMobile ? 'space-between' : undefined,
+          gridTemplateColumns: isMobile ? undefined : 'minmax(0, 1fr) auto minmax(0, 1fr)',
           alignItems: 'center',
-          gap:      '16px',
+          gap:      isMobile ? '8px' : '16px',
         }}>
 
           {/* Left links (Desktop only) */}

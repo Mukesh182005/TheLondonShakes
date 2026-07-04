@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCMSStore, useRestaurantStore, useIsMounted } from '@/store/restaurantStore';
 import ImageUploader from '@/components/ImageUploader';
-import { Save, RefreshCw, ChefHat, MapPin, Phone, Mail, Clock, AlertCircle, Power, Globe, Server, Terminal, ShieldAlert, Sparkles, Image as ImageIcon, ShoppingBag } from 'lucide-react';
+import { Save, RefreshCw, ChefHat, MapPin, Phone, Mail, Clock, AlertCircle, Power, Globe, Server, Terminal, ShieldAlert, Sparkles, Image as ImageIcon, ShoppingBag, Lock, KeyRound, Eye, EyeOff, Search, ChevronDown, ChevronUp, Calendar, User, DollarSign } from 'lucide-react';
 
 const INPUT_STYLE: React.CSSProperties = {
   width: '100%', padding: '10px 14px',
@@ -32,6 +32,24 @@ export default function SettingsPage() {
   const updateMenuCategory   = useCMSStore((s) => s.updateMenuCategory);
   const clearOrders          = useRestaurantStore((s) => s.clearOrders);
   const isMounted            = useIsMounted();
+  const user                 = useRestaurantStore((s) => s.user);
+
+  // Passcode verification state
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isLockedOverride, setIsLockedOverride] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('settings_locked_override') === 'true';
+    }
+    return false;
+  });
+  const [passcode, setPasscode] = useState('');
+  const [showPasscode, setShowPasscode] = useState(false);
+  const [passcodeLoading, setPasscodeLoading] = useState(false);
+  const [passcodeError, setPasscodeError] = useState<string | null>(null);
+
+  // New setting passcode update state
+  const [newPasscode, setNewPasscode] = useState('');
+  const [passcodeSaved, setPasscodeSaved] = useState(false);
 
   // Local form state — restaurant
   const [info, setInfo] = useState({ ...restaurantInfo });
@@ -50,7 +68,42 @@ export default function SettingsPage() {
   const [categories, setCategories] = useState([...menuCategories]);
 
   const [saved, setSaved] = useState(false);
-  const [tab, setTab]     = useState<'restaurant' | 'chef' | 'homepage' | 'payments' | 'server' | 'gutters'>('restaurant');
+  const [tab, setTab]     = useState<'restaurant' | 'chef' | 'homepage' | 'payments' | 'server' | 'gutters' | 'bill-log'>('restaurant');
+
+  // Bill edit log states
+  const [billLogs, setBillLogs] = useState<any[]>([]);
+  const [billLogsTotal, setBillLogsTotal] = useState(0);
+  const [billLogsPage, setBillLogsPage] = useState(1);
+  const [billLogsTotalPages, setBillLogsTotalPages] = useState(1);
+  const [billLogsSearch, setBillLogsSearch] = useState('');
+  const [billLogsLoading, setBillLogsLoading] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  const fetchBillLogs = async (p: number, s: string) => {
+    setBillLogsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/bill-logs?page=${p}&limit=20&search=${encodeURIComponent(s)}`);
+      const data = await res.json();
+      setBillLogs(data.logs || []);
+      setBillLogsTotal(data.total || 0);
+      setBillLogsTotalPages(data.totalPages || 1);
+    } catch (err) {
+      console.warn('Failed to fetch bill logs:', err);
+    } finally {
+      setBillLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'bill-log') {
+      fetchBillLogs(billLogsPage, billLogsSearch);
+    }
+  }, [tab, billLogsPage, billLogsSearch]);
+
+  const handleSearchBillLogs = (val: string) => {
+    setBillLogsSearch(val);
+    setBillLogsPage(1);
+  };
 
   // Sync states with Zustand store data on client mount/hydration
   useEffect(() => {
@@ -62,8 +115,17 @@ export default function SettingsPage() {
       setChefInfo({ ...chef });
       setHomepage({ ...homepageData });
       setCategories([...menuCategories]);
+
+      // Bypass for Super Admin / Owner, or check sessionStorage unlock
+      if (user?.email === 'thelondonshakesilchar@gmail.com' && !isLockedOverride) {
+        setIsUnlocked(true);
+      } else if (sessionStorage.getItem('settings_unlocked') === 'true') {
+        setIsUnlocked(true);
+      } else {
+        setIsUnlocked(false);
+      }
     }
-  }, [isMounted, restaurantInfo, chef, homepageData, menuCategories]);
+  }, [isMounted, restaurantInfo, chef, homepageData, menuCategories, user, isLockedOverride]);
   const maintenanceMode = useCMSStore((s) => s.maintenanceMode);
   const setMaintenanceMode = useCMSStore((s) => s.setMaintenanceMode);
   const acceptingOrders = useCMSStore((s) => s.acceptingOrders);
@@ -78,6 +140,95 @@ export default function SettingsPage() {
     const nextVal = !maintenanceMode;
     setMaintenanceMode(nextVal);
     document.cookie = `tls_maintenance=${nextVal}; path=/; max-age=31536000; SameSite=Lax`;
+
+    // Log action to DB
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: nextVal ? 'STOP_SERVER' : 'START_SERVER',
+        details: `Server mode toggled. Maintenance Mode is now ${nextVal}.`,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log server toggle:', err));
+  };
+
+  const toggleOrdering = () => {
+    const nextVal = !acceptingOrders;
+    setAcceptingOrders(nextVal);
+
+    // Log action to DB
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'TOGGLE_ORDER_ACCEPTANCE',
+        details: `Order acceptance status toggled. Accepting Orders is now ${nextVal}.`,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log order acceptance toggle:', err));
+  };
+
+  const handleVerifyPasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passcode.trim()) return;
+    setPasscodeLoading(true);
+    setPasscodeError(null);
+
+    try {
+      const res = await fetch('/api/admin/settings/verify-passcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('settings_locked_override');
+        }
+        setIsLockedOverride(false);
+        setIsUnlocked(true);
+        sessionStorage.setItem('settings_unlocked', 'true');
+      } else {
+        setPasscodeError(data.error || 'Incorrect passcode');
+      }
+    } catch (err) {
+      setPasscodeError('Network error verifying passcode. Please try again.');
+    } finally {
+      setPasscodeLoading(false);
+    }
+  };
+
+  const handleUpdatePasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPasscode.trim()) return;
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'adminPasscode', value: newPasscode }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPasscodeSaved(true);
+        setNewPasscode('');
+        setTimeout(() => setPasscodeSaved(false), 3000);
+
+        // Log passcode change
+        fetch('/api/admin/logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'EDIT_SETTINGS',
+            details: 'Owner passcode updated successfully.',
+            adminEmail: user?.email || 'unknown@thelondon.co.uk',
+          }),
+        }).catch((err) => console.warn('Failed to log passcode change:', err));
+      }
+    } catch (err) {
+      alert('Failed to update passcode.');
+    }
   };
 
   const handleSave = () => {
@@ -92,6 +243,22 @@ export default function SettingsPage() {
     categories.forEach((cat) => {
       updateMenuCategory(cat.id, cat);
     });
+
+    // Log changes to DB
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'EDIT_SETTINGS',
+        details: {
+          restaurantName: info.name,
+          tagline: info.tagline,
+          chefName: chefInfo.name,
+        },
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log settings changes:', err));
+
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -103,7 +270,63 @@ export default function SettingsPage() {
     { id: 'payments',   label: 'Payment Details', icon: <AlertCircle size={14} /> },
     { id: 'gutters',    label: 'Menu Gutter Images', icon: <ImageIcon size={14} /> },
     { id: 'server',     label: 'Server Control',  icon: <Power size={14} /> },
+    { id: 'bill-log',   label: 'Bill Log',        icon: <ShieldAlert size={14} /> },
   ] as const;
+
+  if (!isUnlocked) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '40px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+        <div style={{ padding: '16px', background: 'rgba(197, 168, 92, 0.08)', borderRadius: '50%', color: 'var(--gold)', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Lock size={36} />
+        </div>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--cream)', marginBottom: '8px', textAlign: 'center' }}>Owner Verification Required</h2>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: '420px', textAlign: 'center', lineHeight: 1.5, marginBottom: '24px' }}>
+          Site settings are restricted. If you are the owner, please enter your passcode to modify system status, payment methods, or website contents.
+        </p>
+        <form onSubmit={handleVerifyPasscode} style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+              <KeyRound size={16} />
+            </span>
+            <input
+              type={showPasscode ? 'text' : 'password'}
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value)}
+              placeholder="Enter owner passcode"
+              style={{
+                width: '100%', height: '44px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--dark-border)',
+                padding: '0 40px', color: 'var(--cream)', fontSize: '0.85rem', outline: 'none',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--gold)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--dark-border)'}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPasscode(!showPasscode)}
+              style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              {showPasscode ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          {passcodeError && (
+            <p style={{ fontSize: '0.75rem', color: '#ef4444', margin: 0, textAlign: 'center' }}>{passcodeError}</p>
+          )}
+          <button
+            type="submit"
+            disabled={passcodeLoading}
+            style={{
+              height: '44px', background: 'var(--gold)', color: 'var(--black)',
+              border: 'none', fontFamily: 'var(--font-sans)', fontSize: '0.75rem',
+              fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}
+          >
+            {passcodeLoading ? 'Verifying...' : 'Unlock Settings'}
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -114,6 +337,31 @@ export default function SettingsPage() {
           <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Changes here update the live website immediately</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {isUnlocked && (
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.removeItem('settings_unlocked');
+                  sessionStorage.setItem('settings_locked_override', 'true');
+                }
+                setIsLockedOverride(true);
+                setIsUnlocked(false);
+                setPasscode('');
+                alert('Settings panel has been locked successfully.');
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '10px 18px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444',
+                color: '#ef4444', fontFamily: 'var(--font-sans)', fontSize: '0.72rem',
+                fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#ef4444'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(239, 68, 68, 0.1)'; (e.currentTarget as HTMLElement).style.color = '#ef4444'; }}
+            >
+              <Lock size={13} /> Lock Settings Panel
+            </button>
+          )}
           {saved && (
             <span style={{ fontSize: '0.72rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <RefreshCw size={12} /> Saved!
@@ -672,7 +920,7 @@ export default function SettingsPage() {
             {/* Giant Action Button for Ordering */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyItems: 'center', padding: '24px 0', borderTop: '1px solid var(--dark-border)', margin: '12px 0 0 0' }}>
               <button
-                onClick={() => setAcceptingOrders(!acceptingOrders)}
+                onClick={toggleOrdering}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '16px 36px',
@@ -730,55 +978,66 @@ export default function SettingsPage() {
               </p>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to delete ALL orders? This will clear all current active, preparing, delivered, and cancelled order data from the system.')) {
-                      clearOrders();
-                      useCMSStore.getState().resetTables();
-
-                      // Directly and synchronously modify local storage to bypass any Zustand debounce lag
+                  onClick={async () => {
+                    if (window.confirm('Are you sure you want to delete ALL orders, reservations, and logs? This will clear all data from the database.')) {
                       try {
-                        const localData = localStorage.getItem('thelondon-restaurant-store');
-                        if (localData) {
-                          const parsed = JSON.parse(localData);
-                          if (parsed.state) {
-                            parsed.state.orders = [];
-                            parsed.state.tableOrders = [];
-                            parsed.state.activeOrderId = null;
-                            localStorage.setItem('thelondon-restaurant-store', JSON.stringify(parsed));
+                        const res = await fetch('/api/admin/clear-db', { method: 'POST' });
+                        const data = await res.json();
+                        if (data.success) {
+                          clearOrders();
+                          useCMSStore.getState().resetTables();
+
+                          // Directly and synchronously modify local storage to bypass any Zustand debounce lag
+                          try {
+                            const localData = localStorage.getItem('thelondon-restaurant-store');
+                            if (localData) {
+                              const parsed = JSON.parse(localData);
+                              if (parsed.state) {
+                                parsed.state.orders = [];
+                                parsed.state.tableOrders = [];
+                                parsed.state.activeOrderId = null;
+                                localStorage.setItem('thelondon-restaurant-store', JSON.stringify(parsed));
+                              }
+                            }
+                          } catch (err) {
+                            console.error('Failed to sync restaurant store to localStorage:', err);
                           }
+
+                          try {
+                            const cmsData = localStorage.getItem('thelondon-cms-store');
+                            if (cmsData) {
+                              const parsed = JSON.parse(cmsData);
+                              if (parsed.state) {
+                                parsed.state.tables = [
+                                  { id: 't1',  number: 1,  seats: 2, status: 'available' },
+                                  { id: 't2',  number: 2,  seats: 4, status: 'available' },
+                                  { id: 't3',  number: 3,  seats: 4, status: 'available' },
+                                  { id: 't4',  number: 4,  seats: 6, status: 'available' },
+                                  { id: 't5',  number: 5,  seats: 2, status: 'available' },
+                                  { id: 't6',  number: 6,  seats: 4, status: 'available' },
+                                  { id: 't7',  number: 7,  seats: 2, status: 'available' },
+                                  { id: 't8',  number: 8,  seats: 8, status: 'available' },
+                                  { id: 't9',  number: 9,  seats: 4, status: 'available' },
+                                  { id: 't10', number: 10, seats: 2, status: 'available' },
+                                  { id: 't11', number: 11, seats: 4, status: 'available' },
+                                  { id: 't12', number: 12, seats: 6, status: 'available' },
+                                ];
+                                localStorage.setItem('thelondon-cms-store', JSON.stringify(parsed));
+                              }
+                            }
+                          } catch (err) {
+                            console.error('Failed to sync CMS store to localStorage:', err);
+                          }
+
+                          alert('All data (orders, table orders, reservations, and audit logs) has been cleared successfully.');
+                          window.location.reload();
+                        } else {
+                          alert('Failed to clear database data: ' + (data.error || 'Unknown error'));
                         }
                       } catch (err) {
-                        console.error('Failed to sync restaurant store to localStorage:', err);
+                        console.error('Failed to clear database data:', err);
+                        alert('An error occurred while clearing the database.');
                       }
-
-                      try {
-                        const cmsData = localStorage.getItem('thelondon-cms-store');
-                        if (cmsData) {
-                          const parsed = JSON.parse(cmsData);
-                          if (parsed.state) {
-                            parsed.state.tables = [
-                              { id: 't1',  number: 1,  seats: 2, status: 'available' },
-                              { id: 't2',  number: 2,  seats: 4, status: 'available' },
-                              { id: 't3',  number: 3,  seats: 4, status: 'available' },
-                              { id: 't4',  number: 4,  seats: 6, status: 'available' },
-                              { id: 't5',  number: 5,  seats: 2, status: 'available' },
-                              { id: 't6',  number: 6,  seats: 4, status: 'available' },
-                              { id: 't7',  number: 7,  seats: 2, status: 'available' },
-                              { id: 't8',  number: 8,  seats: 8, status: 'available' },
-                              { id: 't9',  number: 9,  seats: 4, status: 'available' },
-                              { id: 't10', number: 10, seats: 2, status: 'available' },
-                              { id: 't11', number: 11, seats: 4, status: 'available' },
-                              { id: 't12', number: 12, seats: 6, status: 'available' },
-                            ];
-                            localStorage.setItem('thelondon-cms-store', JSON.stringify(parsed));
-                          }
-                        }
-                      } catch (err) {
-                        console.error('Failed to sync CMS store to localStorage:', err);
-                      }
-
-                      alert('All orders data has been cleared successfully.');
-                      window.location.reload();
                     }
                   }}
                   style={{
@@ -796,11 +1055,276 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Security & Access Code Change */}
+          <div style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', padding: '28px', marginTop: '24px' }}>
+            <h3 style={SECTION_TITLE}><Lock size={14} style={{ display: 'inline', marginRight: '8px' }} />Owner Passcode Configuration</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Change the access passcode that normal administrators (managers/staff) must enter to unlock these settings.
+              </p>
+              <form onSubmit={handleUpdatePasscode} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <label style={LABEL}>New Owner Passcode</label>
+                  <input
+                    type="password"
+                    value={newPasscode}
+                    onChange={(e) => setNewPasscode(e.target.value)}
+                    placeholder="Enter new passcode"
+                    style={INPUT_STYLE}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '12px 24px', background: 'var(--gold)', border: 'none',
+                    color: 'var(--black)', fontFamily: 'var(--font-sans)', fontSize: '0.72rem',
+                    fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer',
+                    height: '40px',
+                  }}
+                >
+                  Update Passcode
+                </button>
+              </form>
+              {passcodeSaved && (
+                <p style={{ fontSize: '0.75rem', color: '#10b981', margin: 0 }}>Passcode updated successfully.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── BILL LOG TAB ────────────────────────────────────────────── */}
+      {tab === 'bill-log' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', padding: '24px' }}>
+            <h3 style={SECTION_TITLE}><ShieldAlert size={14} style={{ display: 'inline', marginRight: '8px' }} />Bill Modification Audit Logs</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: 1.5 }}>
+              This log records all instances where an administrator, manager, or cashier modified a bill, including the exact items added or removed, price alterations, customer details, and the mandatory reason provided.
+            </p>
+
+            {/* Search Bar */}
+            <div style={{ position: 'relative', marginBottom: '20px', maxWidth: '400px' }}>
+              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                <Search size={16} />
+              </span>
+              <input
+                type="text"
+                value={billLogsSearch}
+                onChange={(e) => handleSearchBillLogs(e.target.value)}
+                placeholder="Search by Order ID, customer, reason, or admin..."
+                style={{
+                  width: '100%', padding: '10px 14px 10px 38px',
+                  background: 'var(--dark-surface)', border: '1px solid var(--dark-border)',
+                  color: 'var(--cream)', fontFamily: 'var(--font-sans)', fontSize: '0.82rem',
+                  outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Logs Table */}
+            {billLogsLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'var(--text-secondary)', gap: '8px' }}>
+                <RefreshCw size={16} className="animate-spin" /> Loading logs...
+              </div>
+            ) : billLogs.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', border: '1px dashed var(--dark-border)', color: 'var(--text-muted)', gap: '12px' }}>
+                <ShieldAlert size={28} style={{ color: 'var(--text-muted)' }} />
+                <p style={{ fontSize: '0.85rem', margin: 0 }}>No bill edit logs found.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ overflowX: 'auto', border: '1px solid var(--dark-border)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--dark-surface)', borderBottom: '1px solid var(--dark-border)' }}>
+                        <th style={{ padding: '12px 16px', color: 'var(--gold)', fontWeight: 700 }}>Timestamp</th>
+                        <th style={{ padding: '12px 16px', color: 'var(--gold)', fontWeight: 700 }}>Order ID</th>
+                        <th style={{ padding: '12px 16px', color: 'var(--gold)', fontWeight: 700 }}>Customer / Source</th>
+                        <th style={{ padding: '12px 16px', color: 'var(--gold)', fontWeight: 700 }}>Admin</th>
+                        <th style={{ padding: '12px 16px', color: 'var(--gold)', fontWeight: 700 }}>Amount Change</th>
+                        <th style={{ padding: '12px 16px', color: 'var(--gold)', fontWeight: 700 }}>Reason</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billLogs.map((log) => {
+                        const isExpanded = expandedLogId === log.id;
+                        const diffVal = log.totalDiff || 0;
+                        return (
+                          <React.Fragment key={log.id}>
+                            <tr style={{ borderBottom: '1px solid var(--dark-border)', cursor: 'pointer', background: isExpanded ? 'rgba(212,175,55,0.02)' : 'transparent' }} onClick={() => setExpandedLogId(isExpanded ? null : log.id)}>
+                              <td style={{ padding: '14px 16px', color: 'var(--cream)', whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Calendar size={12} style={{ color: 'var(--text-muted)' }} />
+                                  {new Date(log.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </td>
+                              <td style={{ padding: '14px 16px', color: 'var(--gold)', fontWeight: 700 }}>{log.orderId || '—'}</td>
+                              <td style={{ padding: '14px 16px', color: 'var(--cream)' }}>
+                                <div style={{ fontWeight: 500 }}>{log.customerName || 'Guest'}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                  {log.customerPhone || 'No Phone'} {log.tableNumber ? `• ${log.tableNumber}` : ''}
+                                </div>
+                              </td>
+                              <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <User size={12} style={{ color: 'var(--text-muted)' }} />
+                                  {log.adminEmail}
+                                </div>
+                              </td>
+                              <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--cream)' }}>
+                                  <span>₹{log.originalTotal}</span>
+                                  <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                  <span style={{ fontWeight: 700 }}>₹{log.newTotal}</span>
+                                </div>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: diffVal < 0 ? '#ef4444' : '#10b981' }}>
+                                  {diffVal > 0 ? '+' : ''}₹{diffVal}
+                                </span>
+                              </td>
+                              <td style={{ padding: '14px 16px', color: 'var(--cream)', fontWeight: 500 }}>{log.reason}</td>
+                              <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                                <button style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                              </td>
+                            </tr>
+
+                            {/* Expanded Details Row */}
+                            {isExpanded && (
+                              <tr style={{ background: 'var(--dark-surface)', borderBottom: '1px solid var(--dark-border)' }}>
+                                <td colSpan={7} style={{ padding: '20px 24px' }}>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                                    {/* Left: Item level changes */}
+                                    <div>
+                                      <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 12px' }}>Dishes & Quantities Edited</p>
+                                      {(!log.itemChanges || log.itemChanges.length === 0) ? (
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No item additions, removals, or quantity changes.</p>
+                                      ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                          {log.itemChanges.map((change: string, idx: number) => {
+                                            const isDel = change.startsWith('REMOVED:');
+                                            const isAdd = change.startsWith('ADDED:');
+                                            return (
+                                              <div key={idx} style={{ fontSize: '0.75rem', padding: '6px 10px', background: isDel ? 'rgba(239,68,68,0.04)' : (isAdd ? 'rgba(16,185,129,0.04)' : 'var(--dark-card)'), borderLeft: `3px solid ${isDel ? '#ef4444' : (isAdd ? '#10b981' : 'var(--gold)')}`, color: 'var(--cream)' }}>
+                                                {change}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {/* Tax / Charge / Discount Changes */}
+                                      <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '18px 0 12px' }}>Charges & Discounts Edited</p>
+                                      {(!log.additiveChanges || log.additiveChanges.length === 0) ? (
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No charges, taxes, or discounts added or removed.</p>
+                                      ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                          {log.additiveChanges.map((change: string, idx: number) => {
+                                            const isDel = change.startsWith('REMOVED CHARGE:');
+                                            return (
+                                              <div key={idx} style={{ fontSize: '0.75rem', padding: '6px 10px', background: isDel ? 'rgba(239,68,68,0.04)' : 'rgba(16,185,129,0.04)', borderLeft: `3px solid ${isDel ? '#ef4444' : '#10b981'}`, color: 'var(--cream)' }}>
+                                                {change}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Right: Comparative Bill Side-by-Side */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                      <div>
+                                        <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>Customer Contact Info</p>
+                                        <table style={{ width: '100%', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                          <tbody>
+                                            <tr>
+                                              <td style={{ padding: '2px 0', fontWeight: 600 }}>Email:</td>
+                                              <td style={{ padding: '2px 0', color: 'var(--cream)', textAlign: 'right' }}>{log.customerEmail || '—'}</td>
+                                            </tr>
+                                            <tr>
+                                              <td style={{ padding: '2px 0', fontWeight: 600 }}>Phone:</td>
+                                              <td style={{ padding: '2px 0', color: 'var(--cream)', textAlign: 'right' }}>{log.customerPhone || '—'}</td>
+                                            </tr>
+                                            <tr>
+                                              <td style={{ padding: '2px 0', fontWeight: 600 }}>Type:</td>
+                                              <td style={{ padding: '2px 0', color: 'var(--gold)', textAlign: 'right', textTransform: 'uppercase' }}>{log.orderType}</td>
+                                            </tr>
+                                          </tbody>
+                                        </table>
+                                      </div>
+
+                                      <div style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', padding: '14px', fontFamily: 'Courier New, monospace' }}>
+                                        <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--gold)', borderBottom: '1px dashed var(--dark-border)', paddingBottom: '4px', margin: '0 0 8px' }}>BILL SUMMARY INFO</p>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.72rem' }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                                            <span>Original Total:</span>
+                                            <span>₹{log.originalTotal}</span>
+                                          </div>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                                            <span>New Total:</span>
+                                            <span>₹{log.newTotal}</span>
+                                          </div>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: diffVal < 0 ? '#ef4444' : '#10b981', borderTop: '1px dashed var(--dark-border)', paddingTop: '4px' }}>
+                                            <span>Difference:</span>
+                                            <span>{diffVal > 0 ? '+' : ''}₹{diffVal}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {billLogsTotalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Showing page {billLogsPage} of {billLogsTotalPages} ({billLogsTotal} total records)
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        disabled={billLogsPage === 1}
+                        onClick={() => setBillLogsPage(prev => Math.max(1, prev - 1))}
+                        style={{
+                          padding: '6px 12px', background: 'transparent', border: '1px solid var(--dark-border)',
+                          color: billLogsPage === 1 ? 'var(--text-muted)' : 'var(--cream)', fontSize: '0.72rem',
+                          cursor: billLogsPage === 1 ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        disabled={billLogsPage === billLogsTotalPages}
+                        onClick={() => setBillLogsPage(prev => Math.min(billLogsTotalPages, prev + 1))}
+                        style={{
+                          padding: '6px 12px', background: 'transparent', border: '1px solid var(--dark-border)',
+                          color: billLogsPage === billLogsTotalPages ? 'var(--text-muted)' : 'var(--cream)', fontSize: '0.72rem',
+                          cursor: billLogsPage === billLogsTotalPages ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Save Button (bottom) */}
-      {tab !== 'server' && (
+      {tab !== 'server' && tab !== 'bill-log' && (
         <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           {saved && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.78rem' }}>

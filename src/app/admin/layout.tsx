@@ -64,14 +64,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const [sessionVerified, setSessionVerified] = useState(false);
 
-  const isAdmin = user?.email === 'admin@thelondon.co.uk';
+  const isAdmin = user?.email === 'thelondonshakesilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk';
 
   useEffect(() => {
     if (!hydrated) return;
     if (pathname === '/admin/login') return;
     if (!user) {
       router.push('/admin/login');
-    } else if (user.email !== 'admin@thelondon.co.uk') {
+    } else if (!user.email) {
       router.push('/');
     } else {
       // Verify session cookie on the server
@@ -238,7 +238,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {user.name}
             </p>
             <p style={{ fontSize:'0.68rem', color:'var(--text-secondary)' }}>
-              {isAdmin ? 'Administrator' : user.membershipStatus}
+              {isAdmin ? 'Super Admin' : 'Admin'}
             </p>
             {/* Maintenance status badge */}
             <div style={{

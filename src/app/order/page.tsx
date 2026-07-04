@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurantStore, useCMSStore, useIsMounted } from '@/store/restaurantStore';
+import { useRestaurantStore, useCMSStore, useIsMounted, Order } from '@/store/restaurantStore';
 import { restaurantInfo as initialRestaurantInfo, chef as initialChef } from '@/data/restaurantData';
 import { ShoppingBag, ShieldCheck, Clock, Copy, Check, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -9,6 +9,8 @@ import Link from 'next/link';
 
 export default function OrderPage() {
   const storeCart = useRestaurantStore((state) => state.cart);
+  const user = useRestaurantStore((state) => state.user);
+  const login = useRestaurantStore((state) => state.login);
   const orders = useRestaurantStore((state) => state.orders);
   const placeOrder = useRestaurantStore((state) => state.placeOrder);
   const setDeliveryAddress = useRestaurantStore((state) => state.setDeliveryAddress);
@@ -86,6 +88,53 @@ export default function OrderPage() {
     return () => clearInterval(interval);
   }, [activeOrderId, currentOrder]);
 
+  // Background polling to fetch latest status of active order
+  useEffect(() => {
+    if (!activeOrderId || !currentOrder) return;
+    if (currentOrder.status === 'delivered' || currentOrder.status === 'cancelled') return;
+
+    const setOrders = useRestaurantStore.getState().setOrders;
+
+    const pollStatus = async () => {
+      // Respect visibility API: do not poll if browser tab is in background
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/api/orders?id=${activeOrderId}`);
+        if (res.ok) {
+          const updatedOrder = await res.json();
+          if (updatedOrder && updatedOrder.status) {
+            setOrders((prev: Order[]) =>
+              prev.map((o) => (o.id === updatedOrder.id ? { ...o, ...updatedOrder } : o))
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to poll order status:', err);
+      }
+    };
+
+    // Run immediately on active order change/mount
+    pollStatus();
+
+    const interval = setInterval(pollStatus, 10000); // 10 seconds
+
+    // Monitor document visibility change to poll when user returns
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        pollStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [activeOrderId, currentOrder?.status]);
+
   const occupiedTables = tableOrders
     .filter(t => t.status === 'open' || t.status === 'billed')
     .map(t => t.tableNumber);
@@ -147,6 +196,13 @@ export default function OrderPage() {
       street: addressForm.street,
       city: addressForm.city,
     });
+
+    // Auto-login guest if not signed in
+    const orderEmail = addressForm.email.trim().toLowerCase();
+    if (!user && orderEmail !== 'thelondonshakesilchar@gmail.com' && orderEmail !== 'admin@thelondon.co.uk') {
+      login(orderEmail, addressForm.name.trim(), addressForm.phone.trim());
+      toast.success(`Account created! Welcome, ${addressForm.name.trim()}!`);
+    }
 
     // Place the order
     const orderId = placeOrder(
@@ -232,7 +288,9 @@ export default function OrderPage() {
 
               {/* Items List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                {currentOrder.items.map((item) => (
+                {currentOrder.items
+                  .filter((i: any) => !i.isAdditive && i.id !== 'discount' && i.id !== 'tax-cgst' && i.id !== 'tax-sgst')
+                  .map((item) => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--charcoal)', border: '1px solid var(--dark-border)' }}>
                     <span style={{ fontSize: '0.82rem', color: 'var(--cream)', fontWeight: 500 }}>{item.name}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -737,6 +795,23 @@ export default function OrderPage() {
                       </div>
                     )}
                   </div>
+
+                  {!user && (
+                    <div style={{
+                      fontSize: '0.78rem',
+                      color: 'var(--text-secondary)',
+                      fontFamily: 'var(--font-sans)',
+                      fontStyle: 'italic',
+                      lineHeight: 1.5,
+                      padding: '12px 16px',
+                      background: 'rgba(197, 168, 92, 0.05)',
+                      border: '1px solid rgba(197, 168, 92, 0.15)',
+                      marginTop: '8px',
+                      marginBottom: '8px'
+                    }}>
+                      * Entering your details above will automatically sign you in and register you as a new user/customer.
+                    </div>
+                  )}
 
                   <button 
                     type="submit" 

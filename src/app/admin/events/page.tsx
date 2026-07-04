@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useCMSStore } from '@/store/restaurantStore';
+import { useCMSStore, useRestaurantStore } from '@/store/restaurantStore';
 import ImageUploader from '@/components/ImageUploader';
 import { Plus, Pencil, Trash2, X, Check, Calendar, Clock, Tag, Users, Image as ImageIcon, Sparkles } from 'lucide-react';
 import type { UpcomingEvent, PrivateEventType } from '@/data/restaurantData';
@@ -61,6 +61,7 @@ export default function AdminEventsPage() {
   const addUpcomingEvent   = useCMSStore((s) => s.addUpcomingEvent);
   const updateUpcomingEvent = useCMSStore((s) => s.updateUpcomingEvent);
   const deleteUpcomingEvent = useCMSStore((s) => s.deleteUpcomingEvent);
+  const user                = useRestaurantStore((s) => s.user);
 
   const [showForm, setShowForm]     = useState(false);
   const [editingId, setEditingId]   = useState<string | null>(null);
@@ -104,8 +105,28 @@ export default function AdminEventsPage() {
     }
     if (editingId) {
       updateUpcomingEvent(editingId, form);
+      // Log edit
+      fetch('/api/admin/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'EDIT_SETTINGS',
+          details: `Modified public event "${form.title}" (date: ${form.date}).`,
+          adminEmail: user?.email || 'unknown@thelondon.co.uk',
+        }),
+      }).catch((err) => console.warn('Failed to log public event edit:', err));
     } else {
       addUpcomingEvent(form);
+      // Log add
+      fetch('/api/admin/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'EDIT_SETTINGS',
+          details: `Added new public event "${form.title}" (date: ${form.date}).`,
+          adminEmail: user?.email || 'unknown@thelondon.co.uk',
+        }),
+      }).catch((err) => console.warn('Failed to log public event add:', err));
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -114,8 +135,20 @@ export default function AdminEventsPage() {
   };
 
   const handleDelete = (id: string) => {
+    const item = upcomingEvents.find((e) => e.id === id);
     deleteUpcomingEvent(id);
     setConfirmDel(null);
+
+    // Log delete
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'EDIT_SETTINGS',
+        details: `Deleted public event "${item?.title || id}".`,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log public event delete:', err));
   };
 
   // --- Private Dining Handlers ---
@@ -166,8 +199,28 @@ export default function AdminEventsPage() {
 
     if (editingPrivateId) {
       updatePrivateEventType(editingPrivateId, data);
+      // Log edit
+      fetch('/api/admin/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'EDIT_SETTINGS',
+          details: `Modified private dining package "${privateForm.title}" (capacity: ${privateForm.capacity}).`,
+          adminEmail: user?.email || 'unknown@thelondon.co.uk',
+        }),
+      }).catch((err) => console.warn('Failed to log private package edit:', err));
     } else {
       addPrivateEventType(data);
+      // Log add
+      fetch('/api/admin/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'EDIT_SETTINGS',
+          details: `Added new private dining package "${privateForm.title}" (capacity: ${privateForm.capacity}).`,
+          adminEmail: user?.email || 'unknown@thelondon.co.uk',
+        }),
+      }).catch((err) => console.warn('Failed to log private package add:', err));
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -176,8 +229,20 @@ export default function AdminEventsPage() {
   };
 
   const handlePrivateDelete = (id: string) => {
+    const item = privateEventTypes.find((p) => p.id === id);
     deletePrivateEventType(id);
     setConfirmPrivateDel(null);
+
+    // Log delete
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'EDIT_SETTINGS',
+        details: `Deleted private dining package "${item?.title || id}".`,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log private package delete:', err));
   };
 
   return (

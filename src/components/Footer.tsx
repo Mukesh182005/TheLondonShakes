@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import { restaurantInfo as initialRestaurantInfo } from '@/data/restaurantData';
@@ -13,7 +13,6 @@ const footerLinks = {
     { label: 'Reservations',  href: '/reservations' },
     { label: 'Gallery',       href: '/gallery' },
     { label: 'Events',        href: '/events' },
-    { label: 'Gift Cards',    href: '/gift-cards' },
   ],
   experience: [
     { label: 'Our Story',      href: '/about' },
@@ -30,6 +29,15 @@ export default function Footer() {
   const restaurantInfo = isMounted ? storeRestaurantInfo : initialRestaurantInfo;
   const year = new Date().getFullYear();
 
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <footer style={{
       background:  'var(--panel-dark)',
@@ -40,9 +48,10 @@ export default function Footer() {
       {/* Main footer grid */}
       <div className="container" style={{ paddingTop: '88px', paddingBottom: '72px' }}>
         <div style={{
-          display:             'grid',
-          gridTemplateColumns: '1.5fr 1fr 1fr 1.2fr',
-          gap:                 '48px',
+          display:             isMobile ? 'flex' : 'grid',
+          flexDirection:       isMobile ? 'column' : undefined,
+          gridTemplateColumns: isMobile ? undefined : '1.5fr 1fr 1fr 1.2fr',
+          gap:                 isMobile ? '36px' : '48px',
           marginBottom:        '72px',
         }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
 
@@ -277,7 +286,7 @@ export default function Footer() {
         <div style={{ height: '1px', background: 'rgba(242,238,228,0.07)', marginBottom: '32px' }} />
 
         {/* Bottom bar */}
-        <div style={{
+        <div className="footer-bottom-bar" style={{
           display:        'flex',
           justifyContent: 'space-between',
           alignItems:     'center',

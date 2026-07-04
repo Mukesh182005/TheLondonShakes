@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter, EB_Garamond } from 'next/font/google';
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
+import { ClerkProvider } from "@clerk/nextjs";
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -56,16 +57,26 @@ export const metadata: Metadata = {
   },
 };
 
+const hasClerkKeys =
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('placeholder');
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
+  const content = (
     <html lang="en" className={`h-full ${cormorant.variable} ${inter.variable} ${ebGaramond.variable}`}>
       <body className="min-h-full bg-black">
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
+
+  if (hasClerkKeys) {
+    return <ClerkProvider>{content}</ClerkProvider>;
+  }
+
+  return content;
 }

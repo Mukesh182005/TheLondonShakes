@@ -10,25 +10,43 @@
     "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.5.12",
     "@hookform/resolvers": "^5.4.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@serwist/next": "^9.5.11",
+    "@stripe/stripe-js": "^9.9.0",
     "framer-motion": "^12.40.0",
+    "ioredis": "^5.11.1",
     "lucide-react": "^1.17.0",
     "next": "^15.5.19",
+    "pg": "^8.22.0",
+    "pusher": "^5.3.4",
+    "pusher-js": "^8.5.0",
+    "razorpay": "^2.9.6",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.77.0",
     "react-hot-toast": "^2.6.0",
+    "serwist": "^9.5.11",
+    "stripe": "^22.3.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "prisma": "^7.8.0",
     "tailwindcss": "^4",
+    "tsx": "^4.22.5",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "node --import tsx/esm prisma/seed.ts"
   }
 }

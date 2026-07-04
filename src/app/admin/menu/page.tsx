@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useCMSStore } from '@/store/restaurantStore';
+import { useCMSStore, useRestaurantStore } from '@/store/restaurantStore';
 import ImageUploader from '@/components/ImageUploader';
 import { Plus, Pencil, Trash2, X, Check, ChevronDown } from 'lucide-react';
 import type { MenuItem, MenuItemPortions } from '@/data/restaurantData';
@@ -32,6 +32,7 @@ export default function MenuEditorPage() {
   const addMenuItem     = useCMSStore((s) => s.addMenuItem);
   const updateMenuItem  = useCMSStore((s) => s.updateMenuItem);
   const deleteMenuItem  = useCMSStore((s) => s.deleteMenuItem);
+  const user            = useRestaurantStore((s) => s.user);
 
   const [activeTab, setActiveTab]   = useState<string>('shakes');
   const [showForm, setShowForm]     = useState(false);
@@ -80,16 +81,48 @@ export default function MenuEditorPage() {
     }
     if (editingId) {
       updateMenuItem(editingId, form);
+      // Log edit
+      fetch('/api/admin/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'EDIT_MENU_ITEM',
+          details: `Modified dish "${form.name}" (price: INR ${form.price}, category: ${form.category}).`,
+          adminEmail: user?.email || 'unknown@thelondon.co.uk',
+        }),
+      }).catch((err) => console.warn('Failed to log menu edit:', err));
     } else {
       addMenuItem(form);
+      // Log add
+      fetch('/api/admin/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ADD_MENU_ITEM',
+          details: `Added new dish "${form.name}" (price: INR ${form.price}, category: ${form.category}).`,
+          adminEmail: user?.email || 'unknown@thelondon.co.uk',
+        }),
+      }).catch((err) => console.warn('Failed to log menu add:', err));
     }
     setShowForm(false);
     setEditingId(null);
   };
 
   const handleDelete = (id: string) => {
+    const item = menuItems.find((m) => m.id === id);
     deleteMenuItem(id);
     setConfirmDel(null);
+
+    // Log delete
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'DELETE_MENU_ITEM',
+        details: `Deleted dish "${item?.name || id}" from menu.`,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log menu delete:', err));
   };
 
   const setBadge = (val: string) => setForm((f) => ({ ...f, badge: val || null }));

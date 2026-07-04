@@ -11,6 +11,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const login = useRestaurantStore((s) => s.login);
 
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,7 +22,7 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password.trim()) return;
+    if (!password.trim() || !email.trim()) return;
 
     setLoading(true);
     setError(null);
@@ -40,7 +41,7 @@ function LoginForm() {
       }
 
       // Sync user state in Zustand store
-      login('admin@thelondon.co.uk');
+      login(email);
 
       // Redirect to target path
       router.push(fromPath);
@@ -54,6 +55,51 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div>
+        <label
+          htmlFor="email"
+          style={{
+            display: 'block',
+            fontSize: '0.68rem',
+            fontWeight: 600,
+            color: 'var(--text-secondary)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
+            marginBottom: '8px',
+          }}
+        >
+          Administrator Email
+        </label>
+        <input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter administrator email"
+          required
+          disabled={loading}
+          style={{
+            width: '100%',
+            height: '46px',
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '0 16px',
+            fontSize: '0.9rem',
+            color: 'var(--cream)',
+            outline: 'none',
+            transition: 'all 0.3s ease',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'var(--gold)';
+            e.currentTarget.style.background = 'rgba(197, 168, 92, 0.02)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+          }}
+        />
+      </div>
+
       <div>
         <label
           htmlFor="password"

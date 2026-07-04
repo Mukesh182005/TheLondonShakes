@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useCMSStore, GalleryItem } from '@/store/restaurantStore';
+import { useCMSStore, useRestaurantStore, GalleryItem } from '@/store/restaurantStore';
 import ImageUploader from '@/components/ImageUploader';
 import { Plus, Pencil, Trash2, X, Check, ChevronDown } from 'lucide-react';
 
@@ -34,6 +34,7 @@ export default function AdminGalleryPage() {
   const addGalleryItem     = useCMSStore((s) => s.addGalleryItem);
   const updateGalleryItem  = useCMSStore((s) => s.updateGalleryItem);
   const deleteGalleryItem  = useCMSStore((s) => s.deleteGalleryItem);
+  const user               = useRestaurantStore((s) => s.user);
 
   const [filter, setFilter]       = useState<string>('all');
   const [showForm, setShowForm]   = useState(false);
@@ -62,11 +63,48 @@ export default function AdminGalleryPage() {
     }
     if (editingId) {
       updateGalleryItem(editingId, form);
+      // Log edit
+      fetch('/api/admin/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'EDIT_SETTINGS',
+          details: `Modified gallery photo "${form.title}" (category: ${form.category}).`,
+          adminEmail: user?.email || 'unknown@thelondon.co.uk',
+        }),
+      }).catch((err) => console.warn('Failed to log gallery edit:', err));
     } else {
       addGalleryItem(form);
+      // Log add
+      fetch('/api/admin/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'EDIT_SETTINGS',
+          details: `Added new gallery photo "${form.title}" (category: ${form.category}).`,
+          adminEmail: user?.email || 'unknown@thelondon.co.uk',
+        }),
+      }).catch((err) => console.warn('Failed to log gallery add:', err));
     }
     setShowForm(false);
     setEditingId(null);
+  };
+
+  const handleDelete = (id: string) => {
+    const item = galleryItems.find((g) => g.id === id);
+    deleteGalleryItem(id);
+    setConfirmDel(null);
+
+    // Log delete
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'EDIT_SETTINGS',
+        details: `Deleted gallery photo "${item?.title || id}".`,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log gallery delete:', err));
   };
 
   const catColor: Record<string, string> = {
@@ -182,7 +220,7 @@ export default function AdminGalleryPage() {
                 </button>
                 {confirmDel === item.id ? (
                   <>
-                    <button onClick={() => { deleteGalleryItem(item.id); setConfirmDel(null); }} style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button onClick={() => { handleDelete(item.id); }} style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Check size={13} />
                     </button>
                     <button onClick={() => setConfirmDel(null)} style={{ width: '32px', height: '32px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

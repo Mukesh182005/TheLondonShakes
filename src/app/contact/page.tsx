@@ -54,7 +54,7 @@ export default function ContactPage() {
       </div>
 
       <div className="container" style={{ padding:'72px var(--container-px)' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1.5fr', gap:'72px', alignItems:'start' }}>
+        <div className="contact-grid" style={{ alignItems:'start' }}>
 
           {/* Info Panel */}
           <div>

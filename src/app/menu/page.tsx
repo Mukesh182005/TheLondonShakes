@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import Image from 'next/image';
 import { useRestaurantStore, useCMSStore } from '@/store/restaurantStore';
 import { 
   menuItems as initialMenuItems,
@@ -406,6 +407,7 @@ export default function MenuPage() {
             fontSize:   '1.4rem',
             color:      'var(--gold)',
             lineHeight: 1,
+            whiteSpace: 'nowrap',
           }}>
             ₹{currentPrice}
           </span>
@@ -648,7 +650,7 @@ export default function MenuPage() {
 
         {/* ── Count ── */}
         <p style={{ fontSize:'0.72rem', color:'var(--text-secondary)', marginBottom:'24px', letterSpacing:'0.08em' }}>
-          Showing {filtered.length} item{filtered.length !== 1 ? 's' : ''}
+          Showing <span style={{ whiteSpace: 'nowrap' }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
           {activeCategory !== 'all' && ` in ${menuCategories.find((c) => c.id === activeCategory)?.label}`}
         </p>
 
@@ -774,11 +776,11 @@ export default function MenuPage() {
             })()}
           </div>
         ) : filtered.length === 2 ? (
-          // Dual Items: Grid with exactly two centered columns so they layout nicely without huge blank spaces
+          // Dual Items: Grid with centered columns that wrap nicely on mobile
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
               gap: '24px',
               width: '100%',
               maxWidth: '850px',
@@ -1029,7 +1031,7 @@ export default function MenuPage() {
               position: 'relative',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
               maxHeight: '90vh',
               overflowY: 'auto',
             }}
@@ -1070,10 +1072,13 @@ export default function MenuPage() {
               className={!item.image ? `food-photo ${item.gradient}` : 'food-photo'}
               >
                 {item.image ? (
-                  <img
+                  <Image
                     src={item.image}
                     alt={item.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 40vw"
+                    style={{ objectFit: 'cover' }}
+                    unoptimized={item.image.startsWith('data:') || item.image.startsWith('blob:')}
                   />
                 ) : (
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
@@ -1192,6 +1197,7 @@ export default function MenuPage() {
                     fontSize: '1.8rem',
                     color: 'var(--gold)',
                     lineHeight: 1,
+                    whiteSpace: 'nowrap',
                   }}>
                     ₹{currentPrice}
                   </span>

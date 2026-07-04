@@ -45,11 +45,15 @@ export interface CartItem {
   gradient: string;
   image?: string | null;
   size?: 'small' | 'medium' | 'large';
+  isAdditive?: boolean;
+  type?: string;
+  value?: number;
 }
 
 export interface User {
   name: string;
   email: string;
+  phone?: string;
   membershipStatus: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
   tierPoints: number;
 }
@@ -88,6 +92,7 @@ export interface Order {
   upiTxnId?: string;
   paymentStatus: 'unpaid' | 'pending_verification' | 'paid';
   createdAt: string;
+  adminPlaced?: boolean;
 }
 
 export interface BillAdditive {
@@ -106,6 +111,7 @@ export interface TableOrder {
   openedAt: string;
   additives?: BillAdditive[];
   orderId?: string;
+  isDbOrder?: boolean;
   customerPhone?: string;
   customerEmail?: string;
   paymentMethod?: 'upi' | 'cod' | 'card_on_delivery' | 'pay_later';
@@ -115,7 +121,7 @@ export interface TableOrder {
 // ── Store 1: Dynamic Customer/Transaction Store ──
 export interface RestaurantState {
   user: User | null;
-  login: (email: string, name?: string) => void;
+  login: (email: string, name?: string, phone?: string) => void;
   logout: () => void;
 
   cart: {
@@ -142,6 +148,7 @@ export interface RestaurantState {
   cancelReservation: (id: string) => void;
 
   orders: Order[];
+  setOrders: (orders: Order[] | ((prev: Order[]) => Order[])) => void;
   placeOrder: (paymentMethod?: Order['paymentMethod'], upiTxnId?: string, customSettings?: { type: Order['type']; tableNumber?: string; customerName?: string; adminPlaced?: boolean }) => string;
   updateOrderStatus: (id: string, status: Order['status']) => void;
   updateOrder: (id: string, status: Order['status']) => void;
@@ -161,12 +168,13 @@ export const useRestaurantStore = create<RestaurantState>()(
   persist(
     (set, get) => ({
       user: null,
-      login: (email, name = 'Valued Guest') => {
-        const isDefaultAdmin = email === 'admin@thelondon.co.uk';
+      login: (email, name = 'Valued Guest', phone) => {
+        const isDefaultAdmin = email === 'thelondonshakesilchar@gmail.com' || email === 'admin@thelondon.co.uk';
         set({
           user: {
             name: isDefaultAdmin ? 'Maître d\' London' : name,
             email,
+            phone,
             membershipStatus: isDefaultAdmin ? 'Platinum' : 'Gold',
             tierPoints: isDefaultAdmin ? 9999 : 320,
           },
@@ -264,11 +272,31 @@ export const useRestaurantStore = create<RestaurantState>()(
 
       orders: [],
       placeOrder: (paymentMethod = 'cod', upiTxnId = '', customSettings) => {
-        const id = 'ORD-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        // Generate DDMMY### format order ID
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const y = String(now.getFullYear()).slice(-1); // last digit of year
+        const prefix = `${dd}${mm}${y}`;
+
+        // Find the next sequence number for today
+        const todaysOrders = get().orders.filter(o => o.id.startsWith(prefix));
+        let nextSeq = 1;
+        if (todaysOrders.length > 0) {
+          const seqs = todaysOrders.map(o => parseInt(o.id.slice(5), 10)).filter(n => !isNaN(n));
+          nextSeq = (seqs.length > 0 ? Math.max(...seqs) : 0) + 1;
+        }
+        if (nextSeq > 999) nextSeq = 999; // cap at 999
+        const id = `${prefix}${String(nextSeq).padStart(3, '0')}`;
         const items = get().cart.items;
         const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
         const deliveryFee = customSettings?.type === 'dine-in' ? 0 : (get().cart.type === 'delivery' ? 30 : 0);
         const total = subtotal + deliveryFee;
+
+        const currentAdminEmail = get().user?.email;
+        const isAdminSession = currentAdminEmail === 'thelondonshakesilchar@gmail.com' || currentAdminEmail === 'admin@thelondon.co.uk';
+        const isPlacedByAdmin = !!(customSettings?.adminPlaced || isAdminSession);
+
         const newOrder: Order = {
           id,
           items,
@@ -276,12 +304,20 @@ export const useRestaurantStore = create<RestaurantState>()(
           type: customSettings?.type || get().cart.type,
           customerName: customSettings?.customerName || get().cart.address.name || 'Guest',
           tableNumber: customSettings?.tableNumber,
-          address: get().cart.address,
+          address: {
+            name: customSettings?.customerName || get().cart.address.name || 'Guest',
+            phone: get().cart.address.phone || 'N/A',
+            email: isPlacedByAdmin ? (currentAdminEmail || 'admin@thelondon.co.uk') : (get().cart.address.email || 'N/A'),
+            flat: isPlacedByAdmin ? 'ADMIN_PLACED' : (get().cart.address.flat || ''),
+            street: get().cart.address.street || '',
+            city: get().cart.address.city || '',
+          },
           status: 'confirmed',
           paymentMethod,
           upiTxnId,
           paymentStatus: paymentMethod === 'upi' ? 'pending_verification' : 'unpaid',
           createdAt: new Date().toISOString(),
+          adminPlaced: isPlacedByAdmin,
         };
 
         let updatedTableOrders = [...get().tableOrders];
@@ -329,6 +365,13 @@ export const useRestaurantStore = create<RestaurantState>()(
           }
         }
 
+        // Background HTTP POST to sync order with backend database and trigger Pusher socket
+        fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newOrder),
+        }).catch(err => console.warn('Failed to sync order via API:', err));
+
         set((state) => ({
           orders: [newOrder, ...state.orders],
           tableOrders: updatedTableOrders,
@@ -336,20 +379,40 @@ export const useRestaurantStore = create<RestaurantState>()(
         get().clearCart();
         return id;
       },
+      setOrders: (orders) => {
+        set((state) => ({
+          orders: typeof orders === 'function' ? orders(state.orders) : orders,
+        }));
+      },
       updateOrderStatus: (id, status) => {
         set((state) => ({
           orders: state.orders.map((o) => (o.id === id ? { ...o, status } : o)),
         }));
+        fetch('/api/orders', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: id, status }),
+        }).catch(err => console.warn('Failed to sync status update:', err));
       },
       updateOrder: (id, status) => {
         set((state) => ({
           orders: state.orders.map((o) => (o.id === id ? { ...o, status } : o)),
         }));
+        fetch('/api/orders', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: id, status }),
+        }).catch(err => console.warn('Failed to sync status update:', err));
       },
       updateOrderPaymentStatus: (id, status) => {
         set((state) => ({
           orders: state.orders.map((o) => (o.id === id ? { ...o, paymentStatus: status } : o)),
         }));
+        fetch('/api/orders', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: id, paymentStatus: status }),
+        }).catch(err => console.warn('Failed to sync payment status update:', err));
       },
       clearOrders: () => {
         set({ 
@@ -493,6 +556,7 @@ export interface CMSState {
 
   acceptingOrders: boolean;
   setAcceptingOrders: (val: boolean) => void;
+  loadSystemSettings: () => Promise<void>;
 
   homepageData: HomepageData;
   updateHomepageData: (data: Partial<HomepageData>) => void;
@@ -638,10 +702,42 @@ export const useCMSStore = create<CMSState>()(
       reorderGalleryItems: (items) => set({ galleryItems: items }),
 
       maintenanceMode: false,
-      setMaintenanceMode: (val) => set({ maintenanceMode: val }),
+      setMaintenanceMode: (val) => {
+        set({ maintenanceMode: val });
+        // Set cookie synchronously for middleware check
+        document.cookie = `tls_maintenance=${val}; path=/; max-age=31536000; SameSite=Lax`;
+        fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'maintenanceMode', value: String(val) }),
+        }).catch((err) => console.warn('Failed to sync maintenanceMode:', err));
+      },
 
       acceptingOrders: true,
-      setAcceptingOrders: (val) => set({ acceptingOrders: val }),
+      setAcceptingOrders: (val) => {
+        set({ acceptingOrders: val });
+        fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'acceptingOrders', value: String(val) }),
+        }).catch((err) => console.warn('Failed to sync acceptingOrders:', err));
+      },
+
+      loadSystemSettings: async () => {
+        try {
+          const res = await fetch('/api/admin/settings');
+          const data = await res.json();
+          if (data.success && data.settings) {
+            set({
+              maintenanceMode: data.settings.maintenanceMode,
+              acceptingOrders: data.settings.acceptingOrders,
+            });
+            document.cookie = `tls_maintenance=${data.settings.maintenanceMode}; path=/; max-age=31536000; SameSite=Lax`;
+          }
+        } catch (e) {
+          console.warn('Failed to load system settings:', e);
+        }
+      },
 
       homepageData: initialHomepageData,
       updateHomepageData: (data) => set((state) => ({ homepageData: { ...state.homepageData, ...data } })),

@@ -10,10 +10,16 @@ import PageTransition from './PageTransition';
 import { Info } from 'lucide-react';
 import { MotionConfig } from 'framer-motion';
 import MouseTrailer from './MouseTrailer';
+import { useCMSStore } from '@/store/restaurantStore';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin  = pathname.startsWith('/admin');
+  const loadSystemSettings = useCMSStore((state) => state.loadSystemSettings);
+
+  useEffect(() => {
+    loadSystemSettings();
+  }, [loadSystemSettings]);
 
   return (
     <MotionConfig reducedMotion="user">

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateSessionToken } from '@/lib/auth-crypto';
 
 // ──────────────────────────────────────────────────────────────
 //  Admin password is read from environment variable.
@@ -64,11 +65,13 @@ export async function POST(request: NextRequest) {
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
     const isSecure = !isLocalhost && (request.nextUrl.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https');
 
+    const token = await generateSessionToken(ADMIN_PASSWORD);
+
     // Set a cookie that:
     // - httpOnly: cannot be read by JavaScript
     // - secure: only sent over HTTPS (disabled for local dev)
     // - sameSite: lax protects against CSRF while allowing navigation redirects
-    response.cookies.set(ADMIN_COOKIE, 'authenticated', {
+    response.cookies.set(ADMIN_COOKIE, token, {
       httpOnly: true,
       secure:   isSecure,
       sameSite: 'lax',
@@ -84,7 +87,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const session = request.cookies.get(ADMIN_COOKIE)?.value;
-  if (session === 'authenticated') {
+  const expectedToken = ADMIN_PASSWORD ? await generateSessionToken(ADMIN_PASSWORD) : '';
+  if (session && session === expectedToken) {
     return NextResponse.json({ authenticated: true });
   }
   return NextResponse.json({ authenticated: false }, { status: 401 });

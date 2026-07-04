@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCMSStore } from '@/store/restaurantStore';
 import {
@@ -70,7 +71,6 @@ export default function HomePage() {
   // Sections
   const heroRef      = useReveal(0);
   const introRef     = useReveal();
-  const galleryRef   = useReveal();
   const aboutRef     = useReveal();
   const eventsRef    = useReveal();
   const ctaRef       = useReveal();
@@ -104,12 +104,13 @@ export default function HomePage() {
           inset:      0,
           overflow:   'hidden',
         }}>
-          <img
+          <Image
             src="/cafe-interior-3.jpg"
             alt="The London Shakes interior"
+            fill
+            priority
+            sizes="100vw"
             style={{
-              width:      '100%',
-              height:     '100%',
               objectFit:  'cover',
               objectPosition: 'center 40%',
               opacity:    0.35,
@@ -305,16 +306,12 @@ export default function HomePage() {
         padding:    '100px 0',
       }}>
         <div className="container" ref={introRef.ref}>
-          <div style={{
-            display:   'grid',
-            gridTemplateColumns: '1fr 2px 1fr',
-            gap:       '0',
+          <div className="home-intro-grid" style={{
             maxWidth:  '960px',
             margin:    '0 auto',
           }}>
             {/* Left: eyebrow + location */}
-            <div style={{
-              paddingRight:  '64px',
+            <div className="home-intro-left" style={{
               opacity:       introRef.visible ? 1 : 0,
               transform:     introRef.visible ? 'none' : 'translateX(-24px)',
               transition:    'all 1s cubic-bezier(0.19,1,0.22,1)',
@@ -344,14 +341,13 @@ export default function HomePage() {
             </div>
 
             {/* Divider */}
-            <div style={{
+            <div className="divider" style={{
               background:  'linear-gradient(180deg, transparent, var(--dark-border) 30%, var(--dark-border) 70%, transparent)',
               margin:      '0 0',
             }} />
 
             {/* Right: story text */}
-            <div style={{
-              paddingLeft:   '64px',
+            <div className="home-intro-right" style={{
               opacity:       introRef.visible ? 1 : 0,
               transform:     introRef.visible ? 'none' : 'translateX(24px)',
               transition:    'all 1s cubic-bezier(0.19,1,0.22,1) 0.15s',
@@ -398,15 +394,11 @@ export default function HomePage() {
         borderBottom: '1px solid rgba(158,128,67,0.1)',
       }}>
         <div className="container">
-          <div style={{
-            display:             'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-          }} className="grid grid-cols-2 md:grid-cols-4">
+          <div className="home-stats-grid">
             {stats.map((s, i) => (
               <div key={i} style={{
                 textAlign:    'center',
                 padding:      '56px 24px',
-                borderRight:  i < 3 ? '1px solid rgba(158,128,67,0.1)' : 'none',
               }}>
                 <div style={{
                   fontFamily:    'var(--font-display)',
@@ -417,7 +409,7 @@ export default function HomePage() {
                   marginBottom:  '10px',
                   letterSpacing: '-0.02em',
                 }}>
-                  <AnimatedNumber target={s.val} />{s.suffix}
+                  <span style={{ whiteSpace: 'nowrap' }}><AnimatedNumber target={s.val} />{s.suffix}</span>
                 </div>
                 <p style={{
                   fontFamily:    'var(--font-sans)',
@@ -450,13 +442,13 @@ export default function HomePage() {
       }}>
         {/* Background cafe image with heavy overlay */}
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <img
+          <Image
             src="/cafe-interior-4.jpg"
             alt=""
             aria-hidden
+            fill
+            sizes="100vw"
             style={{
-              width:      '100%',
-              height:     '100%',
               objectFit:  'cover',
               opacity:    0.12,
               filter:     'grayscale(0.5)',
@@ -558,8 +550,6 @@ export default function HomePage() {
             </div>
 
             <div style={{
-              display:             'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
               gap:                 '1px',
               background:          'var(--dark-border)',
               border:              '1px solid var(--dark-border)',
@@ -587,7 +577,12 @@ export default function HomePage() {
                     textTransform: 'uppercase',
                     color:         'var(--gold)',
                   }}>
-                    {new Date(ev.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {(() => {
+                      const parsed = new Date(ev.date);
+                      return isNaN(parsed.getTime())
+                        ? ev.date
+                        : parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+                    })()}
                   </p>
                   <h3 style={{
                     fontFamily:    'var(--font-display)',
@@ -737,13 +732,13 @@ export default function HomePage() {
       }}>
         {/* Cafe image bg */}
         <div style={{ position: 'absolute', inset: 0 }}>
-          <img
+          <Image
             src="/cafe-interior-3.jpg"
             alt=""
             aria-hidden
+            fill
+            sizes="100vw"
             style={{
-              width:     '100%',
-              height:    '100%',
               objectFit: 'cover',
               opacity:   0.15,
               filter:    'saturate(0.6)',
@@ -788,25 +783,6 @@ export default function HomePage() {
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/reservations" className="btn-outline-gold">
                 <span>Book a Table</span>
-              </Link>
-              <Link href="/gift-cards" style={{
-                display:       'inline-flex',
-                alignItems:    'center',
-                gap:           '10px',
-                padding:       '17px 48px',
-                fontFamily:    'var(--font-sans)',
-                fontSize:      '0.65rem',
-                fontWeight:    600,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-                color:         'var(--on-dark-muted)',
-                textDecoration:'none',
-                transition:    'color 0.3s ease',
-              }}
-                onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--on-dark)'}
-                onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--on-dark-muted)'}
-              >
-                Gift Cards
               </Link>
             </div>
           </div>

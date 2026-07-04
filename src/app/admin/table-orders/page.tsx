@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRestaurantStore, useCMSStore } from '@/store/restaurantStore';
+import React, { useState, useEffect } from 'react';
+import { useRestaurantStore, useCMSStore, type CartItem, type TableOrder, type Order } from '@/store/restaurantStore';
 import { Plus, Trash2, ShoppingBag, Check, X, ChefHat, Users } from 'lucide-react';
-import { type CartItem, type TableOrder } from '@/store/restaurantStore';
+import { pusherClient } from '@/lib/pusher-client';
 import toast from 'react-hot-toast';
 
 const generateAdditiveId = () => 'add-' + Math.random().toString(36).substring(2, 8);
@@ -230,6 +230,99 @@ export default function TableOrdersPage() {
 
   const TABLES = storeTables.map((t) => `Table ${t.number}`);
   const [activeTable, setActiveTable] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadAndSync = () => {
+      fetch('/api/orders')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const activeDineIn = data.filter(
+              (o) => o.type === 'dine-in' && o.tableNumber && o.status !== 'delivered' && o.status !== 'cancelled'
+            );
+            
+            setTableOrders((prev: TableOrder[]) => {
+              const dbTableMap = new Map<string, TableOrder>();
+              activeDineIn.forEach((order) => {
+                const tableNum = order.tableNumber!;
+                const parsedAdditives = order.items.filter((i: any) => i.isAdditive);
+                const additivesList = parsedAdditives.length > 0
+                  ? parsedAdditives.map((i: any) => ({
+                      id: i.id,
+                      name: i.name,
+                      type: i.type || 'flat',
+                      value: i.value !== undefined ? i.value : i.price
+                    }))
+                  : [
+                      { id: 'default-gst', name: 'GST (5%)', type: 'percentage', value: 5 }
+                    ];
+
+                dbTableMap.set(tableNum, {
+                  tableNumber: tableNum,
+                  items: order.items.filter((i: any) => !i.isAdditive && i.id !== 'discount' && i.id !== 'tax-cgst' && i.id !== 'tax-sgst'),
+                  customerName: order.customerName || `Guest (${tableNum})`,
+                  covers: 2,
+                  status: 'open',
+                  openedAt: order.createdAt,
+                  orderId: order.id,
+                  isDbOrder: true,
+                  customerPhone: order.address?.phone || '',
+                  customerEmail: order.address?.email || '',
+                  paymentMethod: order.paymentMethod,
+                  additives: additivesList
+                });
+              });
+
+              const updated: TableOrder[] = [];
+              const allTableNames = storeTables.map(t => `Table ${t.number}`);
+              
+              allTableNames.forEach((tableNum) => {
+                if (dbTableMap.has(tableNum)) {
+                  updated.push(dbTableMap.get(tableNum)!);
+                } else {
+                  const localDraft = prev.find(t => t.tableNumber === tableNum);
+                  if (localDraft) {
+                    updated.push(localDraft);
+                  }
+                }
+              });
+              return updated;
+            });
+          }
+        })
+        .catch((err) => console.warn('Failed to load table orders:', err));
+    };
+
+    // Initial load
+    loadAndSync();
+
+    // 5-second background polling
+    const interval = setInterval(() => {
+      loadAndSync();
+    }, 5000);
+
+    // Subscribe to Pusher orders channel
+    const channel = pusherClient.subscribe('orders');
+
+    channel.bind('new-order', (newOrder: Order) => {
+      if (newOrder.type === 'dine-in') {
+        toast.success(`New order placed on ${newOrder.tableNumber}!`);
+        loadAndSync();
+      }
+    });
+
+    channel.bind('order-updated', (updatedOrder: Order) => {
+      if (updatedOrder.type === 'dine-in') {
+        loadAndSync();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      channel.unbind_all();
+      channel.unsubscribe();
+    };
+  }, [setTableOrders, storeTables]);
   const [menuCat, setMenuCat]         = useState<string>('shakes');
   const [showBillModal, setShowBillModal] = useState<string | null>(null);
   const [showGuestDetails, setShowGuestDetails] = useState(false);
@@ -260,30 +353,97 @@ export default function TableOrdersPage() {
 
   const activeOrder = tableOrders.find((t) => t.tableNumber === activeTable);
 
+  const syncTableOrderToDb = async (order: TableOrder) => {
+    if (!order.isDbOrder || !order.orderId) return;
+
+    const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
+    const calculatedAdditives = (order.additives || []).map((add) => {
+      let val = 0;
+      if (add.type === 'percentage') {
+        val = Math.round(subtotal * (add.value / 100));
+      } else {
+        val = add.value;
+      }
+      return { ...add, calculatedValue: val };
+    });
+
+    const additivesSum = calculatedAdditives.reduce((sum, add) => sum + add.calculatedValue, 0);
+    const grandTotal = Math.max(0, subtotal + additivesSum);
+
+    const finalItems = [...order.items];
+    calculatedAdditives.forEach(add => {
+      finalItems.push({
+        id: add.id,
+        name: add.name,
+        price: add.calculatedValue,
+        qty: 1,
+        gradient: '',
+        image: null,
+        isAdditive: true,
+        type: add.type,
+        value: add.value
+      } as any);
+    });
+
+    const discountDetails = calculatedAdditives.map(add => `${add.name}: ${add.calculatedValue < 0 ? '-' : ''}₹${Math.abs(add.calculatedValue)}`).join(', ');
+    const fullDiscountDetails = `Subtotal: ₹${subtotal}, Additives: [${discountDetails}], Grand Total: ₹${grandTotal}`;
+
+    try {
+      await fetch('/api/admin/orders/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.orderId,
+          items: finalItems,
+          total: grandTotal,
+          adminEmail: 'admin@thelondon.co.uk',
+          discountDetails: fullDiscountDetails
+        })
+      });
+    } catch (err) {
+      console.warn('Failed to auto-sync table order modification to database:', err);
+    }
+  };
+
   const addItemToTable = (item: typeof menuItems[0]) => {
     if (!activeTable) return;
     setTableOrders((prev: TableOrder[]) => prev.map((t) => {
       if (t.tableNumber !== activeTable) return t;
       const existing = t.items.find((i) => i.id === item.id);
+      let updatedTable;
       if (existing) {
-        return { ...t, items: t.items.map((i) => i.id === item.id ? { ...i, qty: i.qty + 1 } : i) };
+        updatedTable = { ...t, items: t.items.map((i) => i.id === item.id ? { ...i, qty: i.qty + 1 } : i) };
+      } else {
+        updatedTable = { ...t, items: [...t.items, { id: item.id, name: item.name, price: item.price, qty: 1, gradient: item.gradient, image: item.image }] };
       }
-      return { ...t, items: [...t.items, { id: item.id, name: item.name, price: item.price, qty: 1, gradient: item.gradient, image: item.image }] };
+      if (updatedTable.isDbOrder) {
+        syncTableOrderToDb(updatedTable);
+      }
+      return updatedTable;
     }));
   };
 
   const removeItem = (tableNumber: string, itemId: string) => {
     setTableOrders((prev: TableOrder[]) => prev.map((t) => {
       if (t.tableNumber !== tableNumber) return t;
-      const updated = t.items.map((i) => i.id === itemId ? { ...i, qty: i.qty - 1 } : i).filter((i) => i.qty > 0);
-      return { ...t, items: updated };
+      const updatedItems = t.items.map((i) => i.id === itemId ? { ...i, qty: i.qty - 1 } : i).filter((i) => i.qty > 0);
+      const updatedTable = { ...t, items: updatedItems };
+      if (updatedTable.isDbOrder) {
+        syncTableOrderToDb(updatedTable);
+      }
+      return updatedTable;
     }));
   };
 
   const addItem = (tableNumber: string, itemId: string) => {
     setTableOrders((prev: TableOrder[]) => prev.map((t) => {
       if (t.tableNumber !== tableNumber) return t;
-      return { ...t, items: t.items.map((i) => i.id === itemId ? { ...i, qty: i.qty + 1 } : i) };
+      const updatedItems = t.items.map((i) => i.id === itemId ? { ...i, qty: i.qty + 1 } : i);
+      const updatedTable = { ...t, items: updatedItems };
+      if (updatedTable.isDbOrder) {
+        syncTableOrderToDb(updatedTable);
+      }
+      return updatedTable;
     }));
   };
 
@@ -301,10 +461,14 @@ export default function TableOrdersPage() {
           toast.error(`${name} is already added to this bill.`);
           return to;
         }
-        return {
+        const updatedTable = {
           ...to,
           additives: [...current, { id, name, type, value }]
         };
+        if (to.isDbOrder) {
+          syncTableOrderToDb(updatedTable);
+        }
+        return updatedTable;
       }
       return to;
     }));
@@ -318,10 +482,14 @@ export default function TableOrdersPage() {
         if (found) {
           toast.success(`${found.name} removed.`);
         }
-        return {
+        const updatedTable = {
           ...to,
           additives: current.filter((add) => add.id !== id)
         };
+        if (to.isDbOrder) {
+          syncTableOrderToDb(updatedTable);
+        }
+        return updatedTable;
       }
       return to;
     }));
@@ -332,27 +500,47 @@ export default function TableOrdersPage() {
     if (activeTable === tableNumber) setActiveTable(null);
   };
 
+  const handleClearTable = (tableNumber: string) => {
+    const order = tableOrders.find((t) => t.tableNumber === tableNumber);
+    if (order && order.isDbOrder && order.orderId) {
+      if (window.confirm(`This table has an active order (${order.orderId}) placed by the customer. Clearing the table will cancel this order. Do you want to proceed?`)) {
+        useRestaurantStore.getState().updateOrderStatus(order.orderId, 'cancelled');
+        toast.success(`Order ${order.orderId} cancelled.`);
+        closeTable(tableNumber);
+      }
+    } else {
+      closeTable(tableNumber);
+    }
+  };
+
   const billTable = (tableNumber: string) => {
     setTableOrders((prev: TableOrder[]) => prev.map((t) => t.tableNumber === tableNumber ? { ...t, status: 'billed' as const } : t));
     setShowBillModal(tableNumber);
   };
 
   const markPaid = (tableNumber: string) => {
-    // Place the order in the global store so KDS picks it up
     const order = tableOrders.find((t) => t.tableNumber === tableNumber);
-    if (order && order.items.length > 0) {
-      clearCart();
-      order.items.forEach((item) => {
-        for (let i = 0; i < item.qty; i++) {
-          addToCart({ id: item.id, name: item.name, price: item.price, gradient: item.gradient, image: item.image });
+    if (order) {
+      if (order.isDbOrder && order.orderId) {
+        useRestaurantStore.getState().updateOrderPaymentStatus(order.orderId, 'paid');
+        useRestaurantStore.getState().updateOrderStatus(order.orderId, 'delivered');
+        toast.success(`Order ${order.orderId} marked as paid and completed.`);
+      } else {
+        if (order.items.length > 0) {
+          clearCart();
+          order.items.forEach((item) => {
+            for (let i = 0; i < item.qty; i++) {
+              addToCart({ id: item.id, name: item.name, price: item.price, gradient: item.gradient, image: item.image });
+            }
+          });
+          placeOrder('cod', '', {
+            type: 'dine-in',
+            tableNumber,
+            customerName: order.customerName || `Table ${tableNumber.replace('Table ', '')}`,
+            adminPlaced: true,
+          });
         }
-      });
-      placeOrder('cod', '', {
-        type: 'dine-in',
-        tableNumber,
-        customerName: order.customerName || `Table ${tableNumber.replace('Table ', '')}`,
-        adminPlaced: true,
-      });
+      }
     }
     closeTable(tableNumber);
     setShowBillModal(null);
@@ -838,7 +1026,7 @@ export default function TableOrdersPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => closeTable(activeTable!)}
+                  onClick={() => handleClearTable(activeTable!)}
                   style={{
                     padding: '10px', background: 'transparent', border: '1px solid rgba(239,68,68,0.3)',
                     color: '#ef4444', fontFamily: 'var(--font-sans)', fontSize: '0.65rem',

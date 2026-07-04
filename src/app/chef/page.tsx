@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import { chef as initialChef } from '@/data/restaurantData';
 import { Award, BookOpen, Quote, Sparkles } from 'lucide-react';
@@ -83,17 +84,16 @@ export default function ChefPage() {
 
                 {chef.image ? (
                   <>
-                    <img
+                    <Image
                       src={chef.image}
                       alt={chef.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
                       style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
                         objectFit: 'cover',
                         zIndex: 1,
                       }}
+                      unoptimized={chef.image.startsWith('data:') || chef.image.startsWith('blob:')}
                     />
                     <div style={{
                       position: 'absolute',

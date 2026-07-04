@@ -445,7 +445,7 @@ export default function ReservationsPage() {
                     </span>
                   </div>
                   <p style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-secondary)', lineHeight: 1.8, fontSize: '0.9rem', fontStyle: 'italic' }}>
-                    Sign in or create an account before reserving to earn double dining tier points on your reservations. Accumulated points unlock secret tasting seats.
+                    Sign in or create an account to save your culinary preferences, manage reservations, and view your dining history.
                   </p>
                 </div>
               </div>

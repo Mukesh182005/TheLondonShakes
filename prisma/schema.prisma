@@ -1,0 +1,116 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  CHEF
+  STAFF
+}
+
+model User {
+  id               String   @id @default(uuid())
+  clerkId          String   @unique
+  email            String   @unique
+  name             String?
+  role             Role     @default(CUSTOMER)
+  loyaltyPoints    Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  orders           Order[]
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  price       Float
+  category    String
+  imageUrl    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MenuCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  items         Json
+  customerName  String
+  phone         String
+  email         String
+  total         Float
+  type          String      // "pickup" | "delivery" | "dine-in"
+  tableNumber   String?
+  addressFlat   String?
+  addressStreet String?
+  addressCity   String?
+  status        String      @default("confirmed") // "confirmed" | "preparing" | "out for delivery" | "delivered" | "cancelled"
+  paymentMethod String      // "upi" | "cod" | "card_on_delivery"
+  paymentStatus String      @default("unpaid")    // "unpaid" | "pending_verification" | "paid"
+  upiTxnId      String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Reservation {
+  id              String   @id @default(uuid())
+  name            String
+  phone           String
+  email           String
+  date            String
+  time            String
+  guests          Int
+  occasion        String?
+  requests        String?
+  status          String   @default("confirmed") // "pending" | "confirmed" | "cancelled"
+  createdAt       DateTime @default(now())
+}
+
+model Staff {
+  id         String   @id @default(uuid())
+  name       String
+  role       String
+  email      String   @unique
+  phone      String
+  status     String   @default("active") // "active" | "on-leave" | "off-duty"
+  shift      String
+  attendance Float    @default(100.0)
+  rating     Float    @default(5.0)
+  createdAt  DateTime @default(now())
+}
+
+model UpcomingEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  date        String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+}
+
+model SystemSetting {
+  key   String @id
+  value String
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  details    String
+  adminEmail String
+  createdAt  DateTime @default(now())
+}

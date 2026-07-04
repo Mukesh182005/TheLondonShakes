@@ -43,7 +43,9 @@ export default function KDSPage() {
       id:        o.id,
       table:     o.tableNumber || 'Takeaway',
       type:      (o.type as 'dine-in' | 'takeaway' | 'delivery') || 'takeaway',
-      items:     o.items.map((i) => ({ name: i.name, qty: i.qty })),
+      items:     o.items
+        .filter((i) => i.id !== 'discount' && i.id !== 'tax-cgst' && i.id !== 'tax-sgst')
+        .map((i) => ({ name: i.name, qty: i.qty })),
       orderedAt: o.createdAt,
       status:    (o.status === 'confirmed' ? 'new' : o.status === 'preparing' ? 'preparing' : 'ready') as 'new' | 'preparing' | 'ready',
       priority:  'normal' as 'normal' | 'urgent',

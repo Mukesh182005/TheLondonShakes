@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRestaurantStore, useIsMounted } from '@/store/restaurantStore';
+import { useRouter } from 'next/navigation';
+import { useRestaurantStore, useIsMounted, Order } from '@/store/restaurantStore';
 import { Calendar, History, LogOut, Award, Heart } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AccountPage() {
+  const router = useRouter();
   const user = useRestaurantStore((state) => state.user);
   const login = useRestaurantStore((state) => state.login);
   const logout = useRestaurantStore((state) => state.logout);
@@ -21,7 +23,13 @@ export default function AccountPage() {
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    login(email.trim().toLowerCase(), name.trim() || undefined);
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail === 'thelondonshakesilchar@gmail.com' || cleanEmail === 'admin@thelondon.co.uk') {
+      toast.success('Redirecting to Administrative login...');
+      router.push('/admin/login');
+      return;
+    }
+    login(cleanEmail, name.trim() || undefined);
     toast.success(`Welcome back, ${name || 'Valued Guest'}!`);
   };
 
@@ -32,6 +40,57 @@ export default function AccountPage() {
   const userOrders = user
     ? orders.filter(o => o.address.email?.toLowerCase() === user.email.toLowerCase() || o.address.name === user.name)
     : [];
+
+  // Background polling for active user orders status
+  React.useEffect(() => {
+    if (!user) return;
+    const activeUserOrders = userOrders.filter(
+      (o) => o.status !== 'delivered' && o.status !== 'cancelled'
+    );
+    if (activeUserOrders.length === 0) return;
+
+    const setOrders = useRestaurantStore.getState().setOrders;
+
+    const pollActiveOrders = async () => {
+      // Respect visibility API
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+
+      for (const order of activeUserOrders) {
+        try {
+          const res = await fetch(`/api/orders?id=${order.id}`);
+          if (res.ok) {
+            const updatedOrder = await res.json();
+            if (updatedOrder && updatedOrder.status) {
+              setOrders((prev: Order[]) =>
+                prev.map((o) => (o.id === updatedOrder.id ? { ...o, ...updatedOrder } : o))
+              );
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to poll order status for account:', err);
+        }
+      }
+    };
+
+    // Run immediately
+    pollActiveOrders();
+
+    const interval = setInterval(pollActiveOrders, 10000); // 10 seconds
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        pollActiveOrders();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, userOrders.map(o => `${o.id}-${o.status}`).join(',')]);
 
   const handleCancelBooking = (id: string) => {
     cancelReservation(id);
@@ -104,7 +163,7 @@ export default function AccountPage() {
               fontFamily:   'var(--font-serif)',
               fontStyle:    'italic',
             }}>
-              Sign in to earn reservation points, save culinary preferences, and view your dining history.
+              Sign in to save culinary preferences, manage reservations, and view your dining history.
             </p>
 
             <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -136,16 +195,7 @@ export default function AccountPage() {
               </button>
             </form>
 
-            <p style={{
-              marginTop:  '24px',
-              textAlign:  'center',
-              fontSize:   '0.68rem',
-              color:      'var(--text-muted)',
-              fontFamily: 'var(--font-sans)',
-              letterSpacing:'0.04em',
-            }}>
-              Use <code style={{ color: 'var(--gold)' }}>admin@thelondon.co.uk</code> for admin access
-            </p>
+
           </div>
         </div>
       </div>
@@ -164,15 +214,11 @@ export default function AccountPage() {
       }}>
         <div className="container flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <div>
-            <div className="flex items-center gap-4 mb-2">
-              <span className="badge-gold">{user.membershipStatus} Tier Member</span>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Points: {user.tierPoints}</span>
-            </div>
             <h1 className="section-title" style={{ marginBottom: '4px', color: 'var(--text-primary)' }}>
               Welcome back, <em style={{ color: 'var(--gold)' }}>{user.name}</em>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
-              Account: {user.email} {user.email === 'admin@thelondon.co.uk' && '· (Administrator)'}
+              Account: {user.email} {(user.email === 'thelondonshakesilchar@gmail.com' || user.email === 'admin@thelondon.co.uk') && '· (Administrator)'}
             </p>
           </div>
 
@@ -345,18 +391,35 @@ export default function AccountPage() {
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                          {order.items.map(item => (
-                            <span key={item.id} style={{
-                              background: '#FAF7F2',
-                              border:     '1px solid rgba(28,25,21,0.1)',
-                              padding:    '4px 10px',
-                              fontSize:   '0.75rem',
-                              color:      'var(--text-secondary)',
-                            }}>
-                              {item.name} ×{item.qty}
-                            </span>
-                          ))}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {order.items
+                              .filter((item: any) => !item.isAdditive && item.id !== 'discount' && item.id !== 'tax-cgst' && item.id !== 'tax-sgst')
+                              .map(item => (
+                                <span key={item.id} style={{
+                                  background: '#FAF7F2',
+                                  border:     '1px solid rgba(28,25,21,0.1)',
+                                  padding:    '4px 10px',
+                                  fontSize:   '0.75rem',
+                                  color:      'var(--text-secondary)',
+                                }}>
+                                  {item.name} ×{item.qty}
+                                </span>
+                              ))
+                            }
+                          </div>
+                          {order.items.some((item: any) => item.isAdditive || item.id === 'discount' || item.id === 'tax-cgst' || item.id === 'tax-sgst') && (
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-secondary)', opacity: 0.85 }}>
+                              {order.items
+                                .filter((item: any) => item.isAdditive || item.id === 'discount' || item.id === 'tax-cgst' || item.id === 'tax-sgst')
+                                .map((item: any, idx: number) => (
+                                  <span key={idx} style={{ fontStyle: 'italic' }}>
+                                    • {item.name}: {item.price < 0 ? '-' : ''}₹{Math.abs(item.price)}
+                                  </span>
+                                ))
+                              }
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex justify-between items-center text-sm pt-4" style={{ borderTop: '1px solid rgba(28,25,21,0.08)' }}>
@@ -374,7 +437,7 @@ export default function AccountPage() {
             {/* Sidebar — Rewards & Preferences (Col 3) */}
             <div className="flex flex-col gap-8">
 
-              {/* Rewards */}
+              {/* Membership Status */}
               <div style={{
                 background: '#FAF7F2',
                 border:     '1px solid rgba(158,128,67,0.15)',
@@ -382,31 +445,17 @@ export default function AccountPage() {
                 boxShadow:  '0 2px 20px rgba(28,25,21,0.04)',
               }}>
                 <Award size={24} color="var(--gold)" style={{ marginBottom: '16px' }} />
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  Dining Rewards
-                </h3>
-                <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--gold)', marginBottom: '20px' }}>
-                  {user.membershipStatus} · Multiplier: ×2.0
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--text-primary)', margin: 0 }}>
+                    Gastronomy Membership
+                  </h3>
+                  <span style={{ fontSize: '0.55rem', background: 'rgba(197,168,92,0.1)', color: 'var(--gold)', padding: '2px 6px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: '1px solid rgba(197,168,92,0.2)' }}>
+                    Coming Soon
+                  </span>
                 </div>
-
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: 1.65, marginBottom: '20px', fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>
-                  You hold {user.tierPoints} tier points. Platinum unlocks at 1,000 pts — including VIP concierge reservations and private chef tastings.
+                <p style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '0.82rem', fontStyle: 'italic', margin: 0 }}>
+                  Membership tiers and exclusive reservation perks will be launching soon.
                 </p>
-
-                {/* Progress bar */}
-                <div style={{ height: '3px', background: 'rgba(28,25,21,0.1)', position: 'relative', overflow: 'hidden', borderRadius: '2px' }}>
-                  <div style={{
-                    position:   'absolute',
-                    top:        0, left: 0, bottom: 0,
-                    width:      `${Math.min(100, (user.tierPoints / 1000) * 100)}%`,
-                    background: 'var(--gold)',
-                    transition: 'width 1s ease',
-                  }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '8px', letterSpacing: '0.08em' }}>
-                  <span>0 PTS</span>
-                  <span>1000 PTS (PLATINUM)</span>
-                </div>
               </div>
 
               {/* Preferences */}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import { 
@@ -163,17 +164,16 @@ function AboutStory({ founded, image }: { founded: string; image?: string | null
                 background: 'radial-gradient(ellipse at 40% 40%, rgba(197,168,92,0.1) 0%, transparent 60%)',
               }} />
               {image ? (
-                <img
+                <Image
                   src={image}
                   alt="The London Shakes Story"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
                     objectFit: 'cover',
                     opacity: 0.85,
                   }}
+                  unoptimized={image.startsWith('data:') || image.startsWith('blob:')}
                 />
               ) : null}
               <div style={{ textAlign: 'center', position: 'relative', zIndex: 1, padding: '20px', background: image ? 'rgba(0,0,0,0.5)' : 'transparent', width: '100%' }}>
@@ -421,16 +421,15 @@ function AboutChef({ chef }: { chef: { name: string; title: string; bio: string;
             }}>
               {chef.image ? (
                 <>
-                  <img
+                  <Image
                     src={chef.image}
                     alt={chef.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 30vw"
                     style={{
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
                       objectFit: 'cover',
                     }}
+                    unoptimized={chef.image.startsWith('data:') || chef.image.startsWith('blob:')}
                   />
                   <div style={{
                     position: 'absolute',
