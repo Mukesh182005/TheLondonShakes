@@ -24,6 +24,9 @@ export interface MenuItem {
   gradient: string; // Background gradient class for food photo simulation
   image?: string | null;
   portions?: MenuItemPortions;
+  active?: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 export interface MenuCategory {

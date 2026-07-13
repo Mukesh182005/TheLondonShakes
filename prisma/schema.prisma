@@ -53,6 +53,9 @@ model Order {
   phone         String
   email         String
   total         Float
+  discount      Float       @default(0.0)
+  tax           Float       @default(0.0)
+  cashier       String      @default("Counter Staff")
   type          String      // "pickup" | "delivery" | "dine-in"
   tableNumber   String?
   addressFlat   String?
@@ -62,6 +65,7 @@ model Order {
   paymentMethod String      // "upi" | "cod" | "card_on_delivery"
   paymentStatus String      @default("unpaid")    // "unpaid" | "pending_verification" | "paid"
   upiTxnId      String?
+  receiptPhoto  String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -113,4 +117,16 @@ model AuditLog {
   details    String
   adminEmail String
   createdAt  DateTime @default(now())
+}
+
+// ── Staff login accounts (created by owner only) ──────────────────────────
+model StaffAccount {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String                               // bcrypt hash
+  role         String   @default("manager")        // "admin" | "manager" | "waiter"
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid payload' }, { status: 400 });
     }
 
-    let correctPasscode = 'LondonOwner@2026';
+    let correctPasscode = process.env.ADMIN_PASSCODE || 'LondonOwner@2026';
     try {
       const dbSetting = await prisma.systemSetting.findUnique({
         where: { key: 'adminPasscode' },

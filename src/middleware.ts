@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse, NextFetchEvent } from 'next/server';
-import { generateSessionToken } from '@/lib/auth-crypto';
+import { generateSessionToken, verifyStaffSessionToken } from '@/lib/auth-crypto';
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 const MAINTENANCE_COOKIE = 'tls_maintenance';
@@ -18,7 +18,7 @@ export default async function middleware(request: NextRequest, event: NextFetchE
   const isMaintenancePage = pathname === '/maintenance';
   const isStaticAsset     = pathname.startsWith('/_next') || pathname.startsWith('/favicon');
 
-  const isApiAdmin = pathname.startsWith('/api/admin/');
+  const isApiAdmin = pathname.startsWith('/api/admin/') && pathname !== '/api/admin/settings/verify-passcode';
   const isProtectedAdmin = isAdminRoute(request) || isApiAdmin;
 
   if (isMaintenanceMode && !isProtectedAdmin && !isApiRoute && !isMaintenancePage && !isStaticAsset) {
@@ -28,22 +28,70 @@ export default async function middleware(request: NextRequest, event: NextFetchE
   // ── Admin Auth Gate (Clerk / Local Dev Fallback) ───────────────────────────
   if (isProtectedAdmin) {
     if (hasClerkKeys) {
-      // If we have real Clerk credentials, protect using Clerk
       return clerkMiddleware(async (auth) => {
         await auth.protect();
       })(request, event);
     } else {
-      // If Clerk is not configured, fall back to standard local cookie auth
       const ADMIN_COOKIE = 'tls_admin_session';
       const session = request.cookies.get(ADMIN_COOKIE)?.value;
       const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
       const expectedToken = ADMIN_PASSWORD ? await generateSessionToken(ADMIN_PASSWORD) : '';
 
-      if ((!session || session !== expectedToken) && pathname !== '/admin/login') {
+      let isValidSession = session === expectedToken;
+      if (!isValidSession && session) {
+        const staff = await verifyStaffSessionToken(session);
+        isValidSession = !!staff;
+      }
+
+      if (!isValidSession && pathname !== '/admin/login') {
+        if (pathname.startsWith('/api')) {
+          return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
         const loginUrl = new URL('/admin/login', request.url);
         loginUrl.searchParams.set('from', pathname);
         return NextResponse.redirect(loginUrl);
       }
+    }
+  }
+
+  // ── CSRF Protection on API State-Changing Methods ──────────────────────────
+  if (['POST', 'PUT', 'DELETE'].includes(request.method) && isApiRoute) {
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    const host = request.headers.get('host') || request.nextUrl.host;
+
+    let isCsrfValid = true;
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        if (originUrl.host !== host) {
+          isCsrfValid = false;
+        }
+      } catch {
+        isCsrfValid = false;
+      }
+    } else if (referer) {
+      try {
+        const refererUrl = new URL(referer);
+        if (refererUrl.host !== host) {
+          isCsrfValid = false;
+        }
+      } catch {
+        isCsrfValid = false;
+      }
+    }
+
+    if (!isCsrfValid) {
+      return new NextResponse(
+        JSON.stringify({ error: 'CSRF validation failed: Request origin/referer mismatch' }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
     }
   }
 
@@ -57,6 +105,14 @@ export default async function middleware(request: NextRequest, event: NextFetchE
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
   );
   response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://js.stripe.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.stripe.com; connect-src 'self' https://api.razorpay.com https://api.stripe.com; frame-src 'self' https://otg.stripe.com https://js.stripe.com https://api.razorpay.com https://*.google.com;"
+  );
+  response.headers.set(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains; preload'
+  );
 
   return response;
 }

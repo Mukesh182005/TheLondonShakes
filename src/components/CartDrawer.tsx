@@ -257,8 +257,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   textAlign: 'center'
                 }}
               >
-                <p style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 600, margin: 0 }}>
-                  We are not taking orders at this time.
+                <p style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 600, margin: '0 0 4px 0', lineHeight: 1.4 }}>
+                  We are not taking orders at this time please give the order from the counter !!
+                </p>
+                <p style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 'bold', margin: 0, textTransform: 'uppercase' }}>
+                  SORRY FOR THE INCONVINENCE
                 </p>
               </div>
             )}

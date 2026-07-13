@@ -93,6 +93,10 @@ export interface Order {
   paymentStatus: 'unpaid' | 'pending_verification' | 'paid';
   createdAt: string;
   adminPlaced?: boolean;
+  receiptPhoto?: string;
+  discount?: number;
+  tax?: number;
+  cashier?: string;
 }
 
 export interface BillAdditive {
@@ -149,14 +153,14 @@ export interface RestaurantState {
 
   orders: Order[];
   setOrders: (orders: Order[] | ((prev: Order[]) => Order[])) => void;
-  placeOrder: (paymentMethod?: Order['paymentMethod'], upiTxnId?: string, customSettings?: { type: Order['type']; tableNumber?: string; customerName?: string; adminPlaced?: boolean }) => string;
+  placeOrder: (paymentMethod?: Order['paymentMethod'], upiTxnId?: string, customSettings?: { type: Order['type']; tableNumber?: string; customerName?: string; adminPlaced?: boolean; receiptPhoto?: string; paymentStatus?: Order['paymentStatus']; status?: Order['status']; discount?: number; tax?: number; cashier?: string }) => string;
   updateOrderStatus: (id: string, status: Order['status']) => void;
   updateOrder: (id: string, status: Order['status']) => void;
   updateOrderPaymentStatus: (id: string, status: Order['paymentStatus']) => void;
   clearOrders: () => void;
 
   tableOrders: TableOrder[];
-  setTableOrders: (orders: TableOrder[] | ((prev: TableOrder[]) => TableOrder[])) => void;
+  setTableOrders: (orders: TableOrder[] | ((prev: TableOrder[]) => TableOrder[]), skipBroadcast?: boolean) => void;
 
   activeOrderId: string | null;
   setActiveOrderId: (id: string | null) => void;
@@ -169,7 +173,7 @@ export const useRestaurantStore = create<RestaurantState>()(
     (set, get) => ({
       user: null,
       login: (email, name = 'Valued Guest', phone) => {
-        const isDefaultAdmin = email === 'thelondonshakesilchar@gmail.com' || email === 'admin@thelondon.co.uk';
+        const isDefaultAdmin = email === 'thelondonshakessilchar@gmail.com' || email === 'admin@thelondon.co.uk';
         set({
           user: {
             name: isDefaultAdmin ? 'Maître d\' London' : name,
@@ -290,11 +294,11 @@ export const useRestaurantStore = create<RestaurantState>()(
         const id = `${prefix}${String(nextSeq).padStart(3, '0')}`;
         const items = get().cart.items;
         const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-        const deliveryFee = customSettings?.type === 'dine-in' ? 0 : (get().cart.type === 'delivery' ? 30 : 0);
-        const total = subtotal + deliveryFee;
+        const deliveryFee = 0;
+        const total = subtotal;
 
         const currentAdminEmail = get().user?.email;
-        const isAdminSession = currentAdminEmail === 'thelondonshakesilchar@gmail.com' || currentAdminEmail === 'admin@thelondon.co.uk';
+        const isAdminSession = currentAdminEmail === 'thelondonshakessilchar@gmail.com' || currentAdminEmail === 'admin@thelondon.co.uk';
         const isPlacedByAdmin = !!(customSettings?.adminPlaced || isAdminSession);
 
         const newOrder: Order = {
@@ -312,12 +316,16 @@ export const useRestaurantStore = create<RestaurantState>()(
             street: get().cart.address.street || '',
             city: get().cart.address.city || '',
           },
-          status: 'confirmed',
+          status: customSettings?.status || 'confirmed',
           paymentMethod,
           upiTxnId,
-          paymentStatus: paymentMethod === 'upi' ? 'pending_verification' : 'unpaid',
+          paymentStatus: customSettings?.paymentStatus || (paymentMethod === 'upi' ? 'pending_verification' : 'unpaid'),
           createdAt: new Date().toISOString(),
           adminPlaced: isPlacedByAdmin,
+          receiptPhoto: customSettings?.receiptPhoto,
+          discount: customSettings?.discount || 0,
+          tax: customSettings?.tax || 0,
+          cashier: customSettings?.cashier || (isPlacedByAdmin ? (currentAdminEmail || 'Counter Staff') : 'Online'),
         };
 
         let updatedTableOrders = [...get().tableOrders];
@@ -376,6 +384,16 @@ export const useRestaurantStore = create<RestaurantState>()(
           orders: [newOrder, ...state.orders],
           tableOrders: updatedTableOrders,
         }));
+
+        // Broadcast updated table orders to all SSE subscribers (admin/manager/owner)
+        if (typeof window !== 'undefined' && newOrder.type === 'dine-in') {
+          fetch('/api/table-orders', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedTableOrders),
+          }).catch(() => {/* silent */});
+        }
+
         get().clearCart();
         return id;
       },
@@ -423,10 +441,19 @@ export const useRestaurantStore = create<RestaurantState>()(
       },
 
       tableOrders: [],
-      setTableOrders: (orders) => {
-        set((state) => ({
-          tableOrders: typeof orders === 'function' ? orders(state.tableOrders) : orders,
-        }));
+      setTableOrders: (orders, skipBroadcast = false) => {
+        set((state) => {
+          const next = typeof orders === 'function' ? orders(state.tableOrders) : orders;
+          // Broadcast to all connected SSE clients (admin/manager/owner screens)
+          if (!skipBroadcast && typeof window !== 'undefined') {
+            fetch('/api/table-orders', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(next),
+            }).catch(() => {/* silent */});
+          }
+          return { tableOrders: next };
+        });
       },
 
       activeOrderId: null,
@@ -441,11 +468,11 @@ export const useRestaurantStore = create<RestaurantState>()(
           // 1. Update the order in state.orders
           const updatedOrders = state.orders.map((o) => {
             if (o.id === orderId) {
-              const deliveryFee = o.type === 'dine-in' ? 0 : (o.type === 'delivery' ? 30 : 0);
+              const deliveryFee = 0;
               return {
                 ...o,
                 items,
-                total: subtotal + deliveryFee,
+                total: subtotal,
               };
             }
             return o;
@@ -463,6 +490,15 @@ export const useRestaurantStore = create<RestaurantState>()(
             }
             return to;
           });
+
+          // Broadcast update to other devices
+          if (typeof window !== 'undefined') {
+            fetch('/api/table-orders', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedTableOrders),
+            }).catch(() => {/* silent */});
+          }
 
           return {
             orders: updatedOrders,
@@ -493,6 +529,15 @@ export const useRestaurantStore = create<RestaurantState>()(
             }
             return to;
           });
+
+          // Broadcast update to other devices
+          if (typeof window !== 'undefined') {
+            fetch('/api/table-orders', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedTableOrders),
+            }).catch(() => {/* silent */});
+          }
 
           return {
             orders: updatedOrders,
@@ -556,6 +601,10 @@ export interface CMSState {
 
   acceptingOrders: boolean;
   setAcceptingOrders: (val: boolean) => void;
+  requireReceiptPhoto: boolean;
+  setRequireReceiptPhoto: (val: boolean) => void;
+  newArrivalsDaysThreshold: number;
+  setNewArrivalsDaysThreshold: (val: number) => void;
   loadSystemSettings: () => Promise<void>;
 
   homepageData: HomepageData;
@@ -580,6 +629,7 @@ export const useCMSStore = create<CMSState>()(
           id,
           gradient: item.gradient || 'food-photo-dinner',
           image: item.image || null,
+          createdAt: new Date().toISOString(),
         };
         set((state) => ({
           menuItems: [...state.menuItems, newItem],
@@ -723,14 +773,36 @@ export const useCMSStore = create<CMSState>()(
         }).catch((err) => console.warn('Failed to sync acceptingOrders:', err));
       },
 
+      requireReceiptPhoto: true,
+      setRequireReceiptPhoto: (val) => {
+        set({ requireReceiptPhoto: val });
+        fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'requireReceiptPhoto', value: String(val) }),
+        }).catch((err) => console.warn('Failed to sync requireReceiptPhoto:', err));
+      },
+
+      newArrivalsDaysThreshold: 10,
+      setNewArrivalsDaysThreshold: (val) => {
+        set({ newArrivalsDaysThreshold: val });
+        fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'newArrivalsDaysThreshold', value: String(val) }),
+        }).catch((err) => console.warn('Failed to sync newArrivalsDaysThreshold:', err));
+      },
+
       loadSystemSettings: async () => {
         try {
-          const res = await fetch('/api/admin/settings');
+          const res = await fetch(`/api/admin/settings?t=${Date.now()}`, { cache: 'no-store' });
           const data = await res.json();
           if (data.success && data.settings) {
             set({
               maintenanceMode: data.settings.maintenanceMode,
               acceptingOrders: data.settings.acceptingOrders,
+              requireReceiptPhoto: data.settings.requireReceiptPhoto !== false,
+              newArrivalsDaysThreshold: data.settings.newArrivalsDaysThreshold ? parseInt(data.settings.newArrivalsDaysThreshold, 10) : 10,
             });
             document.cookie = `tls_maintenance=${data.settings.maintenanceMode}; path=/; max-age=31536000; SameSite=Lax`;
           }

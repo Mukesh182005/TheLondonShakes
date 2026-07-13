@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRestaurantStore } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   TrendingUp, ShoppingBag, Users, Clock,
   ArrowRight, AlertCircle, CheckCircle, Star,
@@ -77,6 +78,8 @@ export default function AdminDashboard() {
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   ).slice(0, 6);
 
+  const isMobile = useIsMobile();
+
   return (
     <div>
       {/* Welcome */}
@@ -113,7 +116,7 @@ export default function AdminDashboard() {
       )}
 
       {/* KPIs */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'1px', background:'var(--dark-border)', border:'1px solid var(--dark-border)', marginBottom:'32px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:'1px', background:'var(--dark-border)', border:'1px solid var(--dark-border)', marginBottom:'32px' }}>
         <StatCard label="Today's Revenue"    value={`₹${revenue.toLocaleString('en-IN')}`} sub={`${todayOrders.length} orders`}   color="var(--gold)"  icon={<TrendingUp size={18} />} />
         <StatCard label="Total Orders"       value={orders.length}                           sub="All time"                         color="#3b82f6"       icon={<ShoppingBag size={18} />} />
         <StatCard label="Avg Order Value"    value={orders.length ? `₹${Math.round(orders.reduce((s,o)=>s+o.total,0)/orders.length)}` : '—'} sub="per order" color="#10b981" icon={<Star size={18} />} />
@@ -121,7 +124,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Grid */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 300px', gap:'24px', alignItems:'start' }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap:'24px', alignItems:'start' }}>
 
         {/* Recent Orders */}
         <div style={{ background:'var(--dark-card)', border:'1px solid var(--dark-border)' }}>

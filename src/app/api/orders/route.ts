@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         paymentStatus: dbOrder.paymentStatus as Order['paymentStatus'],
         upiTxnId: dbOrder.upiTxnId || undefined,
         createdAt: dbOrder.createdAt.toISOString(),
-        adminPlaced: dbOrder.addressFlat === 'ADMIN_PLACED' || dbOrder.email === 'admin@thelondon.co.uk' || dbOrder.email === 'thelondonshakesilchar@gmail.com',
+        adminPlaced: dbOrder.addressFlat === 'ADMIN_PLACED' || dbOrder.email === 'admin@thelondon.co.uk' || dbOrder.email === 'thelondonshakessilchar@gmail.com',
       };
 
       return NextResponse.json(formattedOrder);
@@ -125,8 +125,12 @@ export async function GET(req: NextRequest) {
         paymentMethod: o.paymentMethod as Order['paymentMethod'],
         paymentStatus: o.paymentStatus as Order['paymentStatus'],
         upiTxnId: o.upiTxnId || undefined,
+        receiptPhoto: (o as any).receiptPhoto || undefined,
         createdAt: o.createdAt.toISOString(),
-        adminPlaced: o.addressFlat === 'ADMIN_PLACED' || o.email === 'admin@thelondon.co.uk' || o.email === 'thelondonshakesilchar@gmail.com',
+        adminPlaced: o.addressFlat === 'ADMIN_PLACED' || o.email === 'admin@thelondon.co.uk' || o.email === 'thelondonshakessilchar@gmail.com',
+        discount: (o as any).discount ?? 0,
+        tax: (o as any).tax ?? 0,
+        cashier: (o as any).cashier ?? 'Counter Staff',
       };
     });
     
@@ -191,6 +195,33 @@ export async function POST(req: NextRequest) {
     if (typeof body.total !== 'number' || body.total <= 0) {
       return NextResponse.json({ success: false, error: 'Invalid order total value' }, { status: 400 });
     }
+
+    if (body.receiptPhoto && typeof body.receiptPhoto === 'string') {
+      const photoStr = body.receiptPhoto.trim();
+      const isDataUrl = photoStr.startsWith('data:');
+      const isHttpUrl = photoStr.startsWith('http://') || photoStr.startsWith('https://');
+
+      if (!isDataUrl && !isHttpUrl) {
+        return NextResponse.json({ success: false, error: 'Invalid photo format' }, { status: 400 });
+      }
+
+      if (isDataUrl) {
+        const match = photoStr.match(/^data:([^;]+);base64,/);
+        if (!match) {
+          return NextResponse.json({ success: false, error: 'Malformed photo data URL' }, { status: 400 });
+        }
+        const mimeType = match[1];
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedMimeTypes.includes(mimeType)) {
+          return NextResponse.json({ success: false, error: 'File type not allowed. Please upload PNG, JPG, or WEBP.' }, { status: 400 });
+        }
+        const approxSize = photoStr.length * 0.75;
+        const maxSizeBytes = 5 * 1024 * 1024; // 5 MB
+        if (approxSize > maxSizeBytes) {
+          return NextResponse.json({ success: false, error: 'Photo size exceeds maximum limit of 5MB' }, { status: 400 });
+        }
+      }
+    }
     
     // Save to database first
     let savedOrder: Order;
@@ -202,6 +233,9 @@ export async function POST(req: NextRequest) {
           phone: body.address.phone,
           email: body.address.email,
           total: Number(body.total),
+          discount: Number(body.discount || 0),
+          tax: Number(body.tax || 0),
+          cashier: body.cashier || 'Counter Staff',
           type: body.type,
           tableNumber: body.tableNumber || null,
           addressFlat: body.address.flat || null,
@@ -211,8 +245,9 @@ export async function POST(req: NextRequest) {
           paymentMethod: body.paymentMethod,
           paymentStatus: body.paymentStatus,
           upiTxnId: body.upiTxnId || null,
+          receiptPhoto: (body.receiptPhoto || null) as any,
           items: JSON.parse(JSON.stringify(body.items)), // Safely stringify/parse to fit JSON input type
-        }
+        } as any
       });
       
       savedOrder = {
@@ -253,13 +288,14 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orderId, status, paymentStatus } = await req.json();
+    const { orderId, status, paymentStatus, receiptPhoto } = await req.json();
 
     let updatedOrder: Order | null = null;
     try {
       const updateData: Record<string, unknown> = {};
       if (status) updateData.status = status;
       if (paymentStatus) updateData.paymentStatus = paymentStatus;
+      if (receiptPhoto) updateData.receiptPhoto = receiptPhoto;
 
       const dbOrder = await prisma.order.update({
         where: { id: orderId },
@@ -293,6 +329,7 @@ export async function PUT(req: NextRequest) {
         paymentMethod: dbOrder.paymentMethod as Order['paymentMethod'],
         paymentStatus: dbOrder.paymentStatus as Order['paymentStatus'],
         upiTxnId: dbOrder.upiTxnId || undefined,
+        receiptPhoto: (dbOrder as any).receiptPhoto || undefined,
         createdAt: dbOrder.createdAt.toISOString(),
       };
     } catch {

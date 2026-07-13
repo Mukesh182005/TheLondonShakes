@@ -4,13 +4,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRestaurantStore, useIsMounted } from '@/store/restaurantStore';
-import CartDrawer from './CartDrawer';
-import { ShoppingBag, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 const leftLinks = [
   { label: 'About',       href: '/about' },
   { label: 'Menu',        href: '/menu' },
-  { label: 'Order',       href: '/order' },
   { label: 'Reservations',href: '/reservations' },
 ];
 
@@ -79,7 +77,6 @@ function NavLink({ link, active }: { link: { label: string; href: string }; acti
 
 export default function Navbar() {
   const pathname  = usePathname();
-  const storeCart = useRestaurantStore((s) => s.cart);
   const storeUser = useRestaurantStore((s) => s.user);
 
   const isMounted = useIsMounted();
@@ -92,17 +89,14 @@ export default function Navbar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const cart = isMounted ? storeCart : { items: [] };
   const user = isMounted ? storeUser : null;
 
   const [scrolled,    setScrolled]    = useState(false);
   const [mobileOpen,  setMobileOpen]  = useState(false);
-  const [cartOpen,    setCartOpen]    = useState(false);
   const [navVisible,  setNavVisible]  = useState(false); // hidden until scroll
 
   const isHome    = pathname === '/';
-  const cartCount = cart.items.reduce((n, i) => n + i.qty, 0);
-  const isAdmin   = user?.email === 'thelondonshakesilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk';
+  const isAdmin   = user?.email === 'thelondonshakessilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk';
 
   useEffect(() => {
     if (!isHome) { setNavVisible(true); return; }
@@ -158,33 +152,25 @@ export default function Navbar() {
           transition:     'opacity 0.55s cubic-bezier(0.19,1,0.22,1), transform 0.55s cubic-bezier(0.19,1,0.22,1), background 0.5s ease, border-color 0.5s ease',
         }}
       >
-        {/* Gucci-style: left nav + center brand + right nav */}
+        {/* Brand left · all nav links + actions right */}
         <div style={{
           width:    '100%',
           maxWidth: 'var(--container-max)',
           margin:   '0 auto',
           padding:  isMobile ? '0 16px' : '0 var(--container-px)',
-          display:  isMobile ? 'flex' : 'grid',
-          justifyContent: isMobile ? 'space-between' : undefined,
-          gridTemplateColumns: isMobile ? undefined : 'minmax(0, 1fr) auto minmax(0, 1fr)',
+          display:  'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           gap:      isMobile ? '8px' : '16px',
         }}>
 
-          {/* Left links (Desktop only) */}
-          <nav style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: '0px' }}>
-            {leftLinks.map((link) => (
-              <NavLink key={link.href} link={link} active={isActive(link.href)} />
-            ))}
-          </nav>
-
-          {/* Center Brand */}
+          {/* Brand — left */}
           <Link
             href="/"
             style={{
               display:       'flex',
               flexDirection: 'column',
-              alignItems:    'center',
+              alignItems:    'flex-start',
               gap:           '3px',
               textDecoration:'none',
               flexShrink:    0,
@@ -192,18 +178,18 @@ export default function Navbar() {
           >
             <span style={{
               fontFamily:    'var(--font-display)',
-              fontSize:      isMobile ? '1.25rem' : '1.55rem',
+              fontSize:      isMobile ? '1.45rem' : '1.9rem',
               fontWeight:    300,
               color:         isPrivateEvents ? '#F2EEE4' : 'var(--cream)',
               letterSpacing: '0.04em',
               lineHeight:    1,
               whiteSpace:    'nowrap',
             }}>
-              THE LONDON <em style={{ fontStyle: 'italic', fontWeight: 400 }}>SHAKES</em>
+              THE LONDON{' '}<em style={{ fontStyle: 'italic', fontWeight: 500, color: '#E8102A', textShadow: '0 0 18px rgba(232,16,42,0.35)' }}>SHAKES</em>
             </span>
             <span style={{
               fontFamily:    'var(--font-sans)',
-              fontSize:      '0.5rem',
+              fontSize:      '0.52rem',
               fontWeight:    600,
               letterSpacing: '0.38em',
               textTransform: 'uppercase',
@@ -214,70 +200,46 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Right links + actions */}
+          {/* All nav links + actions — right */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0px' }}>
-            {/* Desktop right nav */}
+            {/* Desktop nav */}
             <nav style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: '0px' }}>
-              {rightLinks.map((link) => (
+              {allLinks.map((link) => (
                 <NavLink key={link.href} link={link} active={isActive(link.href)} />
               ))}
               {isAdmin && <NavLink link={{ label: 'Admin', href: '/admin' }} active={isActive('/admin')} />}
+              <Link
+                href="/account"
+                style={{
+                  marginLeft: '18px',
+                  padding: '7px 18px',
+                  background: '#E8102A',
+                  color: 'white',
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  textDecoration: 'none',
+                  borderRadius: '2px',
+                  boxShadow: '0 4px 14px rgba(232, 16, 42, 0.25)',
+                  transition: 'all 0.25s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#ff2e48';
+                  e.currentTarget.style.boxShadow = '0 6px 18px rgba(232, 16, 42, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#E8102A';
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(232, 16, 42, 0.25)';
+                  e.currentTarget.style.transform = 'none';
+                }}
+              >
+                {isMounted && user ? 'Account' : 'Sign In'}
+              </Link>
             </nav>
-
-
-
-            {/* Cart */}
-            <button
-              id="cart-button"
-              onClick={() => setCartOpen(true)}
-              style={{
-                position:       'relative',
-                display:        'flex',
-                alignItems:     'center',
-                justifyContent: 'center',
-                width:          '40px',
-                height:         '40px',
-                background:     'transparent',
-                border:         isPrivateEvents 
-                  ? '1px solid rgba(242, 238, 228, 0.25)' 
-                  : '1px solid rgba(28, 24, 16, 0.15)',
-                color:          isPrivateEvents ? '#F2EEE4' : 'var(--text-muted)',
-                cursor:         'pointer',
-                transition:     'all 0.3s ease',
-                marginLeft:     '8px',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = isPrivateEvents ? 'var(--gold-pale)' : 'var(--cream)';
-                (e.currentTarget as HTMLElement).style.color = isPrivateEvents ? 'var(--gold-pale)' : 'var(--cream)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = isPrivateEvents 
-                  ? 'rgba(242, 238, 228, 0.25)' 
-                  : 'rgba(28, 24, 16, 0.15)';
-                (e.currentTarget as HTMLElement).style.color = isPrivateEvents ? '#F2EEE4' : 'var(--text-muted)';
-              }}
-            >
-              <ShoppingBag size={15} />
-              {cartCount > 0 && (
-                <span style={{
-                  position:       'absolute',
-                  top:            '-7px',
-                  right:          '-7px',
-                  width:          '17px',
-                  height:         '17px',
-                  background:     isPrivateEvents ? 'var(--gold-pale)' : 'var(--cream)',
-                  color:          isPrivateEvents ? '#0b0412' : 'var(--charcoal)',
-                  fontSize:       '0.5rem',
-                  fontWeight:     700,
-                  display:        'flex',
-                  alignItems:     'center',
-                  justifyContent: 'center',
-                  borderRadius:   '50%',
-                }}>
-                  {cartCount}
-                </span>
-              )}
-            </button>
 
             {/* Hamburger — mobile */}
             <button
@@ -361,7 +323,7 @@ export default function Navbar() {
               Admin Dashboard
             </Link>
           )}
-          {user ? (
+          {isMounted && user ? (
             <Link
               href="/account"
               style={{
@@ -395,8 +357,7 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* Cart Drawer */}
-      <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+
     </>
   );
 }

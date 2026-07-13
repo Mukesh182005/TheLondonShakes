@@ -7,7 +7,7 @@ import { useRestaurantStore, useCMSStore, useIsMounted } from '@/store/restauran
 import {
   LayoutDashboard, ShoppingBag, Calendar, UtensilsCrossed,
   MapPin, Users, Truck, ClipboardList, BarChart2, Settings,
-  LogOut, ChevronRight, Menu, X, AlertCircle, Image as ImageIcon, Eye, Power,
+  LogOut, ChevronRight, Menu, X, AlertCircle, Image as ImageIcon, Eye, Power, ShieldAlert,
 } from 'lucide-react';
 
 const navGroups = [
@@ -20,7 +20,6 @@ const navGroups = [
       { label: 'Kitchen Display', href: '/admin/kds',               icon: UtensilsCrossed },
       { label: 'Floor & POS',     href: '/admin/floor',             icon: MapPin },
       { label: 'Reservations',    href: '/admin/reservations',      icon: Calendar },
-      { label: 'Deliveries',      href: '/admin/delivery',          icon: Truck },
     ],
   },
   {
@@ -31,7 +30,6 @@ const navGroups = [
       { label: 'Gallery Manager', href: '/admin/gallery',   icon: ImageIcon },
       { label: 'Table Orders',    href: '/admin/table-orders', icon: ClipboardList },
       { label: 'Customers',       href: '/admin/customers', icon: Users },
-      { label: 'Analytics',       href: '/admin/analytics', icon: BarChart2 },
       { label: 'Staff & HR',      href: '/admin/hr',        icon: Users },
     ],
   },
@@ -39,6 +37,8 @@ const navGroups = [
     label: 'System',
     items: [
       { label: 'Site Settings', href: '/admin/settings',   icon: Settings },
+      { label: 'Analytics',       href: '/admin/analytics', icon: BarChart2 },
+      { label: 'Transaction Bills', href: '/admin/transaction-bills', icon: ImageIcon },
     ],
   },
 ];
@@ -63,8 +63,85 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   const [sessionVerified, setSessionVerified] = useState(false);
+  const [sessionName, setSessionName] = useState<string>('');
+  const [role, setRole] = useState<string>(() => {
+    if (user?.email === 'thelondonshakessilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk') {
+      return 'owner';
+    }
+    return 'waiter';
+  });
 
-  const isAdmin = user?.email === 'thelondonshakesilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk';
+  const getFilteredNavGroups = (currentRole: string) => {
+    const isOwner = user?.email === 'thelondonshakessilchar@gmail.com' || currentRole === 'owner';
+    
+    if (maintenanceMode && !isOwner) {
+      return [];
+    }
+
+    let filtered = navGroups;
+    if (currentRole === 'manager') {
+      filtered = navGroups.filter(group => group.label !== 'System');
+    } else if (currentRole !== 'owner' && currentRole !== 'admin') {
+      filtered = navGroups.filter(group => group.label === 'Operations');
+    }
+
+    if (!isOwner) {
+      filtered = filtered.map(group => {
+        if (group.label === 'System') {
+          return {
+            ...group,
+            items: group.items.filter(item => 
+              item.label !== 'Transaction Bills' && 
+              item.label !== 'Analytics' && 
+              item.label !== 'Site Settings'
+            )
+          };
+        }
+        return group;
+      }).filter(group => group.items.length > 0);
+    }
+
+    return filtered;
+  };
+
+  const isPathAllowed = (path: string, currentRole: string): boolean => {
+    const isOwner = user?.email === 'thelondonshakessilchar@gmail.com' || currentRole === 'owner';
+    
+    if (maintenanceMode && !isOwner) {
+      return path === '/admin/login';
+    }
+
+    // These System paths are STRICTLY restricted to only the Owner (Super Admin)
+    const systemPaths = [
+      '/admin/transaction-bills',
+      '/admin/analytics',
+      '/admin/settings'
+    ];
+    if (systemPaths.some(p => path.startsWith(p)) && !isOwner) {
+      return false;
+    }
+
+    if (currentRole === 'owner' || currentRole === 'admin') return true;
+    
+    if (currentRole === 'waiter') {
+      const managementPaths = [
+        '/admin/menu',
+        '/admin/events',
+        '/admin/gallery',
+        '/admin/customers',
+        '/admin/hr'
+      ];
+      if (managementPaths.some(p => path.startsWith(p))) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  const isAdmin = user?.email === 'thelondonshakessilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk';
+  const SUPER_ADMIN_EMAIL = 'thelondonshakessilchar@gmail.com';
+  const isSuperAdmin = hydrated && (user?.email === SUPER_ADMIN_EMAIL || role === 'owner');
 
   useEffect(() => {
     if (!hydrated) return;
@@ -78,6 +155,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       fetch('/api/admin-auth')
         .then((res) => {
           if (!res.ok) throw new Error('Invalid session');
+          return res.json();
+        })
+        .then((data) => {
+          setRole(data.role || 'waiter');
+          // Use the name returned by the server (real DB name for staff, fixed name for owner)
+          if (data.name) setSessionName(data.name);
           setSessionVerified(true);
         })
         .catch(() => {
@@ -166,7 +249,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Nav */}
       <nav style={{ flex:1, overflowY:'auto', padding:'16px 0' }}>
-        {navGroups.map((group) => (
+        {getFilteredNavGroups(role).map((group) => (
           <div key={group.label} style={{ marginBottom:'8px' }}>
             {!collapsed && (
               <p style={{
@@ -182,6 +265,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </p>
             )}
             {group.items.map((item) => {
+              // Hide Site Settings from non-super-admins
+              if (item.href === '/admin/settings' && !isSuperAdmin) return null;
               const Icon    = item.icon;
               const active  = isActive(item.href);
               const hasAlert = item.label === 'Live Orders' && activeOrders > 0;
@@ -235,10 +320,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {!collapsed && (
           <div style={{ marginBottom:'12px', padding:'12px', background:'var(--dark-surface)', border:'1px solid var(--dark-border)' }}>
             <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.78rem', fontWeight:600, color:'var(--cream)', marginBottom:'2px' }}>
-              {user.name}
+              {sessionName || user.name}
             </p>
-            <p style={{ fontSize:'0.68rem', color:'var(--text-secondary)' }}>
-              {isAdmin ? 'Super Admin' : 'Admin'}
+            <p style={{ fontSize:'0.68rem', color:'var(--text-secondary)', textTransform:'capitalize' }}>
+              {role === 'owner' ? 'Super Admin' : role}
             </p>
             {/* Maintenance status badge */}
             <div style={{
@@ -422,9 +507,115 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        {/* Page Content */}
-        <main style={{ flex:1, overflowY:'auto', padding:'32px' }}>
-          {children}
+        <main style={{ flex:1, overflowY:'auto', padding: isMobile ? '16px' : '32px' }}>
+          {isMobile && (role === 'owner' || user?.email === 'thelondonshakessilchar@gmail.com') ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '60vh',
+              textAlign: 'center',
+              padding: '40px',
+              border: '1px solid rgba(197,168,92,0.15)',
+              background: 'rgba(197,168,92,0.02)',
+              borderRadius: '4px',
+            }}>
+              <ShieldAlert size={48} color="var(--gold)" style={{ marginBottom: '20px', opacity: 0.85 }} />
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', color: 'var(--cream)', marginBottom: '12px' }}>
+                Desktop Access Only
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', maxWidth: '420px', lineHeight: 1.6, margin: '0 auto 24px' }}>
+                For security and layout precision, Super Admin / Owner accounts cannot access the control panel on mobile screens. Please log in using a Tablet, Laptop, or Desktop device.
+              </p>
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '12px 24px',
+                  background: 'var(--dark-card)',
+                  border: '1px solid var(--dark-border)',
+                  color: 'var(--cream)',
+                  fontWeight: 700,
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  borderRadius: '3px',
+                }}
+              >
+                Log Out
+              </button>
+            </div>
+          ) : maintenanceMode && role !== 'owner' && user?.email !== 'thelondonshakessilchar@gmail.com' ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '60vh',
+              textAlign: 'center',
+              padding: '40px',
+              border: '1px solid rgba(245, 158, 11, 0.15)',
+              background: 'rgba(245, 158, 11, 0.02)',
+              borderRadius: '4px',
+            }}>
+              <Power size={48} color="#f59e0b" style={{ marginBottom: '20px', opacity: 0.85 }} />
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', color: 'var(--cream)', marginBottom: '12px' }}>
+                Server Stopped (Offline)
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', maxWidth: '420px', lineHeight: 1.6, margin: '0 auto 24px' }}>
+                The Super Admin / Owner has taken the restaurant server offline for maintenance. Access to Operations and Management consoles is temporarily paused.
+              </p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
+                Please contact the restaurant owner to resume operations.
+              </p>
+            </div>
+          ) : isPathAllowed(pathname, role) ? (
+            children
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '60vh',
+              textAlign: 'center',
+              padding: '40px',
+              border: '1px solid rgba(232, 16, 42, 0.15)',
+              background: 'rgba(232, 16, 42, 0.02)',
+              borderRadius: '4px',
+            }}>
+              <AlertCircle size={48} color="#E8102A" style={{ marginBottom: '20px', opacity: 0.85 }} />
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', color: 'var(--cream)', marginBottom: '12px' }}>
+                Access Restricted
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', maxWidth: '420px', lineHeight: 1.6, margin: '0 auto 24px' }}>
+                Your staff account (<strong>{role.toUpperCase()}</strong>) does not have permission to access the <strong>{pathname.split('/').pop()?.replace(/-/g, ' ')}</strong> console.
+              </p>
+              <Link
+                href="/admin"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #FF1E39, #E8102A 55%, #B50016)',
+                  border: 'none',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  textDecoration: 'none',
+                  borderRadius: '3px',
+                  boxShadow: '0 8px 24px rgba(232, 16, 42, 0.25)',
+                }}
+              >
+                Return to Dashboard
+              </Link>
+            </div>
+          )}
         </main>
       </div>
     </div>

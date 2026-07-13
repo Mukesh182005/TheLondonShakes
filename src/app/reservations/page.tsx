@@ -4,14 +4,16 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRestaurantStore } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import toast from 'react-hot-toast';
-import { Calendar as CalendarIcon, Clock, Users, MessageSquare, CheckCircle, Gift } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 const reservationSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  phone: z.string().min(10, { message: 'Please provide a valid 10+ digit contact number.' }),
-  email: z.email({ message: 'Please provide a valid email address.' }),
+  phone: z.string().min(10, { message: 'Please provide a valid contact number.' }),
+  email: z.string().email({ message: 'Please provide a valid email address.' }),
   date: z.string().min(1, { message: 'Please select a date.' }),
   time: z.string().min(1, { message: 'Please select a time slot.' }),
   guests: z.string().min(1, { message: 'Please select guest count.' }),
@@ -22,33 +24,59 @@ const reservationSchema = z.object({
 type ReservationFormInputs = z.infer<typeof reservationSchema>;
 
 const timeSlots = [
-  '12:00', '12:30', '13:00', '13:30', '14:00', // Lunch
-  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30' // Dinner
+  '12:00', '12:30', '13:00', '13:30', '14:00',
+  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30',
 ];
 
 const occasions = ['None', 'Birthday', 'Anniversary', 'Corporate Dinner', 'Date Night', 'Celebration'];
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '11px 14px',
+  border: '1px solid #d4d0c8',
+  borderRadius: '6px',
+  background: '#faf9f7',
+  color: '#1a1a1a',
+  fontSize: '0.9rem',
+  outline: 'none',
+  transition: 'border-color 0.2s',
+  fontFamily: 'var(--font-sans)',
+  boxSizing: 'border-box',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '0.72rem',
+  fontWeight: 600,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: '#5a5040',
+  marginBottom: '6px',
+  fontFamily: 'var(--font-sans)',
+};
+
+const errorStyle: React.CSSProperties = {
+  fontSize: '0.75rem',
+  color: '#c0392b',
+  marginTop: '4px',
+};
+
 export default function ReservationsPage() {
   const [submitted, setSubmitted] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
+  const [formData, setFormData] = useState<ReservationFormInputs | null>(null);
   const addReservation = useRestaurantStore((state) => state.addReservation);
-  
+  const isMobile = useIsMobile();
+
   const {
     register,
     handleSubmit,
-    watch,
     reset,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm<ReservationFormInputs>({
     resolver: zodResolver(reservationSchema),
-    defaultValues: {
-      guests: '2',
-      occasion: 'None',
-      requests: '',
-    }
+    defaultValues: { guests: '2', occasion: 'None', requests: '' },
   });
-
-  const selectedValues = watch();
 
   const onSubmit = async (data: ReservationFormInputs) => {
     try {
@@ -62,6 +90,7 @@ export default function ReservationsPage() {
         occasion: data.occasion || 'None',
         requests: data.requests || '',
       });
+      setFormData(data);
       setBookingRef(ref);
       setSubmitted(true);
       toast.success('Table reserved successfully!');
@@ -74,386 +103,289 @@ export default function ReservationsPage() {
     reset();
     setSubmitted(false);
     setBookingRef('');
+    setFormData(null);
   };
 
-  if (submitted) {
-    return (
-      <div className="page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--black)', padding: '40px 20px', position: 'relative', overflow: 'hidden' }}>
-        {/* Background Image Layer */}
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: "url('/london-reservations-bg.jpg')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          opacity: 0.3,
-          pointerEvents: 'none',
-          zIndex: 0,
-        }} />
-
-        {/* Ticket Wrapper */}
-        <div style={{ 
-          background: 'var(--dark-card)', 
-          border: '1px solid rgba(197, 168, 92, 0.25)', 
-          padding: '48px 36px', 
-          maxWidth: '550px',
-          width: '100%',
-          textAlign: 'center',
-          position: 'relative',
-          boxShadow: '0 30px 60px rgba(0,0,0,0.6), 0 0 40px rgba(197, 168, 92, 0.05)',
-          zIndex: 1,
-        }}>
-          {/* Internal double gold border */}
-          <div style={{
-            position: 'absolute',
-            inset: '12px',
-            border: '1px solid rgba(197, 168, 92, 0.08)',
-            pointerEvents: 'none',
-          }} />
-
-          {/* Ticket notch cutouts */}
-          <div style={{
-            position: 'absolute',
-            left: '-10px',
-            top: '32%',
-            width: '20px',
-            height: '20px',
-            borderRadius: '50%',
-            background: 'var(--black)',
-            borderRight: '1px solid rgba(197, 168, 92, 0.25)',
-          }} />
-          <div style={{
-            position: 'absolute',
-            right: '-10px',
-            top: '32%',
-            width: '20px',
-            height: '20px',
-            borderRadius: '50%',
-            background: 'var(--black)',
-            borderLeft: '1px solid rgba(197, 168, 92, 0.25)',
-          }} />
-
-          <div 
-            style={{ 
-              width: '64px', 
-              height: '64px', 
-              background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))', 
-              borderRadius: '50%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              margin: '0 auto 28px',
-              boxShadow: '0 0 20px rgba(197, 168, 92, 0.3)',
-            }}
-          >
-            <CheckCircle size={28} color="var(--black)" />
-          </div>
-
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.4rem', color: 'var(--gold)', marginBottom: '8px', fontWeight: 300 }}>
-            Booking Confirmed
-          </h2>
-          <div style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-secondary)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.22em', marginBottom: '28px' }}>
-            PASS CODE: #{bookingRef}
-          </div>
-
-          {/* Ticket Coupon Dotted Separator */}
-          <div style={{
-            borderTop: '1.5px dashed rgba(197, 168, 92, 0.18)',
-            height: 0,
-            margin: '20px -36px 28px',
-          }} />
-          
-          <div style={{ background: 'rgba(14, 13, 11, 0.4)', border: '1px solid rgba(197,168,92,0.12)', padding: '24px', textAlign: 'left', marginBottom: '28px' }}>
-            {[['GUEST NAME', selectedValues.name], 
-              ['DATE', selectedValues.date], 
-              ['TIME SLOT', selectedValues.time], 
-              ['TABLE SIZE', `${selectedValues.guests} Guests`], 
-              ['OCCASION', selectedValues.occasion || 'None']
-             ].map(([label, val]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(197, 168, 92, 0.05)' }}>
-                <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em' }}>{label}</span>
-                <span style={{ color: 'var(--cream)', fontFamily: 'var(--font-serif)', fontSize: '0.88rem', fontWeight: 400 }}>{val}</span>
-              </div>
-            ))}
-            {selectedValues.requests && (
-              <div style={{ marginTop: '16px', background: 'var(--black)', padding: '12px', border: '1px solid rgba(197,168,92,0.08)' }}>
-                <div style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--gold)', marginBottom: '4px' }}>
-                  Special Wishes
-                </div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', fontStyle: 'italic', lineHeight: 1.5 }}>
-                  &ldquo;{selectedValues.requests}&rdquo;
-                </p>
-              </div>
-            )}
-          </div>
-          
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '32px', fontFamily: 'var(--font-serif)', lineHeight: 1.6 }}>
-            A digital invitation containing your table details has been dispatched to <strong style={{ color: 'var(--gold)', fontWeight: 400 }}>{selectedValues.email}</strong>.
-          </p>
-          
-          <button className="btn-gold" onClick={handleReset} style={{ width: '100%' }}>
-            <span>Make Another Booking</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="page-wrapper" style={{ background: 'var(--black)', color: 'var(--text-primary)', position: 'relative', overflow: 'hidden' }}>
-      {/* Background Image Layer */}
+    <div style={{ minHeight: '100vh', background: '#f5f3ee', paddingTop: '80px', position: 'relative' }}>
+
+      {/* Watercolor background */}
       <div style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundImage: "url('/london-reservations-bg.jpg')",
+        inset: 0,
+        backgroundImage: "url('/reservations-watercolor-bg.png')",
         backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        opacity: 0.3,
+        backgroundPosition: 'center right',
+        backgroundRepeat: 'no-repeat',
+        opacity: 0.35,
         pointerEvents: 'none',
         zIndex: 0,
       }} />
 
-      {/* Main Content Wrapper */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        {/* Page Header */}
-        <div 
-          style={{ 
-            background: 'linear-gradient(180deg, var(--void) 0%, transparent 100%)', 
-            padding: '100px 0 60px', 
-            textAlign: 'center',
-            borderBottom: '1px solid rgba(197, 168, 92, 0.12)',
-            position: 'relative'
-          }}
-        >
-        {/* Subtle decorative gold line */}
-        <div style={{
-          position: 'absolute',
-          bottom: '4px',
-          left: '20px',
-          right: '20px',
-          height: '1px',
-          background: 'rgba(197, 168, 92, 0.05)',
-        }} />
-
-        <div className="container">
-          <div className="eyebrow" style={{ justifyContent: 'center' }}>Secure Your Spot</div>
-          <h1 className="section-title">Reserve a <em>Table</em></h1>
-          <div className="gold-divider" />
-          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '16px auto 0', lineHeight: 1.6, fontStyle: 'italic' }}>
-            Join us for an evening of exceptional culinary craft. Reservations open 30 days in advance.
-          </p>
+      {/* Page Header */}
+      <div style={{ background: 'rgba(255,255,255,0.88)', borderBottom: '1px solid #e8e4da', padding: '64px 24px 48px', textAlign: 'center', position: 'relative', zIndex: 1, backdropFilter: 'blur(2px)' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c0a060', marginBottom: '12px', fontFamily: 'var(--font-sans)' }}>
+          Reserve a Table
         </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 2.8rem)', fontWeight: 300, color: '#1a1a1a', margin: 0 }}>
+          Book Your Experience
+        </h1>
+        <p style={{ fontFamily: 'var(--font-serif)', color: '#7a6f5e', fontSize: '1rem', marginTop: '12px', fontStyle: 'italic' }}>
+          Reservations open 30 days in advance &middot; Tables held for 15 minutes
+        </p>
       </div>
 
-      {/* Main Reservation Flow */}
-      <div style={{ padding: '80px 0 120px' }}>
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-            {/* Reservation Form */}
-            <div style={{
-              background: 'var(--dark-card)',
-              border: '1px solid rgba(197, 168, 92, 0.12)',
-              padding: '40px 32px',
-              position: 'relative',
-            }}>
-              {/* Internal borders */}
-              <div style={{
-                position: 'absolute',
-                inset: '12px',
-                border: '1px solid rgba(197, 168, 92, 0.04)',
-                pointerEvents: 'none',
-              }} />
+      {/* Content */}
+      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '56px 24px 80px', position: 'relative', zIndex: 1 }}>
+        <AnimatePresence mode="wait">
+          {submitted && formData ? (
+            /* Success State */
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.4 }}
+              style={{
+                background: '#fff',
+                border: '1px solid #e8e4da',
+                borderRadius: '12px',
+                padding: '56px 40px',
+                textAlign: 'center',
+                maxWidth: '500px',
+                margin: '0 auto',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#eef7ee', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                <CheckCircle size={26} color="#2e7d32" />
+              </div>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 300, color: '#1a1a1a', margin: '0 0 6px' }}>
+                Booking Confirmed
+              </h2>
+              <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.18em', color: '#c0a060', textTransform: 'uppercase', marginBottom: '32px', fontFamily: 'var(--font-sans)' }}>
+                Ref #{bookingRef}
+              </p>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" style={{ position: 'relative', zIndex: 2 }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div style={{ borderTop: '1px solid #e8e4da', paddingTop: '24px', marginBottom: '32px', textAlign: 'left' }}>
+                {[
+                  ['Name', formData.name],
+                  ['Date', formData.date],
+                  ['Time', formData.time],
+                  ['Guests', `${formData.guests} ${parseInt(formData.guests) === 1 ? 'Guest' : 'Guests'}`],
+                  ['Occasion', formData.occasion || 'None'],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f0ece4' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#7a6f5e', fontFamily: 'var(--font-sans)' }}>{label}</span>
+                    <span style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily: 'var(--font-serif)' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p style={{ fontFamily: 'var(--font-serif)', color: '#7a6f5e', fontSize: '0.88rem', fontStyle: 'italic', marginBottom: '28px' }}>
+                A confirmation has been sent to <strong style={{ color: '#1a1a1a', fontWeight: 500 }}>{formData.email}</strong>.
+              </p>
+
+              <button
+                onClick={handleReset}
+                style={{
+                  width: '100%', padding: '13px', background: '#1a1a1a', color: '#fff',
+                  border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700,
+                  letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#333')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#1a1a1a')}
+              >
+                Make Another Booking
+              </button>
+            </motion.div>
+
+          ) : (
+            /* Form State */
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.4 }}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) 260px',
+                gap: '28px',
+                alignItems: 'start',
+              }}
+              className="res-outer"
+            >
+              {/* Form Card */}
+              <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8e4da', padding: '36px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 400, color: '#1a1a1a', margin: '0 0 28px' }}>
+                  Your Details
+                </h2>
+
+                <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                   {/* Name */}
-                  <div className="md:col-span-2">
-                    <label className="form-label">Full Name *</label>
-                    <input 
-                      type="text" 
-                      placeholder="Your full name"
-                      style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
-                      {...register('name')}
+                  <div>
+                    <label style={labelStyle}>Full Name *</label>
+                    <input type="text" placeholder="Your full name" style={inputStyle} {...register('name')}
+                      onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
+                      onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
                     />
-                    {errors.name && <span className="text-red-500 text-xs mt-1">{errors.name.message}</span>}
+                    {errors.name && <p style={errorStyle}>{errors.name.message}</p>}
                   </div>
 
-                  {/* Phone */}
-                  <div>
-                    <label className="form-label">Phone Number *</label>
-                    <input 
-                      type="tel" 
-                      placeholder="Contact number"
-                      style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
-                      {...register('phone')}
-                    />
-                    {errors.phone && <span className="text-red-500 text-xs mt-1">{errors.phone.message}</span>}
+                  {/* Phone + Email */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Phone *</label>
+                      <input type="tel" placeholder="Contact number" style={inputStyle} {...register('phone')}
+                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
+                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                      />
+                      {errors.phone && <p style={errorStyle}>{errors.phone.message}</p>}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Email *</label>
+                      <input type="email" placeholder="you@example.com" style={inputStyle} {...register('email')}
+                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
+                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                      />
+                      {errors.email && <p style={errorStyle}>{errors.email.message}</p>}
+                    </div>
                   </div>
 
-                  {/* Email */}
-                  <div>
-                    <label className="form-label">Email Address *</label>
-                    <input 
-                      type="email" 
-                      placeholder="you@example.com"
-                      style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
-                      {...register('email')}
-                    />
-                    {errors.email && <span className="text-red-500 text-xs mt-1">{errors.email.message}</span>}
+                  {/* Date + Time */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Date *</label>
+                      <input type="date" min={new Date().toISOString().split('T')[0]} style={inputStyle} {...register('date')}
+                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
+                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                      />
+                      {errors.date && <p style={errorStyle}>{errors.date.message}</p>}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Time *</label>
+                      <select style={inputStyle} {...register('time')}
+                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
+                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                      >
+                        <option value="">Choose slot</option>
+                        {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      {errors.time && <p style={errorStyle}>{errors.time.message}</p>}
+                    </div>
                   </div>
 
-                  {/* Date */}
-                  <div>
-                    <label className="form-label">Select Date *</label>
-                    <input 
-                      type="date" 
-                      min={new Date().toISOString().split('T')[0]}
-                      style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
-                      {...register('date')}
-                    />
-                    {errors.date && <span className="text-red-500 text-xs mt-1">{errors.date.message}</span>}
-                  </div>
-
-                  {/* Time Slot */}
-                  <div>
-                    <label className="form-label">Select Time *</label>
-                    <select style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }} {...register('time')}>
-                      <option value="">Choose slot</option>
-                      {timeSlots.map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                    {errors.time && <span className="text-red-500 text-xs mt-1">{errors.time.message}</span>}
-                  </div>
-
-                  {/* Guest Count */}
-                  <div>
-                    <label className="form-label">Guests Count *</label>
-                    <select style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }} {...register('guests')}>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                        <option key={n} value={n.toString()}>
-                          {n} {n === 1 ? 'Guest' : 'Guests'}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.guests && <span className="text-red-500 text-xs mt-1">{errors.guests.message}</span>}
-                  </div>
-
-                  {/* Occasion */}
-                  <div>
-                    <label className="form-label">Occasion</label>
-                    <select style={{ background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }} {...register('occasion')}>
-                      {occasions.map(o => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
-                    </select>
+                  {/* Guests + Occasion */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Guests *</label>
+                      <select style={inputStyle} {...register('guests')}
+                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
+                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                      >
+                        {[1,2,3,4,5,6,7,8].map(n => (
+                          <option key={n} value={n.toString()}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Occasion</label>
+                      <select style={inputStyle} {...register('occasion')}
+                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
+                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                      >
+                        {occasions.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
                   </div>
 
                   {/* Special Requests */}
-                  <div className="md:col-span-2">
-                    <label className="form-label">Special Requests / Dietary Restrictions</label>
-                    <textarea 
-                      placeholder="Allergen notices, accessibility requests, or celebration milestones..."
-                      rows={4}
-                      style={{ resize: 'vertical', background: 'var(--charcoal)', border: '1px solid rgba(197,168,92,0.15)' }}
+                  <div>
+                    <label style={labelStyle}>Special Requests</label>
+                    <textarea
+                      placeholder="Dietary restrictions, accessibility needs, or anything else..."
+                      rows={3}
+                      style={{ ...inputStyle, resize: 'vertical' }}
                       {...register('requests')}
+                      onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
+                      onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
                     />
                   </div>
-                </div>
 
-                <button 
-                  type="submit" 
-                  className="btn-gold" 
-                  disabled={isSubmitting}
-                  style={{ width: '100%', marginTop: '12px' }}
-                >
-                  <span>{isSubmitting ? 'Confirming...' : 'Confirm Table Booking'}</span>
-                </button>
-              </form>
-            </div>
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    style={{
+                      width: '100%', padding: '14px', background: '#1a1a1a',
+                      color: '#fff', border: 'none', borderRadius: '6px',
+                      fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em',
+                      textTransform: 'uppercase', cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                      fontFamily: 'var(--font-sans)', opacity: isSubmitting ? 0.7 : 1,
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.background = '#333'; }}
+                    onMouseLeave={e => { if (!isSubmitting) e.currentTarget.style.background = '#1a1a1a'; }}
+                  >
+                    {isSubmitting ? 'Confirming…' : 'Confirm Reservation'}
+                  </button>
+                </form>
+              </div>
 
-            {/* Sidebar Details */}
-            <div className="flex flex-col gap-8">
-              <div style={{ background: 'var(--dark-card)', border: '1px solid rgba(197, 168, 92, 0.12)', padding: '40px 32px', position: 'relative' }}>
-                {/* Internal decoration border */}
-                <div style={{
-                  position: 'absolute',
-                  inset: '12px',
-                  border: '1px solid rgba(197, 168, 92, 0.04)',
-                  pointerEvents: 'none',
-                }} />
-
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--gold)', marginBottom: '32px', fontWeight: 400, position: 'relative', zIndex: 2 }}>
-                  Dining Policies
-                </h3>
-                
-                <div style={{ position: 'relative', zIndex: 2 }}>
+              {/* Sidebar */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Policies */}
+                <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8e4da', padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 400, color: '#1a1a1a', margin: '0 0 18px' }}>
+                    Good to Know
+                  </h3>
                   {[
-                    { Icon: CalendarIcon, title: 'Cancellation Policy', desc: 'Complimentary cancellations up to 24 hours prior to booking.' },
-                    { Icon: Clock, title: 'Grace Period', desc: 'Tables are held for 15 minutes past the reserved arrival time.' },
-                    { Icon: Users, title: 'Group Requests', desc: 'For parties larger than 8, please contact our private events team.' },
-                    { Icon: MessageSquare, title: 'Sommelier Experience', desc: 'Request our Sommelier-hosted cellar table in your special comments.' }
-                  ].map(({ Icon, title, desc }) => (
-                    <div key={title} style={{ display: 'flex', gap: '16px', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid rgba(197, 168, 92, 0.08)' }}>
-                      <div style={{ width: '40px', height: '40px', background: 'rgba(197, 168, 92, 0.05)', border: '1px solid rgba(197, 168, 92, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon size={16} color="var(--gold)" />
-                      </div>
-                      <div>
-                        <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--cream)', fontSize: '0.85rem', marginBottom: '4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                          {title}
-                        </div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: 1.5, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>
-                          {desc}
-                        </div>
-                      </div>
+                    ['Cancellation', 'Free cancellation up to 24 hours prior.'],
+                    ['Grace Period', 'Tables held for 15 minutes.'],
+                    ['Large Groups', 'Parties of 8+ please call us directly.'],
+                    ['Hours', 'Lunch: 12–14:00 · Dinner: 18–21:30'],
+                  ].map(([title, desc]) => (
+                    <div key={title} style={{ borderBottom: '1px solid #f0ece4', paddingBottom: '12px', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5a5040', marginBottom: '3px', fontFamily: 'var(--font-sans)' }}>{title}</div>
+                      <div style={{ fontSize: '0.82rem', color: '#7a6f5e', lineHeight: 1.5, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>{desc}</div>
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Special Accent Panel */}
-              <div 
-                style={{ 
-                  background: 'linear-gradient(135deg, var(--void) 0%, var(--black) 100%)', 
-                  border: '1px solid rgba(197, 168, 92, 0.22)', 
-                  padding: '36px',
-                  position: 'relative'
-                }}
-              >
-                {/* Double frame overlay */}
-                <div style={{
-                  position: 'absolute',
-                  inset: '8px',
-                  border: '1px solid rgba(197, 168, 92, 0.05)',
-                  pointerEvents: 'none',
-                }} />
-
-                <div style={{ position: 'relative', zIndex: 2 }}>
-                  <Gift size={24} color="var(--gold)" style={{ marginBottom: '16px' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                    <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: 'var(--cream)', margin: 0, fontWeight: 400 }}>
-                      Gastronomy Membership
-                    </h4>
-                    <span style={{ fontSize: '0.55rem', background: 'rgba(197,168,92,0.1)', color: 'var(--gold)', padding: '2px 6px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: '1px solid rgba(197,168,92,0.2)' }}>
-                      Coming Soon
-                    </span>
+                {/* Contact card */}
+                <div style={{ background: '#1a1a1a', borderRadius: '12px', padding: '28px' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#c0a060', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>
+                    Need Help?
                   </div>
-                  <p style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-secondary)', lineHeight: 1.8, fontSize: '0.9rem', fontStyle: 'italic' }}>
-                    Sign in or create an account to save your culinary preferences, manage reservations, and view your dining history.
+                  <p style={{ fontFamily: 'var(--font-serif)', color: '#c8c0b0', fontSize: '0.85rem', fontStyle: 'italic', lineHeight: 1.6, margin: '0 0 16px' }}>
+                    Our team can help with special arrangements.
                   </p>
+                  <a
+                    href="tel:+441234567890"
+                    style={{
+                      display: 'block', textAlign: 'center', padding: '11px',
+                      background: 'rgba(192,160,96,0.1)', border: '1px solid rgba(192,160,96,0.3)',
+                      borderRadius: '6px', color: '#c0a060', fontSize: '0.72rem',
+                      fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                      textDecoration: 'none', fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    Call Us
+                  </a>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-      </div>
+
+      <style>{`
+        @media (max-width: 720px) {
+          .res-outer { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

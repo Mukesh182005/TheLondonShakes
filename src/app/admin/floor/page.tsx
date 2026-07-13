@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useCMSStore, useRestaurantStore, type TableStatus } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { RefreshCw, Users, Trash2, PlusCircle } from 'lucide-react';
+import { useTableOrdersSync } from '@/hooks/useTableOrdersSync';
 import toast from 'react-hot-toast';
 
 const STATUS_CONFIG: Record<TableStatus, { color: string; bg: string; label: string }> = {
@@ -26,6 +28,10 @@ export default function FloorPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTableSeats, setNewTableSeats] = useState(4);
   const [editSeatsVal, setEditSeatsVal] = useState('4');
+  const isMobile = useIsMobile();
+
+  // Real-time sync — floor map updates instantly when any tab/device changes a table
+  const { isLive } = useTableOrdersSync();
 
   const selected = tables.find((t) => t.id === selectedId) || null;
   const selectedActiveOrder = selected ? tableOrders.find((to) => to.tableNumber === `Table ${selected.number}`) : null;
@@ -126,10 +132,18 @@ export default function FloorPage() {
           <RefreshCw size={13} />
           Reset
         </button>
+
+        {/* Live sync status badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: isLive ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)', border: `1px solid ${isLive ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`, borderRadius: '4px' }}>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: isLive ? '#10b981' : '#f59e0b', display: 'inline-block' }} />
+          <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: isLive ? '#10b981' : '#f59e0b' }}>
+            {isLive ? 'Live' : 'Reconnecting'}
+          </span>
+        </div>
       </div>
 
       {/* Status Summary */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1px', background:'var(--dark-border)', border:'1px solid var(--dark-border)', marginBottom:'32px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(110px, 1fr))', gap:'1px', background:'var(--dark-border)', border:'1px solid var(--dark-border)', marginBottom:'32px' }}>
         {(Object.keys(STATUS_CONFIG) as TableStatus[]).map((s) => (
           <div key={s} style={{ padding:'20px 24px', background:'var(--dark-card)', textAlign:'center' }}>
             <p style={{ fontFamily:'var(--font-display)', fontSize:'2rem', color: STATUS_CONFIG[s].color, lineHeight:1 }}>
@@ -142,7 +156,7 @@ export default function FloorPage() {
         ))}
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns: selected ? '1fr 320px' : '1fr', gap:'24px', alignItems:'start' }}>
+      <div style={{ display:'grid', gridTemplateColumns: (selected && !isMobile) ? '1fr 320px' : '1fr', gap:'24px', alignItems:'start' }}>
 
         {/* Table Grid */}
         <div style={{

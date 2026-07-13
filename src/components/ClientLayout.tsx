@@ -10,20 +10,49 @@ import PageTransition from './PageTransition';
 import { Info } from 'lucide-react';
 import { MotionConfig } from 'framer-motion';
 import MouseTrailer from './MouseTrailer';
-import { useCMSStore } from '@/store/restaurantStore';
+import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin  = pathname.startsWith('/admin');
   const loadSystemSettings = useCMSStore((state) => state.loadSystemSettings);
+  const acceptingOrders = useCMSStore((state) => state.acceptingOrders);
+  const isMounted = useIsMounted();
 
   useEffect(() => {
     loadSystemSettings();
+
+    // Poll settings every 8 seconds to update order taking & maintenance status in real-time
+    const interval = setInterval(() => {
+      loadSystemSettings();
+    }, 8000);
+
+    return () => clearInterval(interval);
   }, [loadSystemSettings]);
+
+  // Unregister active service worker to clear cached assets/pages
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister().then((success) => {
+            if (success) {
+              console.log('Stale Service Worker unregistered.');
+              window.location.reload();
+            }
+          });
+        }
+      });
+    }
+  }, []);
 
   return (
     <MotionConfig reducedMotion="user">
-      <div style={{ display:'flex', flexDirection:'column', minHeight:'100vh', background:'var(--black)', color:'var(--text-primary)' }}>
+      <div style={{ display:'flex', flexDirection:'column', minHeight:'100vh', background:'var(--black)', color:'var(--text-primary)', paddingBottom: (isMounted && !isAdmin && !acceptingOrders) ? '56px' : '0px' }}>
+        {/* Site-wide scroll progress + ambient grain (Customer pages only) */}
+        {!isAdmin && <ScrollProgress />}
+        {!isAdmin && <div className="lux-grain" aria-hidden />}
+
         {/* Mouse Trailer (Customer pages only) */}
         {!isAdmin && <MouseTrailer />}
 
@@ -63,8 +92,73 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
         {/* Sticky Cookie Consent */}
         {!isAdmin && <CookieConsent />}
+
+        {/* Sticky Order Taking Paused Banner */}
+        {!isAdmin && !acceptingOrders && (
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: 'linear-gradient(135deg, #FF1E39, #E8102A)',
+            color: 'white',
+            textAlign: 'center',
+            padding: '12px 24px',
+            fontSize: '0.75rem',
+            fontFamily: 'var(--font-sans)',
+            lineHeight: 1.4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 -4px 20px rgba(232, 16, 42, 0.25)',
+            borderTop: '1px solid rgba(255,255,255,0.1)'
+          }}>
+            <span style={{ fontWeight: 600 }}>
+              We are not taking orders at this time please give the order from the counter !!
+            </span>
+            <span style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.05em', marginTop: '3px' }}>
+              SORRY FOR THE INCONVINENCE
+            </span>
+          </div>
+        )}
       </div>
     </MotionConfig>
+  );
+}
+
+// ── SITE-WIDE SCROLL PROGRESS BAR ──
+function ScrollProgress() {
+  const [scaleX, setScaleX] = useState(0);
+
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      const el = document.documentElement;
+      const max = el.scrollHeight - el.clientHeight;
+      setScaleX(max > 0 ? Math.min(1, el.scrollTop / max) : 0);
+    };
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
+  return (
+    <div
+      className="scroll-progress"
+      style={{ transform: `scaleX(${scaleX})` }}
+      aria-hidden
+    />
   );
 }
 

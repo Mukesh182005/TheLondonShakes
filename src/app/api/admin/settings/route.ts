@@ -22,14 +22,30 @@ export async function GET() {
   try {
     const maintenanceModeVal = await getSetting('maintenanceMode', 'false');
     const acceptingOrdersVal = await getSetting('acceptingOrders', 'true');
-    const adminPasscodeVal = await getSetting('adminPasscode', 'LondonOwner@2026');
+    const requireReceiptPhotoVal = await getSetting('requireReceiptPhoto', 'true');
+    const newArrivalsDaysThresholdVal = await getSetting('newArrivalsDaysThreshold', '10');
+    const defaultPasscode = process.env.ADMIN_PASSCODE || 'LondonOwner@2026';
+    const adminPasscodeVal = await getSetting('adminPasscode', defaultPasscode);
+    const restaurantInfoVal = await getSetting('restaurantInfo', '');
+
+    let parsedRestaurantInfo = null;
+    if (restaurantInfoVal) {
+      try {
+        parsedRestaurantInfo = JSON.parse(restaurantInfoVal);
+      } catch (e) {
+        console.warn('Failed to parse restaurantInfo from DB:', e);
+      }
+    }
 
     return NextResponse.json({
       success: true,
       settings: {
         maintenanceMode: maintenanceModeVal === 'true',
         acceptingOrders: acceptingOrdersVal === 'true',
-        hasPasscodeSet: adminPasscodeVal !== 'LondonOwner@2026',
+        requireReceiptPhoto: requireReceiptPhotoVal === 'true',
+        newArrivalsDaysThreshold: newArrivalsDaysThresholdVal,
+        hasPasscodeSet: adminPasscodeVal !== defaultPasscode,
+        restaurantInfo: parsedRestaurantInfo,
       },
     });
   } catch (error: unknown) {
@@ -40,6 +56,7 @@ export async function GET() {
       settings: {
         maintenanceMode: false,
         acceptingOrders: true,
+        requireReceiptPhoto: true,
         hasPasscodeSet: false,
       },
       warning: 'Database fallback: settings temporarily offline',

@@ -1,12 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
 import { useRestaurantStore, useIsMounted, Order } from '@/store/restaurantStore';
 import { Calendar, History, LogOut, Award, Heart } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function AccountPage() {
+const snakeDishes = [
+  'Ferrero Rocher Shake',
+  'Tandoori Paneer Pizza',
+  'Classic London Shake',
+  'Cheese Garlic Bread',
+  'KitKat Shake',
+  'Blue Lagoon Mocktail',
+  'Double Cheese Burger',
+  'Veg Steamed Momos',
+  'Sizzling Brownie',
+  'Peri Peri Fries'
+];
+
+function AccountPageContent() {
   const router = useRouter();
   const user = useRestaurantStore((state) => state.user);
   const login = useRestaurantStore((state) => state.login);
@@ -15,22 +30,39 @@ export default function AccountPage() {
   const orders = useRestaurantStore((state) => state.orders);
   const cancelReservation = useRestaurantStore((state) => state.cancelReservation);
 
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
+
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
 
   const isMounted = useIsMounted();
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
     const cleanEmail = email.trim().toLowerCase();
-    if (cleanEmail === 'thelondonshakesilchar@gmail.com' || cleanEmail === 'admin@thelondon.co.uk') {
-      toast.success('Redirecting to Administrative login...');
-      router.push('/admin/login');
-      return;
+    
+    try {
+      const checkRes = await fetch(`/api/auth/check-staff?email=${encodeURIComponent(cleanEmail)}`);
+      if (checkRes.ok) {
+        const { isStaff } = await checkRes.json();
+        if (isStaff) {
+          toast.success('Redirecting to Administrative login...');
+          router.push(`/admin/login?from=${encodeURIComponent(redirect || '/admin')}`);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to verify staff status:', err);
     }
-    login(cleanEmail, name.trim() || undefined);
+
+    login(cleanEmail, name.trim() || undefined, phone.trim() || undefined);
     toast.success(`Welcome back, ${name || 'Valued Guest'}!`);
+    if (redirect) {
+      router.push(redirect);
+    }
   };
 
   const userReservations = user
@@ -106,98 +138,370 @@ export default function AccountPage() {
     );
   }
 
-  /* ─── Login card ───────────────────────────────────────────── */
+  /* ─── Login split screen layout ────────────────────────────── */
   if (!user) {
+    const duplicatedDishes = [...snakeDishes, ...snakeDishes];
     return (
       <div className="page-wrapper" style={{
         background:     'var(--void)',
-        display:        'flex',
-        alignItems:     'center',
-        justifyContent: 'center',
         minHeight:      '100vh',
+        display:        'flex',
+        flexDirection:  'row',
       }}>
-        <div style={{ maxWidth: '460px', width: '100%', padding: '40px var(--container-px)' }}>
-
-          {/* Eyebrow */}
-          <p style={{
-            fontFamily:    'var(--font-sans)',
-            fontSize:      '0.55rem',
-            fontWeight:    600,
-            letterSpacing: '0.42em',
-            textTransform: 'uppercase',
-            color:         'var(--gold)',
-            textAlign:     'center',
-            marginBottom:  '20px',
-          }}>
-            Member Access
-          </p>
-
-          {/* Card */}
+        {/* Left Panel: Brand & Visuals (Desktop only) */}
+        <div style={{
+          flex: '0 0 42%',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '60px 48px',
+          background: '#0B0412',
+          overflow: 'hidden',
+          borderRight: '1px solid rgba(197, 168, 92, 0.15)',
+        }}
+        className="login-visual-panel"
+        >
+          {/* Background image */}
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.45 }}>
+            <Image
+              src="/london-reservations-bg.jpg"
+              alt="The London Shakes Ambiance"
+              fill
+              priority
+              sizes="42vw"
+              style={{ objectFit: 'cover' }}
+            />
+          </div>
+          
+          {/* Subtle gradient overlay */}
           <div style={{
-            background:  'var(--parchment, #FAF7F2)',
-            border:      '1px solid rgba(158,128,67,0.2)',
-            padding:     '48px 40px',
-            boxShadow:   '0 4px 40px rgba(28,25,21,0.06)',
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(11, 4, 18, 0.7) 0%, rgba(11, 4, 18, 0.92) 100%)',
+            zIndex: 1,
+          }} />
+
+          {/* Logo / Brand top */}
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <span style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '1.45rem',
+                fontWeight: 300,
+                color: '#FAF7F2',
+                letterSpacing: '0.04em',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}>
+                THE LONDON <em style={{ fontStyle: 'italic', fontWeight: 500, color: '#FF1E39', textShadow: '0 0 20px rgba(255,30,57,0.5)' }}>SHAKES</em>
+              </span>
+            </Link>
+          </div>
+
+          {/* Snake scrolling effect in the wide blank space */}
+          <div style={{
+            position: 'absolute',
+            top: '130px',
+            bottom: '245px',
+            left: 0,
+            right: 0,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            zIndex: 2,
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
           }}>
-            <h3 style={{
-              fontFamily:   'var(--font-display)',
-              fontSize:     '2rem',
-              fontWeight:   300,
-              color:        'var(--text-primary)',
-              textAlign:    'center',
-              marginBottom: '8px',
-              letterSpacing:'-0.01em',
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+              animation: 'verticalScroll 30s linear infinite',
             }}>
-              Gastronomy <em style={{ color: 'var(--gold)' }}>Login</em>
-            </h3>
+              {duplicatedDishes.map((dish, idx) => (
+                <div key={idx} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', width: '100%' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      color: '#dfba6b',
+                      opacity: 0.85,
+                      letterSpacing: '0.12em',
+                      textShadow: '0 0 14px rgba(223,186,107,0.45)',
+                      animation: 'snakeSway 6s ease-in-out infinite alternate',
+                      animationDelay: `${-idx * 0.5}s`,
+                    }}
+                  >
+                    {dish}
+                  </span>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      color: '#FF1E39',
+                      fontSize: '0.85rem',
+                      opacity: 0.75,
+                      textShadow: '0 0 10px rgba(255,30,57,0.45)',
+                      animation: 'snakeSway 6s ease-in-out infinite alternate',
+                      animationDelay: `${-idx * 0.5 - 0.25}s`,
+                    }}
+                  >
+                    ★
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            {/* Gold rule */}
-            <div style={{ width: '40px', height: '1px', background: 'var(--gold)', margin: '16px auto 20px', opacity: 0.5 }} />
-
+          {/* Bottom text */}
+          <div style={{ position: 'relative', zIndex: 2, maxWidth: '340px' }}>
+            <span style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '0.55rem',
+              fontWeight: 700,
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+              color: '#c5a85c',
+              display: 'block',
+              marginBottom: '14px',
+            }}>
+              Silchar · Est. 2021
+            </span>
+            <h2 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '2.5rem',
+              color: '#FAF7F2',
+              lineHeight: 1.1,
+              marginBottom: '16px',
+              fontWeight: 300,
+            }}>
+              Sip, Savour,<br />
+              <em style={{ fontStyle: 'italic', color: '#FF1E39', textShadow: '0 0 20px rgba(255,30,57,0.5)' }}>Repeat.</em>
+            </h2>
             <p style={{
-              color:        'var(--text-secondary)',
-              fontSize:     '0.8rem',
-              textAlign:    'center',
-              lineHeight:   1.65,
-              marginBottom: '36px',
-              fontFamily:   'var(--font-serif)',
-              fontStyle:    'italic',
+              fontFamily: 'var(--font-serif)',
+              fontSize: '0.85rem',
+              color: 'rgba(250, 247, 242, 0.8)',
+              lineHeight: 1.6,
+              margin: 0,
+              fontStyle: 'italic',
             }}>
-              Sign in to save culinary preferences, manage reservations, and view your dining history.
+              Enter your details to view your profile, reservations, and explore our premium menu.
             </p>
+          </div>
+        </div>
 
+        {/* Right Panel: Form */}
+        <div style={{
+          flex: '1',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundImage: "linear-gradient(rgba(250, 247, 242, 0.5), rgba(250, 247, 242, 0.5)), url('/login-pattern.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          padding: '60px 24px',
+          position: 'relative',
+        }}>
+          {/* Slant decorative elements matching the image */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '260px',
+            height: '260px',
+            background: 'radial-gradient(circle, rgba(232, 16, 42, 0.04) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+          
+          <div style={{ maxWidth: '420px', width: '100%', padding: '40px 32px', background: 'rgba(255, 255, 255, 0.95)', border: '1px solid rgba(197, 168, 92, 0.22)', borderRadius: '12px', boxShadow: '0 20px 48px rgba(28, 25, 21, 0.08)', backdropFilter: 'blur(10px)', animation: 'cardFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <span style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '0.6rem',
+                fontWeight: 700,
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                color: 'var(--gold)',
+                display: 'block',
+                marginBottom: '10px',
+              }}>
+                Welcome Back
+              </span>
+              <h1 style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '2.4rem',
+                color: 'var(--text-primary)',
+                fontWeight: 300,
+                letterSpacing: '-0.02em',
+                margin: 0,
+              }}>
+                Gastronomy <em style={{ fontStyle: 'italic', color: '#E8102A' }}>Login</em>
+              </h1>
+              <div style={{ width: '45px', height: '2px', background: '#E8102A', margin: '14px auto 0', borderRadius: '10px' }} />
+            </div>
+
+            {/* Form */}
             <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <label className="form-label" style={{ color: 'var(--text-primary)' }}>Email Address *</label>
+                <label className="form-label" style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px', display: 'block', fontFamily: 'var(--font-sans)' }}>Email Address *</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  style={{ background: '#fff', border: '1px solid rgba(28,25,21,0.15)', color: 'var(--text-primary)' }}
+                  placeholder="name@example.com"
+                  style={{
+                    background: '#fff',
+                    border: '1px solid rgba(28, 25, 21, 0.15)',
+                    borderRadius: '4px',
+                    color: 'var(--text-primary)',
+                    padding: '13px 16px',
+                    fontSize: '0.85rem',
+                    width: '100%',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                  }}
+                  className="login-input"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--gold)';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(197, 168, 92, 0.15)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(28, 25, 21, 0.15)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               </div>
 
               <div>
-                <label className="form-label" style={{ color: 'var(--text-primary)' }}>Full Name</label>
+                <label className="form-label" style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px', display: 'block', fontFamily: 'var(--font-sans)' }}>Full Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                  style={{ background: '#fff', border: '1px solid rgba(28,25,21,0.15)', color: 'var(--text-primary)' }}
+                  placeholder="Your full name"
+                  style={{
+                    background: '#fff',
+                    border: '1px solid rgba(28, 25, 21, 0.15)',
+                    borderRadius: '4px',
+                    color: 'var(--text-primary)',
+                    padding: '13px 16px',
+                    fontSize: '0.85rem',
+                    width: '100%',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                  }}
+                  className="login-input"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--gold)';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(197, 168, 92, 0.15)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(28, 25, 21, 0.15)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               </div>
 
-              <button type="submit" className="btn-gold" style={{ width: '100%', marginTop: '8px' }}>
-                <span>Access Profile</span>
+              <div>
+                <label className="form-label" style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px', display: 'block', fontFamily: 'var(--font-sans)' }}>Mobile Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 XXXXX XXXXX"
+                  style={{
+                    background: '#fff',
+                    border: '1px solid rgba(28, 25, 21, 0.15)',
+                    borderRadius: '4px',
+                    color: 'var(--text-primary)',
+                    padding: '13px 16px',
+                    fontSize: '0.85rem',
+                    width: '100%',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                  }}
+                  className="login-input"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--gold)';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(197, 168, 92, 0.15)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(28, 25, 21, 0.15)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  background: 'linear-gradient(135deg, #FF1E39, #E8102A 55%, #B50016)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: '#fff',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.2em',
+                  padding: '15px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: '0 8px 24px rgba(232, 16, 42, 0.2)',
+                  marginTop: '10px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 16px 36px rgba(232, 16, 42, 0.35)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(232, 16, 42, 0.2)';
+                }}
+              >
+                Access Profile
               </button>
             </form>
-
-
           </div>
         </div>
+
+        {/* CSS for responsiveness */}
+        <style>{`
+          @media (max-width: 991px) {
+            .login-visual-panel {
+              display: none !important;
+            }
+          }
+          .login-input:focus {
+            outline: none !important;
+            border-color: #E8102A !important;
+            box-shadow: 0 0 0 3px rgba(232, 16, 42, 0.08) !important;
+          }
+          @keyframes verticalScroll {
+            0% {
+              transform: translateY(-50%);
+            }
+            100% {
+              transform: translateY(0%);
+            }
+          }
+          @keyframes snakeSway {
+            0% {
+              transform: translateX(-40px) rotate(-3deg);
+            }
+            100% {
+              transform: translateX(40px) rotate(3deg);
+            }
+          }
+        `}</style>
       </div>
     );
   }
@@ -218,7 +522,7 @@ export default function AccountPage() {
               Welcome back, <em style={{ color: 'var(--gold)' }}>{user.name}</em>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
-              Account: {user.email} {(user.email === 'thelondonshakesilchar@gmail.com' || user.email === 'admin@thelondon.co.uk') && '· (Administrator)'}
+              Account: {user.email} {(user.email === 'thelondonshakessilchar@gmail.com' || user.email === 'admin@thelondon.co.uk') && '· (Administrator)'}
             </p>
           </div>
 
@@ -360,7 +664,7 @@ export default function AccountPage() {
                   gap:          '10px',
                 }}>
                   <History size={18} color="var(--gold)" />
-                  Online Order History ({userOrders.length})
+                  Order History ({userOrders.length})
                 </h3>
 
                 {userOrders.length === 0 ? (
@@ -490,5 +794,23 @@ export default function AccountPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={
+      <div className="page-wrapper" style={{ background: 'var(--void)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.875rem' }}>Loading…</p>
+      </div>
+    }>
+      <AccountPageContent />
+      <style>{`
+        @keyframes cardFadeIn {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </Suspense>
   );
 }

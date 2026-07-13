@@ -2,11 +2,13 @@
 
 import React, { useState } from 'react';
 import { useRestaurantStore } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { Calendar, Users, Phone, Clock, XCircle, Search, Plus } from 'lucide-react';
 
 export default function AdminReservationsPage() {
   const reservations = useRestaurantStore((s) => s.reservations);
   const cancelReservation = useRestaurantStore((s) => s.cancelReservation);
+  const isMobile = useIsMobile();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'confirmed' | 'pending' | 'cancelled'>('all');
 
@@ -44,7 +46,7 @@ export default function AdminReservationsPage() {
       </div>
 
       {/* Summary */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1px', background:'var(--dark-border)', border:'1px solid var(--dark-border)', marginBottom:'28px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'1px', background:'var(--dark-border)', border:'1px solid var(--dark-border)', marginBottom:'28px' }}>
         {Object.entries(STATUS_CFG).map(([key, cfg]) => (
           <div key={key} style={{ padding:'20px', background:'var(--dark-card)', textAlign:'center' }}>
             <p style={{ fontFamily:'var(--font-display)', fontSize:'2rem', color: cfg.color, lineHeight:1 }}>
@@ -90,8 +92,10 @@ export default function AdminReservationsPage() {
             return (
               <div key={res.id} style={{
                 background:'var(--dark-card)', border:`1px solid ${cfg.color}20`,
-                padding:'20px 24px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto',
-                alignItems:'center', gap:'24px',
+                padding:'20px 24px', display: isMobile ? 'flex' : 'grid',
+                flexDirection: 'column', gap: isMobile ? '12px' : undefined,
+                gridTemplateColumns: isMobile ? undefined : '1fr 1fr 1fr auto',
+                alignItems:'center',
               }}>
                 <div>
                   <p style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'var(--cream)', marginBottom:'4px' }}>{res.name}</p>

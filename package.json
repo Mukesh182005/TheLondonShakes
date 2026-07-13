@@ -16,6 +16,8 @@
     "@prisma/client": "^7.8.0",
     "@serwist/next": "^9.5.11",
     "@stripe/stripe-js": "^9.9.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "framer-motion": "^12.40.0",
     "ioredis": "^5.11.1",
     "lucide-react": "^1.17.0",

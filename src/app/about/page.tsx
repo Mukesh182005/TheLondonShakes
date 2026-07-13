@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { 
   restaurantInfo as initialRestaurantInfo,
   chef as initialChef 
@@ -130,6 +131,7 @@ function AboutHero({ description }: { description: string }) {
 
 function AboutStory({ founded, image }: { founded: string; image?: string | null }) {
   const storySec = useReveal();
+  const isMobile = useIsMobile();
   return (
     <section style={{ padding: '100px 0' }}>
       <div className="container">
@@ -137,8 +139,8 @@ function AboutStory({ founded, image }: { founded: string; image?: string | null
           ref={storySec.ref}
           style={{
             display:             'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap:                 '80px',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap:                 isMobile ? '40px' : '80px',
             alignItems:          'center',
             opacity:             storySec.visible ? 1 : 0,
             transform:           storySec.visible ? 'none' : 'translateY(32px)',
@@ -201,13 +203,14 @@ function AboutStory({ founded, image }: { founded: string; image?: string | null
             </div>
             {/* Floating quote card */}
             <div style={{
-              position:   'absolute',
-              bottom:     '-28px',
-              right:      '-28px',
+              position:   isMobile ? 'relative' : 'absolute',
+              bottom:     isMobile ? '0' : '-28px',
+              right:      isMobile ? '0' : '-28px',
               background: 'var(--dark-card-2)',
               border:     '1px solid rgba(197,168,92,0.25)',
               padding:    '24px',
-              maxWidth:   '240px',
+              maxWidth:   isMobile ? '100%' : '240px',
+              marginTop:  isMobile ? '16px' : '0',
             }}>
               <div style={{ display: 'flex', gap: '3px', marginBottom: '10px' }}>
                 {[1,2,3,4,5].map(n => <Star key={n} size={12} fill="var(--gold)" color="var(--gold)" />)}
@@ -636,16 +639,51 @@ function AboutCTA() {
         >
           <div className="eyebrow">Come Experience Us</div>
           <h2 className="section-title">
-            Your table <em>awaits</em>
+            Your table <em style={{ color: '#E8102A', fontStyle: 'italic', textShadow: '0 0 15px rgba(232,16,42,0.25)' }}>awaits</em>
           </h2>
-          <div className="gold-divider" />
+          <div className="gold-divider" style={{ background: '#E8102A' }} />
           <p className="body-lg" style={{ color: 'var(--text-secondary)', maxWidth: '520px', margin: '0 auto 40px' }}>
             Whether it&rsquo;s a quick bite, a family feast, or a special celebration — The London Shakes is ready for you.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/reservations" className="btn-gold"><span>Reserve a Table</span></Link>
-            <Link href="/menu" className="btn-outline">View Full Menu</Link>
-            <Link href="/contact" className="btn-ghost" style={{ color: 'var(--gold)' }}>Contact Us</Link>
+            <Link 
+              href="/reservations" 
+              className="btn-red"
+              style={{
+                background: 'linear-gradient(135deg, #FF1E39, #E8102A 55%, #B50016)',
+                borderColor: '#E8102A',
+                boxShadow: '0 8px 28px rgba(232,16,42,0.3)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 18px 44px rgba(232,16,42,0.45)';
+                e.currentTarget.style.borderColor = '#FF1E39';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = '0 8px 28px rgba(232,16,42,0.3)';
+                e.currentTarget.style.borderColor = '#E8102A';
+              }}
+            >
+              <span>Reserve a Table</span>
+            </Link>
+            <Link 
+              href="/menu" 
+              className="btn-outline"
+              style={{
+                color: '#E8102A',
+                borderColor: 'rgba(232,16,42,0.4)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--black)';
+                e.currentTarget.style.borderColor = '#E8102A';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#E8102A';
+                e.currentTarget.style.borderColor = 'rgba(232,16,42,0.4)';
+              }}
+            >
+              <span>View Full Menu</span>
+            </Link>
+            <Link href="/contact" className="btn-ghost" style={{ color: '#E8102A' }}>Contact Us</Link>
           </div>
         </div>
       </div>
@@ -669,7 +707,6 @@ export default function AboutPage() {
       <AboutStats />
       <AboutValues />
       <AboutChef chef={chef} />
-      <AboutAwards awards={restaurantInfo.awards} />
       <AboutVisitUs location={restaurantInfo.location} contact={restaurantInfo.contact} />
       <AboutCTA />
     </div>

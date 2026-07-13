@@ -14,6 +14,28 @@ export default function MaintenancePage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Poll system settings to auto-restore access when owner resumes server
+  useEffect(() => {
+    const checkServerStatus = async () => {
+      try {
+        const res = await fetch(`/api/admin/settings?t=${Date.now()}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (data.success && data.settings && !data.settings.maintenanceMode) {
+          // Clear cookie
+          document.cookie = 'tls_maintenance=false; path=/; max-age=31536000; SameSite=Lax';
+          // Redirect to home
+          window.location.href = '/';
+        }
+      } catch (err) {
+        console.warn('Failed to fetch settings from maintenance page:', err);
+      }
+    };
+
+    checkServerStatus();
+    const interval = setInterval(checkServerStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div
       style={{

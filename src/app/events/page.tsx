@@ -2,6 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import ScrollReveal from '@/components/ScrollReveal';
 import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import { upcomingEvents as initialUpcomingEvents } from '@/data/restaurantData';
 import { Calendar, Clock, Users, ArrowRight, Sparkles, Music, Star } from 'lucide-react';
@@ -61,14 +63,16 @@ export default function EventsPage() {
         }}
       >
         <div className="container">
-          <div className="section-eyebrow" style={{ justifyContent: 'center' }}>
-            <Sparkles size={12} style={{ marginRight: '6px' }} /> Culinary Experiences
-          </div>
-          <h1 className="section-title">Upcoming <em>Events</em></h1>
-          <div className="gold-divider" />
-          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '16px auto 0', lineHeight: 1.6 }}>
-            Join us for curated culinary gatherings, weekly acoustic sessions, and exclusive food festivals at The London Shakes.
-          </p>
+          <ScrollReveal>
+            <div className="section-eyebrow" style={{ justifyContent: 'center' }}>
+              <Sparkles size={12} style={{ marginRight: '6px' }} /> Culinary Experiences
+            </div>
+            <h1 className="section-title">Upcoming <em className="text-shimmer-gold">Events</em></h1>
+            <div className="gold-divider" />
+            <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '16px auto 0', lineHeight: 1.6 }}>
+              Join us for curated culinary gatherings, weekly acoustic sessions, and exclusive food festivals at The London Shakes.
+            </p>
+          </ScrollReveal>
         </div>
       </div>
 
@@ -89,9 +93,13 @@ export default function EventsPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', maxWidth: '900px', margin: '0 auto' }}>
-            {upcomingEvents.map((evt) => (
-              <div
+            {upcomingEvents.map((evt, i) => (
+              <motion.div
                 key={evt.id}
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-10% 0px' }}
+                transition={{ duration: 0.7, delay: i * 0.12, ease: [0.19, 1, 0.22, 1] }}
                 style={{
                   background: 'var(--dark-bg)',
                   border: '1px solid var(--dark-border)',
@@ -201,7 +209,7 @@ export default function EventsPage() {
                     </Link>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
@@ -219,15 +227,17 @@ export default function EventsPage() {
         }}
       >
         <div className="container" style={{ maxWidth: '700px' }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--gold)', marginBottom: '16px' }}>
-            Planning a Private Event?
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.94rem', lineHeight: 1.7, marginBottom: '32px', fontFamily: 'var(--font-serif)' }}>
-            We host bespoke corporate lunches, private anniversary dinners, and milestone parties tailored to your specific preferences. Connect with our dedicated events coordinator to curate your custom menu.
-          </p>
-          <Link href="/private-events" className="btn-gold">
-            <span>Explore Private Dining <ArrowRight size={13} style={{ marginLeft: '6px' }} /></span>
-          </Link>
+          <ScrollReveal>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--gold)', marginBottom: '16px' }}>
+              Planning a Private Event?
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.94rem', lineHeight: 1.7, marginBottom: '32px', fontFamily: 'var(--font-serif)' }}>
+              We host bespoke corporate lunches, private anniversary dinners, and milestone parties tailored to your specific preferences. Connect with our dedicated events coordinator to curate your custom menu.
+            </p>
+            <Link href="/private-events" className="btn-gold">
+              <span>Explore Private Dining <ArrowRight size={13} style={{ marginLeft: '6px' }} /></span>
+            </Link>
+          </ScrollReveal>
         </div>
       </div>
 

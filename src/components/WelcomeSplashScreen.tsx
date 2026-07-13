@@ -69,17 +69,17 @@ export default function WelcomeSplashScreen() {
             style={{
               position:      'absolute',
               inset:         '32px',
-              border:        '1px solid rgba(158, 128, 67, 0.2)',
+              border:        '1px solid rgba(143, 29, 47, 0.22)',
               pointerEvents: 'none',
             }}
           />
 
           {/* Corner brackets */}
           {[
-            { top: '28px', left: '28px', bl: '1px solid var(--gold)', bt: '1px solid var(--gold)' },
-            { top: '28px', right: '28px', br: '1px solid var(--gold)', bt: '1px solid var(--gold)' },
-            { bottom: '28px', left: '28px', bl: '1px solid var(--gold)', bb: '1px solid var(--gold)' },
-            { bottom: '28px', right: '28px', br: '1px solid var(--gold)', bb: '1px solid var(--gold)' },
+            { top: '28px', left: '28px', bl: '1px solid var(--red)', bt: '1px solid var(--red)' },
+            { top: '28px', right: '28px', br: '1px solid var(--red)', bt: '1px solid var(--red)' },
+            { bottom: '28px', left: '28px', bl: '1px solid var(--red)', bb: '1px solid var(--red)' },
+            { bottom: '28px', right: '28px', br: '1px solid var(--red)', bb: '1px solid var(--red)' },
           ].map((pos, i) => (
             <motion.span
               key={i}
@@ -112,7 +112,7 @@ export default function WelcomeSplashScreen() {
                 fontWeight:    600,
                 letterSpacing: '0.42em',
                 textTransform: 'uppercase',
-                color:         'var(--gold)',
+                color:         'var(--red)',
                 marginBottom:  '36px',
               }}
             >
@@ -148,7 +148,7 @@ export default function WelcomeSplashScreen() {
                   }}
                   style={{
                     display:   'inline-block',
-                    color:     i === 2 ? 'var(--gold)' : 'var(--on-dark)',
+                    color:     i === 2 ? 'var(--red)' : 'var(--on-dark)',
                     fontStyle: i === 2 ? 'italic' : 'normal',
                   }}
                 >
@@ -164,7 +164,7 @@ export default function WelcomeSplashScreen() {
               style={{
                 width:          '56px',
                 height:         '1px',
-                background:     'var(--gold)',
+                background:     'var(--red)',
                 margin:         '32px auto',
                 opacity:        0.5,
                 transformOrigin:'left',
@@ -201,7 +201,7 @@ export default function WelcomeSplashScreen() {
               left:            0,
               right:           0,
               height:          '1px',
-              background:      'var(--gold)',
+              background:      'var(--red)',
               transformOrigin: 'left',
               opacity:         0.5,
             }}

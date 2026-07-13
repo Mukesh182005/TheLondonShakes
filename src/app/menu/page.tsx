@@ -2,12 +2,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { useRestaurantStore, useCMSStore } from '@/store/restaurantStore';
+import { useCMSStore, useRestaurantStore } from '@/store/restaurantStore';
+import { useRouter } from 'next/navigation';
 import { 
   menuItems as initialMenuItems,
   menuCategories as initialMenuCategories 
 } from '@/data/restaurantData';
-import { Search, Filter, ShoppingBag, Plus, Minus, X } from 'lucide-react';
+import { Search, Filter, X } from 'lucide-react';
 
 const DIETARY_OPTIONS = [
   { key: 'v',  label: 'Vegetarian' },
@@ -32,7 +33,7 @@ const DEFAULT_CATEGORY_IMAGES: Record<string, { left: FloatingImageConfig[]; rig
       { src: '/event-shake.png', category: 'shakes', offsetTop: '25%' },
       { src: '/menu-fries.png', category: 'snacks', offsetTop: '60%' }
     ],
-    glow: 'rgba(197, 168, 92, 0.35)'
+    glow: 'rgba(225, 29, 46, 0.35)'
   },
   shakes: {
     left: [
@@ -105,14 +106,19 @@ const DEFAULT_CATEGORY_IMAGES: Record<string, { left: FloatingImageConfig[]; rig
 export default function MenuPage() {
   const storeMenuItems      = useCMSStore((s) => s.menuItems);
   const storeMenuCategories = useCMSStore((s) => s.menuCategories);
-  const cart                = useRestaurantStore((s) => s.cart);
-  const addToCart           = useRestaurantStore((s) => s.addToCart);
-  const updateQty           = useRestaurantStore((s) => s.updateQty);
+  const user                = useRestaurantStore((s) => s.user);
+  const router              = useRouter();
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isMounted && !user) {
+      router.push('/account?redirect=/menu');
+    }
+  }, [isMounted, user, router]);
 
   const menuItems      = isMounted ? storeMenuItems : initialMenuItems;
   const menuCategories = isMounted ? storeMenuCategories : initialMenuCategories;
@@ -125,6 +131,37 @@ export default function MenuPage() {
   const [filterOpen,     setFilterOpen]     = useState(false);
   const [selectedSizes,  setSelectedSizes]  = useState<Record<string, 'small' | 'medium' | 'large'>>({});
   const [activeDetailItem, setActiveDetailItem] = useState<typeof menuItems[0] | null>(null);
+
+  useEffect(() => {
+    if (isMounted) {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'new') {
+        setActiveCategory('new-arrivals');
+      }
+    }
+  }, [isMounted]);
+
+  const list1 = useMemo(() => menuItems.map(i => i.name), [menuItems]);
+  const list2 = useMemo(() => [...list1].reverse(), [list1]);
+
+  const scrollItems1 = useMemo(() => {
+    if (list1.length === 0) return [];
+    let result = [...list1];
+    while (result.length < 30) {
+      result = [...result, ...list1];
+    }
+    return result;
+  }, [list1]);
+
+  const scrollItems2 = useMemo(() => {
+    if (list2.length === 0) return [];
+    let result = [...list2];
+    while (result.length < 30) {
+      result = [...result, ...list2];
+    }
+    return result;
+  }, [list2]);
 
   const [displayedCategory, setDisplayedCategory] = useState(activeCategory);
   const [transitionOpacity, setTransitionOpacity] = useState(1);
@@ -173,7 +210,7 @@ export default function MenuPage() {
             { src: cat.gutterImageRightTop || '/event-shake.png', category: id, offsetTop: '25%' },
             { src: cat.gutterImageRightBottom || '/menu-fries.png', category: id, offsetTop: '60%' }
           ],
-          glow: 'rgba(197, 168, 92, 0.35)'
+          glow: 'rgba(225, 29, 46, 0.35)'
         };
       }
     });
@@ -193,11 +230,27 @@ export default function MenuPage() {
 
   const currentConfig = categoryImagesConfig[displayedCategory] || categoryImagesConfig.all;
 
+  const newArrivalsDaysThreshold = useCMSStore((s) => s.newArrivalsDaysThreshold) || 10;
+
+  const hasNewArrivals = useMemo(() => {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - newArrivalsDaysThreshold);
+    return menuItems.some(
+      (item) => item.active && item.createdAt && new Date(item.createdAt) >= cutoffDate
+    );
+  }, [menuItems, newArrivalsDaysThreshold]);
+
   const filtered = useMemo(() => {
     let items = [...menuItems];
 
-    if (activeCategory !== 'all') {
-      items = items.filter((i) => i.category === activeCategory);
+    if (activeCategory === 'new-arrivals') {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - newArrivalsDaysThreshold);
+      items = items.filter(
+        (i) => i.active !== false && i.createdAt && new Date(i.createdAt) >= cutoffDate
+      );
+    } else if (activeCategory !== 'all') {
+      items = items.filter((i) => i.category === activeCategory && i.active !== false);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -217,9 +270,17 @@ export default function MenuPage() {
     if (sortBy === 'name')       items.sort((a, b) => a.name.localeCompare(b.name));
 
     return items;
-  }, [menuItems, activeCategory, searchQuery, dietary, maxPrice, sortBy]);
+  }, [menuItems, activeCategory, searchQuery, dietary, maxPrice, sortBy, newArrivalsDaysThreshold]);
 
-  const getCartItem = (id: string) => cart.items.find((i) => i.id === id);
+  if (!isMounted || !user) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--void)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.875rem' }}>Loading Menu…</p>
+      </div>
+    );
+  }
+
+
 
   const getGutterOffsets = (count: number) => {
     let numImages = Math.min(count, 7);
@@ -268,10 +329,12 @@ export default function MenuPage() {
   const renderMenuItemCard = (item: typeof menuItems[0]) => {
     const portions = getPortionsConfig(item);
     const availableSizes = (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available);
-    const currentSize = selectedSizes[item.id] || (portions.medium.available ? 'medium' : (availableSizes[0] || 'medium'));
-    const cartItemId = `${item.id}-${currentSize}`;
-    const inCart = getCartItem(cartItemId);
-    const currentPrice = portions[currentSize].price;
+    const selectedSize = selectedSizes[item.id];
+    // Ensure currentSize always points to an available portion
+    const currentSize = (selectedSize && portions[selectedSize]?.available)
+      ? selectedSize
+      : (availableSizes[0] || 'medium');
+    const currentPrice = portions[currentSize]?.price || item.price;
     return (
       <div
         key={item.id}
@@ -281,11 +344,21 @@ export default function MenuPage() {
           display:      'flex',
           flexDirection:'column',
           overflow:     'hidden',
-          transition:   'background 0.3s ease',
+          transition:   'background 0.3s ease, transform 0.4s var(--ease-expo), box-shadow 0.4s var(--ease-expo)',
           width:        '100%',
         }}
-        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = 'var(--dark-card-2)')}
-        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'var(--dark-card)')}
+        onMouseEnter={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.background = 'var(--dark-card-2)';
+          el.style.transform = 'translateY(-5px)';
+          el.style.boxShadow = '0 24px 48px rgba(0,0,0,0.28)';
+        }}
+        onMouseLeave={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.background = 'var(--dark-card)';
+          el.style.transform = 'translateY(0)';
+          el.style.boxShadow = 'none';
+        }}
       >
         {/* Clickable Area for Pop-up Details */}
         <div
@@ -298,7 +371,7 @@ export default function MenuPage() {
               height: '160px', position: 'relative', overflow: 'hidden',
               background: (item as { image?: string | null }).image ? '#000' : undefined,
             }}
-            className={!(item as { image?: string | null }).image ? `food-photo ${item.gradient}` : 'food-photo'}
+            className={!(item as { image?: string | null }).image ? `food-photo img-zoom-wrap ${item.gradient}` : 'food-photo img-zoom-wrap'}
           >
             {(item as { image?: string | null }).image && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -309,7 +382,7 @@ export default function MenuPage() {
               />
             )}
             {item.badge && (
-              <span className="badge-gold" style={{ position:'absolute', top:'12px', left:'12px', fontSize:'0.5rem' }}>
+              <span className="badge-red" style={{ position:'absolute', top:'12px', left:'12px', fontSize:'0.5rem' }}>
                 {item.badge}
               </span>
             )}
@@ -323,7 +396,7 @@ export default function MenuPage() {
               fontWeight:    700,
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
-              color:         'rgba(197,168,92,0.55)',
+              color:         'rgba(225,29,46,0.55)',
             }}>
               {item.course}
             </span>
@@ -374,9 +447,9 @@ export default function MenuPage() {
                     onClick={() => setSelectedSizes((prev) => ({ ...prev, [item.id]: size }))}
                     style={{
                       padding: '4px 10px',
-                      background: active ? 'rgba(197,168,92,0.12)' : 'transparent',
-                      border: `1px solid ${active ? 'var(--gold)' : 'var(--dark-border)'}`,
-                      color: active ? 'var(--gold)' : 'var(--text-secondary)',
+                      background: active ? 'rgba(225,29,46,0.12)' : 'transparent',
+                      border: `1px solid ${active ? 'var(--red)' : 'var(--dark-border)'}`,
+                      color: active ? 'var(--red)' : 'var(--text-secondary)',
                       fontFamily: 'var(--font-sans)',
                       fontSize: '0.6rem',
                       fontWeight: 750,
@@ -404,71 +477,13 @@ export default function MenuPage() {
         }}>
           <span style={{
             fontFamily: 'var(--font-display)',
-            fontSize:   '1.4rem',
-            color:      'var(--gold)',
+            fontSize:   '1.85rem',
+            color:      'var(--red)',
             lineHeight: 1,
             whiteSpace: 'nowrap',
           }}>
             ₹{currentPrice}
           </span>
-
-          {/* Cart Controls */}
-          {inCart ? (
-            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-              <button
-                onClick={() => updateQty(cartItemId, inCart.qty - 1)}
-                style={{
-                  width:'32px', height:'32px',
-                  background:'rgba(197,168,92,0.1)',
-                  border:'1px solid rgba(197,168,92,0.3)',
-                  color:'var(--gold)', cursor:'pointer',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                }}
-              >
-                <Minus size={13} />
-              </button>
-              <span style={{ fontFamily:'var(--font-sans)', fontSize:'0.84rem', fontWeight:700, color:'var(--cream)', minWidth:'16px', textAlign:'center' }}>
-                {inCart.qty}
-              </span>
-              <button
-                onClick={() => addToCart({ id: item.id, name: `${item.name} (${currentSize.toUpperCase()})`, price: currentPrice, gradient: item.gradient, size: currentSize })}
-                style={{
-                  width:'32px', height:'32px',
-                  background:'rgba(197,168,92,0.1)',
-                  border:'1px solid rgba(197,168,92,0.3)',
-                  color:'var(--gold)', cursor:'pointer',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                }}
-              >
-                <Plus size={13} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => addToCart({ id: item.id, name: `${item.name} (${currentSize.toUpperCase()})`, price: currentPrice, gradient: item.gradient, size: currentSize })}
-              style={{
-                display:    'flex',
-                alignItems: 'center',
-                gap:        '6px',
-                padding:    '10px 18px',
-                background: 'transparent',
-                border:     '1px solid rgba(197,168,92,0.3)',
-                color:      'var(--gold)',
-                fontFamily: 'var(--font-sans)',
-                fontSize:   '0.65rem',
-                fontWeight: 600,
-                letterSpacing:'0.15em',
-                textTransform:'uppercase',
-                cursor:     'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(197,168,92,0.08)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--gold)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.3)'; }}
-            >
-              <ShoppingBag size={13} />
-              Add
-            </button>
-          )}
         </div>
       </div>
     );
@@ -482,7 +497,7 @@ export default function MenuPage() {
         paddingTop:   '48px',
         paddingBottom:'48px',
         background:   `
-          radial-gradient(ellipse 70% 60% at 50% 50%, rgba(197,168,92,0.05) 0%, transparent 70%),
+          radial-gradient(ellipse 70% 60% at 50% 50%, rgba(225,29,46,0.05) 0%, transparent 70%),
           var(--black)
         `,
         borderBottom: '1px solid var(--dark-border)',
@@ -490,13 +505,101 @@ export default function MenuPage() {
         <div className="container" style={{ textAlign:'center' }}>
           <div className="eyebrow" style={{ justifyContent:'center' }}>Our Menu</div>
           <h1 className="display-md" style={{ marginBottom:'12px' }}>
-            Crafted with <em style={{ color:'var(--gold)', fontStyle:'italic' }}>passion</em>
+            Crafted with <em className="text-shimmer-red" style={{ fontStyle:'italic' }}>passion</em>
           </h1>
           <p className="body-lg" style={{ maxWidth:'440px', margin:'0 auto' }}>
             Every item made fresh daily. Bold flavours, thoughtful craft.
           </p>
         </div>
       </div>
+
+      {/* ── Double Marquee Scrolling Bands ── */}
+      <div style={{
+        background: 'var(--void)',
+        borderBottom: '1px solid var(--dark-border)',
+        padding: '16px 0',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        userSelect: 'none',
+      }}>
+        <style>{`
+          @keyframes menu-marquee-rtl {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+          }
+          @keyframes menu-marquee-ltr {
+            from { transform: translateX(-50%); }
+            to { transform: translateX(0); }
+          }
+        `}</style>
+
+        {/* Band 1: Right to Left */}
+        <div style={{ overflow: 'hidden', width: '100%' }}>
+          <div style={{
+            display: 'flex',
+            width: 'max-content',
+            alignItems: 'center',
+            animation: 'menu-marquee-rtl 70s linear infinite',
+          }}>
+            {scrollItems1.map((name, idx) => (
+              <React.Fragment key={`rtl-${idx}`}>
+                <span style={{
+                  fontFamily: 'var(--font-display)',
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(0.95rem, 1.4vw, 1.2rem)',
+                  color: 'var(--cream)',
+                  whiteSpace: 'nowrap',
+                  padding: '0 6px',
+                }}>
+                  {name}
+                </span>
+                <span aria-hidden style={{
+                  margin: '0 20px',
+                  color: 'var(--gold)',
+                  fontSize: '0.85rem',
+                }}>
+                  ✦
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Band 2: Left to Right */}
+        <div style={{ overflow: 'hidden', width: '100%' }}>
+          <div style={{
+            display: 'flex',
+            width: 'max-content',
+            alignItems: 'center',
+            animation: 'menu-marquee-ltr 70s linear infinite',
+          }}>
+            {scrollItems2.map((name, idx) => (
+              <React.Fragment key={`ltr-${idx}`}>
+                <span style={{
+                  fontFamily: 'var(--font-display)',
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(0.95rem, 1.4vw, 1.2rem)',
+                  color: 'var(--cream)',
+                  whiteSpace: 'nowrap',
+                  padding: '0 6px',
+                }}>
+                  {name}
+                </span>
+                <span aria-hidden style={{
+                  margin: '0 20px',
+                  color: 'var(--gold)',
+                  fontSize: '0.85rem',
+                }}>
+                  ✦
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+
 
       {/* ── Category Tabs ── */}
       <div style={{
@@ -514,6 +617,18 @@ export default function MenuPage() {
           >
             All
           </button>
+          {(hasNewArrivals || activeCategory === 'new-arrivals') && (
+            <button
+              onClick={() => setActiveCategory('new-arrivals')}
+              className={`menu-tab ${activeCategory === 'new-arrivals' ? 'active' : ''}`}
+              style={{
+                borderColor: activeCategory === 'new-arrivals' ? 'var(--red)' : undefined,
+                color: activeCategory === 'new-arrivals' ? 'var(--red)' : undefined,
+              }}
+            >
+              New Arrivals ✨
+            </button>
+          )}
           {menuCategories.map((cat) => (
             <button
               key={cat.id}
@@ -563,9 +678,9 @@ export default function MenuPage() {
               alignItems:  'center',
               gap:         '6px',
               padding:     '14px 20px',
-              background:  filterOpen ? 'rgba(197,168,92,0.1)' : 'transparent',
-              border:      `1px solid ${filterOpen ? 'rgba(197,168,92,0.4)' : 'var(--dark-border-2)'}`,
-              color:       filterOpen ? 'var(--gold)' : 'var(--text-secondary)',
+              background:  filterOpen ? 'rgba(225,29,46,0.1)' : 'transparent',
+              border:      `1px solid ${filterOpen ? 'rgba(225,29,46,0.4)' : 'var(--dark-border-2)'}`,
+              color:       filterOpen ? 'var(--red)' : 'var(--text-secondary)',
               fontFamily:  'var(--font-sans)',
               fontSize:    '0.78rem',
               cursor:      'pointer',
@@ -575,7 +690,7 @@ export default function MenuPage() {
             <Filter size={14} />
             Filters
             {(dietary.length > 0) && (
-              <span style={{ background:'var(--gold)', color:'var(--black)', width:'16px', height:'16px', borderRadius:'50%', fontSize:'0.55rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ background:'var(--red)', color:'var(--black)', width:'16px', height:'16px', borderRadius:'50%', fontSize:'0.55rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>
                 {dietary.length}
               </span>
             )}
@@ -603,9 +718,9 @@ export default function MenuPage() {
                     onClick={() => toggleDietary(d.key)}
                     style={{
                       padding:    '6px 16px',
-                      background: dietary.includes(d.key) ? 'rgba(197,168,92,0.12)' : 'transparent',
-                      border:     `1px solid ${dietary.includes(d.key) ? 'rgba(197,168,92,0.5)' : 'var(--dark-border-2)'}`,
-                      color:      dietary.includes(d.key) ? 'var(--gold)' : 'var(--text-secondary)',
+                      background: dietary.includes(d.key) ? 'rgba(225,29,46,0.12)' : 'transparent',
+                      border:     `1px solid ${dietary.includes(d.key) ? 'rgba(225,29,46,0.5)' : 'var(--dark-border-2)'}`,
+                      color:      dietary.includes(d.key) ? 'var(--red)' : 'var(--text-secondary)',
                       fontFamily: 'var(--font-sans)',
                       fontSize:   '0.72rem',
                       fontWeight: 600,
@@ -630,7 +745,7 @@ export default function MenuPage() {
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
                 style={{
-                  width:'200px', height:'2px', accentColor:'var(--gold)',
+                  width:'200px', height:'2px', accentColor:'var(--red)',
                   background:'var(--dark-border-2)',
                 }}
               />
@@ -670,7 +785,6 @@ export default function MenuPage() {
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             {(() => {
               const item = filtered[0];
-              const inCart = getCartItem(item.id);
               return (
                 <div
                   style={{
@@ -706,7 +820,7 @@ export default function MenuPage() {
                       />
                     )}
                     {item.badge && (
-                      <span className="badge-gold" style={{ position:'absolute', top:'16px', left:'16px', fontSize:'0.55rem' }}>
+                      <span className="badge-red" style={{ position:'absolute', top:'16px', left:'16px', fontSize:'0.55rem' }}>
                         {item.badge}
                       </span>
                     )}
@@ -719,7 +833,7 @@ export default function MenuPage() {
                       fontWeight:    700,
                       letterSpacing: '0.18em',
                       textTransform: 'uppercase',
-                      color:         'rgba(197,168,92,0.7)',
+                      color:         'rgba(225,29,46,0.7)',
                     }}>
                       {item.course}
                     </span>
@@ -752,23 +866,11 @@ export default function MenuPage() {
                       )}
                     </div>
 
-                    {/* Footer / Price & Add */}
+                    {/* Footer / Price — view-only, no add button */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', paddingTop: '16px', borderTop: '1px solid var(--dark-border)' }}>
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--gold)' }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.85rem', color: 'var(--red)' }}>
                         ₹{item.price}
                       </span>
-                      {inCart ? (
-                        <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-                          <button onClick={() => updateQty(item.id, inCart.qty - 1)} style={{ width:'32px', height:'32px', background:'rgba(197,168,92,0.1)', border:'1px solid rgba(197,168,92,0.3)', color:'var(--gold)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><Minus size={12} /></button>
-                          <span style={{ fontFamily:'var(--font-sans)', fontSize:'0.85rem', fontWeight:700, color:'var(--cream)' }}>{inCart.qty}</span>
-                          <button onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, gradient: item.gradient })} style={{ width:'32px', height:'32px', background:'rgba(197,168,92,0.1)', border:'1px solid rgba(197,168,92,0.3)', color:'var(--gold)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><Plus size={12} /></button>
-                        </div>
-                      ) : (
-                        <button onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, gradient: item.gradient })} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'10px 18px', background:'transparent', border:'1px solid rgba(197,168,92,0.3)', color:'var(--gold)', fontFamily:'var(--font-sans)', fontSize:'0.65rem', fontWeight:600, letterSpacing:'0.15em', textTransform:'uppercase', cursor:'pointer' }}>
-                          <ShoppingBag size={12} />
-                          <span>Add to Order</span>
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1003,10 +1105,11 @@ export default function MenuPage() {
         const item = activeDetailItem;
         const portions = getPortionsConfig(item);
         const availableSizes = (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available);
-        const currentSize = selectedSizes[item.id] || (portions.medium.available ? 'medium' : (availableSizes[0] || 'medium'));
-        const cartItemId = `${item.id}-${currentSize}`;
-        const inCart = getCartItem(cartItemId);
-        const currentPrice = portions[currentSize].price;
+        const selectedSize = selectedSizes[item.id];
+        const currentSize = (selectedSize && portions[selectedSize]?.available)
+          ? selectedSize
+          : (availableSizes[0] || 'medium');
+        const currentPrice = portions[currentSize]?.price || item.price;
 
         return (
           <div style={{
@@ -1025,7 +1128,7 @@ export default function MenuPage() {
             {/* Modal Card */}
             <div style={{
               background: 'var(--dark-card)',
-              border: '1px solid rgba(197, 168, 92, 0.25)',
+              border: '1px solid rgba(225, 29, 46, 0.25)',
               width: '100%',
               maxWidth: '780px',
               position: 'relative',
@@ -1045,8 +1148,8 @@ export default function MenuPage() {
                   top: '16px',
                   right: '16px',
                   background: 'rgba(0, 0, 0, 0.4)',
-                  border: '1px solid rgba(197, 168, 92, 0.2)',
-                  color: 'var(--gold)',
+                  border: '1px solid rgba(225, 29, 46, 0.2)',
+                  color: 'var(--red)',
                   cursor: 'pointer',
                   width: '36px',
                   height: '36px',
@@ -1057,8 +1160,8 @@ export default function MenuPage() {
                   zIndex: 10,
                   transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(197, 168, 92, 0.15)'; e.currentTarget.style.borderColor = 'var(--gold)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.4)'; e.currentTarget.style.borderColor = 'rgba(197, 168, 92, 0.2)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(225, 29, 46, 0.15)'; e.currentTarget.style.borderColor = 'var(--red)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.4)'; e.currentTarget.style.borderColor = 'rgba(225, 29, 46, 0.2)'; }}
               >
                 <X size={18} />
               </button>
@@ -1086,7 +1189,7 @@ export default function MenuPage() {
                   </div>
                 )}
                 {item.badge && (
-                  <span className="badge-gold" style={{ position: 'absolute', top: '20px', left: '20px' }}>
+                  <span className="badge-red" style={{ position: 'absolute', top: '20px', left: '20px' }}>
                     {item.badge}
                   </span>
                 )}
@@ -1107,7 +1210,7 @@ export default function MenuPage() {
                     fontWeight: 700,
                     letterSpacing: '0.2em',
                     textTransform: 'uppercase',
-                    color: 'var(--gold)',
+                    color: 'var(--red)',
                   }}>
                     {item.course} — {item.category}
                   </span>
@@ -1162,9 +1265,9 @@ export default function MenuPage() {
                               onClick={() => setSelectedSizes((prev) => ({ ...prev, [item.id]: size }))}
                               style={{
                                 padding: '6px 12px',
-                                background: active ? 'rgba(197,168,92,0.12)' : 'transparent',
-                                border: `1px solid ${active ? 'var(--gold)' : 'var(--dark-border)'}`,
-                                color: active ? 'var(--gold)' : 'var(--text-secondary)',
+                                background: active ? 'rgba(225,29,46,0.12)' : 'transparent',
+                                border: `1px solid ${active ? 'var(--red)' : 'var(--dark-border)'}`,
+                                color: active ? 'var(--red)' : 'var(--text-secondary)',
                                 fontFamily: 'var(--font-sans)',
                                 fontSize: '0.65rem',
                                 fontWeight: 750,
@@ -1194,71 +1297,13 @@ export default function MenuPage() {
                 }}>
                   <span style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: '1.8rem',
-                    color: 'var(--gold)',
+                    fontSize: '2.25rem',
+                    color: 'var(--red)',
                     lineHeight: 1,
                     whiteSpace: 'nowrap',
                   }}>
                     ₹{currentPrice}
                   </span>
-
-                  {/* Cart controls */}
-                  {inCart ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <button
-                        onClick={() => updateQty(cartItemId, inCart.qty - 1)}
-                        style={{
-                          width: '36px', height: '36px',
-                          background: 'rgba(197,168,92,0.1)',
-                          border: '1px solid rgba(197,168,92,0.3)',
-                          color: 'var(--gold)', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--cream)', minWidth: '20px', textAlign: 'center' }}>
-                        {inCart.qty}
-                      </span>
-                      <button
-                        onClick={() => addToCart({ id: item.id, name: `${item.name} (${currentSize.toUpperCase()})`, price: currentPrice, gradient: item.gradient, size: currentSize })}
-                        style={{
-                          width: '36px', height: '36px',
-                          background: 'rgba(197,168,92,0.1)',
-                          border: '1px solid rgba(197,168,92,0.3)',
-                          color: 'var(--gold)', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => addToCart({ id: item.id, name: `${item.name} (${currentSize.toUpperCase()})`, price: currentPrice, gradient: item.gradient, size: currentSize })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '12px 24px',
-                        background: 'var(--gold)',
-                        border: 'none',
-                        color: 'var(--black)',
-                        fontFamily: 'var(--font-sans)',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        letterSpacing: '0.15em',
-                        textTransform: 'uppercase',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--cream)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--gold)'; }}
-                    >
-                      <ShoppingBag size={14} />
-                      Add to Cart
-                    </button>
-                  )}
                 </div>
               </div>
             </div>

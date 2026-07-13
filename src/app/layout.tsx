@@ -25,6 +25,13 @@ const ebGaramond = EB_Garamond({
   display: 'swap',
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: "The London Shakes — Premium Shakes, Burgers & Café",
   description: "The London Shakes — Premium thick shakes, gourmet burgers, crispy waffles, and artisan café experiences. Order online or reserve your table today.",
@@ -67,8 +74,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const content = (
-    <html lang="en" className={`h-full ${cormorant.variable} ${inter.variable} ${ebGaramond.variable}`}>
-      <body className="min-h-full bg-black">
+    <html lang="en" suppressHydrationWarning className={`h-full ${cormorant.variable} ${inter.variable} ${ebGaramond.variable}`}>
+      <body className="min-h-full bg-black" suppressHydrationWarning>
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

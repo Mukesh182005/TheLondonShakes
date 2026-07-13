@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import ScrollReveal from '@/components/ScrollReveal';
 import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import { restaurantInfo as initialRestaurantInfo } from '@/data/restaurantData';
 import { Phone, Mail, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
@@ -48,8 +50,10 @@ export default function ContactPage() {
         {/* Hero */}
         <div style={{ padding:'64px 0 48px', background:`radial-gradient(ellipse 60% 50% at 50% 50%, rgba(197,168,92,0.05) 0%, transparent 70%), transparent`, borderBottom:'1px solid var(--dark-border)' }}>
         <div className="container" style={{ textAlign:'center' }}>
-          <div className="eyebrow" style={{ justifyContent:'center' }}>Get In Touch</div>
-          <h1 className="display-md">Contact <em style={{ color:'var(--gold)', fontStyle:'italic' }}>Us</em></h1>
+          <ScrollReveal>
+            <div className="eyebrow" style={{ justifyContent:'center' }}>Get In Touch</div>
+            <h1 className="display-md">Contact <em className="text-shimmer-gold" style={{ fontStyle:'italic' }}>Us</em></h1>
+          </ScrollReveal>
         </div>
       </div>
 
@@ -57,7 +61,7 @@ export default function ContactPage() {
         <div className="contact-grid" style={{ alignItems:'start' }}>
 
           {/* Info Panel */}
-          <div>
+          <ScrollReveal y={24}>
             <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.6rem', color:'var(--cream)', marginBottom:'32px' }}>
               Come <em style={{ color:'var(--gold)', fontStyle:'italic' }}>find us</em>
             </h2>
@@ -69,10 +73,22 @@ export default function ContactPage() {
                 { icon:<Mail size={18} />, title:'Email', content: restaurantInfo.contact.email, href:`mailto:${restaurantInfo.contact.email}` },
                 { icon:<InstagramIcon />, title:'Instagram', content: restaurantInfo.contact.instagram, href:`https://instagram.com/${restaurantInfo.contact.instagram.replace('@','')}` },
               ].map((item, i) => (
-                <div key={i} style={{ display:'flex', gap:'16px', alignItems:'flex-start' }}>
-                  <div style={{ width:'44px', height:'44px', background:'rgba(197,168,92,0.08)', border:'1px solid rgba(197,168,92,0.2)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--gold)', flexShrink:0 }}>
+                <motion.div
+                  key={i}
+                  style={{ display:'flex', gap:'16px', alignItems:'flex-start' }}
+                  initial={{ opacity: 0, x: -16 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: '-10% 0px' }}
+                  transition={{ duration: 0.6, delay: i * 0.08, ease: [0.19, 1, 0.22, 1] }}
+                  whileHover="hover"
+                >
+                  <motion.div
+                    variants={{ hover: { scale: 1.08, borderColor: 'rgba(197,168,92,0.55)', backgroundColor: 'rgba(197,168,92,0.14)' } }}
+                    transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
+                    style={{ width:'44px', height:'44px', background:'rgba(197,168,92,0.08)', border:'1px solid rgba(197,168,92,0.2)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--gold)', flexShrink:0 }}
+                  >
                     {item.icon}
-                  </div>
+                  </motion.div>
                   <div>
                     <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--text-secondary)', marginBottom:'4px' }}>
                       {item.title}
@@ -87,12 +103,16 @@ export default function ContactPage() {
                       <p style={{ fontSize:'0.9rem', color:'var(--cream)', lineHeight:1.5 }}>{item.content}</p>
                     )}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
             {/* Hours */}
-            <div style={{ padding:'24px', background:'var(--dark-surface)', border:'1px solid var(--dark-border)' }}>
+            <motion.div
+              whileHover={{ borderColor: 'rgba(197,168,92,0.4)', y: -3 }}
+              transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
+              style={{ padding:'24px', background:'var(--dark-surface)', border:'1px solid var(--dark-border)' }}
+            >
               <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px' }}>
                 <Clock size={15} color="var(--gold)" />
                 <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--gold)' }}>Hours</p>
@@ -104,21 +124,33 @@ export default function ContactPage() {
                   <p style={{ fontSize:'0.8rem', color:'var(--text-secondary)' }}>{h.dinner}</p>
                 </div>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </ScrollReveal>
 
           {/* Contact Form */}
-          <div>
+          <ScrollReveal y={24} delay={0.1}>
             {sent ? (
-              <div style={{ textAlign:'center', padding:'80px 40px', border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.06)' }}>
-                <CheckCircle size={48} color="#10b981" style={{ margin:'0 auto 20px' }} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
+                style={{ textAlign:'center', padding:'80px 40px', border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.06)' }}
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.15, ease: [0.34, 1.56, 0.64, 1] }}
+                  style={{ display: 'inline-flex' }}
+                >
+                  <CheckCircle size={48} color="#10b981" style={{ margin:'0 auto 20px' }} />
+                </motion.div>
                 <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.6rem', color:'var(--cream)', marginBottom:'8px' }}>
                   Message Sent
                 </h3>
                 <p style={{ color:'var(--text-secondary)', fontSize:'0.875rem' }}>
                   We'll get back to you within 24 hours.
                 </p>
-              </div>
+              </motion.div>
             ) : (
               <form onSubmit={handleSubmit}>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'16px' }}>
@@ -156,11 +188,11 @@ export default function ContactPage() {
                 </button>
               </form>
             )}
-          </div>
+          </ScrollReveal>
         </div>
 
         {/* Google Maps Embed */}
-        <div style={{ marginTop:'72px', border:'1px solid rgba(197,168,92,0.3)', overflow:'hidden' }}>
+        <ScrollReveal style={{ marginTop:'72px', border:'1px solid rgba(197,168,92,0.3)', overflow:'hidden' }}>
 
           {/* Header bar */}
           <div style={{
@@ -220,7 +252,7 @@ export default function ContactPage() {
             referrerPolicy="no-referrer-when-downgrade"
             title="The London Shakes — Silchar location on Google Maps"
           />
-        </div>
+        </ScrollReveal>
       </div>
       </div>
     </main>

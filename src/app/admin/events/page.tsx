@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useCMSStore, useRestaurantStore } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import ImageUploader from '@/components/ImageUploader';
 import { Plus, Pencil, Trash2, X, Check, Calendar, Clock, Tag, Users, Image as ImageIcon, Sparkles } from 'lucide-react';
 import type { UpcomingEvent, PrivateEventType } from '@/data/restaurantData';
@@ -55,6 +56,7 @@ const EMPTY_PRIVATE_FORM: PrivateEditForm = {
 
 export default function AdminEventsPage() {
   const [activeTab, setActiveTab] = useState<'public' | 'private'>('public');
+  const isMobile = useIsMobile();
 
   // --- Public Events Hook ---
   const upcomingEvents     = useCMSStore((s) => s.upcomingEvents);
@@ -633,7 +635,7 @@ export default function AdminEventsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={LABEL}>Subtitle / Tagline</label>
                   <input
@@ -664,7 +666,7 @@ export default function AdminEventsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={LABEL}>Date *</label>
                   <input
@@ -681,7 +683,7 @@ export default function AdminEventsPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={LABEL}>Price / Entry</label>
                   <input
@@ -769,7 +771,7 @@ export default function AdminEventsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={LABEL}>Subtitle / Eyebrow</label>
                   <input
@@ -813,7 +815,7 @@ export default function AdminEventsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={LABEL}>Icon Badge Symbol</label>
                   <select

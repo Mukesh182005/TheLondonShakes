@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Image as ImageIcon, Upload } from 'lucide-react';
+import ScrollReveal from '@/components/ScrollReveal';
 import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 import type { GalleryItem } from '@/store/restaurantStore';
 
@@ -56,9 +58,11 @@ export default function GalleryPage() {
           }}
         >
           <div className="container">
-            <div className="section-eyebrow" style={{ justifyContent: 'center' }}>Visual Moments</div>
-            <h1 className="section-title" style={{ color: 'var(--cream)' }}>The Media <em>Gallery</em></h1>
-            <div className="gold-divider" />
+            <ScrollReveal>
+              <div className="section-eyebrow" style={{ justifyContent: 'center' }}>Visual Moments</div>
+              <h1 className="section-title" style={{ color: 'var(--cream)' }}>The Media <em className="text-shimmer-gold">Gallery</em></h1>
+              <div className="gold-divider" />
+            </ScrollReveal>
           </div>
         </div>
 
@@ -88,10 +92,15 @@ export default function GalleryPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredItems.map((item) => (
-                <div
+              {filteredItems.map((item, i) => (
+                <motion.div
                   key={item.id}
                   onClick={() => setLightboxItem(item)}
+                  initial={{ opacity: 0, y: 28 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-10% 0px' }}
+                  transition={{ duration: 0.7, delay: (i % 6) * 0.08, ease: [0.19, 1, 0.22, 1] }}
+                  whileHover={{ y: -6 }}
                   style={{
                     background: item.image ? 'transparent' : item.gradient,
                     border: '1px solid var(--dark-border)',
@@ -103,7 +112,7 @@ export default function GalleryPage() {
                     position: 'relative',
                     overflow: 'hidden',
                   }}
-                  className="group food-photo"
+                  className="group food-photo img-zoom-wrap"
                 >
                   {item.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -144,7 +153,7 @@ export default function GalleryPage() {
                       {item.title}
                     </h4>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
@@ -152,8 +161,13 @@ export default function GalleryPage() {
       </div>
 
       {/* Lightbox Modal */}
+      <AnimatePresence>
       {lightboxItem && (
-        <div
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
           style={{
             position: 'fixed', inset: 0, zIndex: 1200,
             background: 'rgba(0, 0, 0, 0.95)',
@@ -164,12 +178,15 @@ export default function GalleryPage() {
         >
           <div onClick={() => setLightboxItem(null)} style={{ position: 'absolute', inset: 0 }} />
 
-          <div
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
             style={{
               maxWidth: '900px', width: '100%',
               background: 'var(--black)', border: '1px solid rgba(201, 168, 76, 0.2)',
               position: 'relative', zIndex: 2,
-              animation: 'scaleIn 0.3s ease-out',
             }}
           >
             {/* Close Button */}
@@ -220,16 +237,10 @@ export default function GalleryPage() {
                 {lightboxItem.desc}
               </p>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
-
-      <style>{`
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
+      </AnimatePresence>
       </div>
     </div>
   );

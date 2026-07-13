@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRestaurantStore } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { Users, ShoppingBag, TrendingUp, Search, ChevronDown } from 'lucide-react';
 
 const statusColor: Record<string, string> = { vip: '#f59e0b', regular: '#3b82f6', new: '#10b981' };
@@ -9,6 +10,7 @@ const statusColor: Record<string, string> = { vip: '#f59e0b', regular: '#3b82f6'
 export default function CustomersPage() {
   const orders       = useRestaurantStore((s) => s.orders);
   const reservations = useRestaurantStore((s) => s.reservations);
+  const isMobile     = useIsMobile();
 
   const [search, setSearch]     = useState('');
   const [sortBy, setSortBy]     = useState<'spent' | 'orders' | 'name'>('spent');
@@ -152,66 +154,99 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {/* Customers Table */}
-      <div style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-        {/* Head */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr 80px',
-          padding: '12px 20px', borderBottom: '1px solid var(--dark-border)',
-          fontFamily: 'var(--font-sans)', fontSize: '0.58rem', fontWeight: 700,
-          letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-muted)',
-        }}>
-          <span>Customer</span>
-          <span>Contact</span>
-          <span>Orders</span>
-          <span>Spent</span>
-          <span>Reservations</span>
-          <span>Status</span>
-        </div>
-
-        {customers.length === 0 ? (
-          <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-            {search ? 'No customers match your search.' : 'No customer data yet. Orders and reservations will appear here.'}
-          </div>
-        ) : (
-          customers.map((c, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr 80px',
-                padding: '14px 20px', alignItems: 'center',
-                borderBottom: idx < customers.length - 1 ? '1px solid var(--dark-border)' : 'none',
-                transition: 'background 0.15s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dark-surface)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              <div>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.86rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px' }}>{c.name}</p>
-                {c.lastOrderAt && (
-                  <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    Last order: {new Date(c.lastOrderAt).toLocaleDateString('en-IN')}
-                  </p>
-                )}
-              </div>
-              <div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>{c.email}</p>
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{c.phone}</p>
-              </div>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--cream)' }}>{c.totalOrders}</p>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--gold)' }}>₹{c.totalSpent.toLocaleString('en-IN')}</p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{c.reservations}</p>
-              <span style={{
-                padding: '3px 8px', fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.1em',
-                textTransform: 'uppercase', background: `${statusColor[c.status]}15`,
-                color: statusColor[c.status], border: `1px solid ${statusColor[c.status]}30`,
-              }}>
-                {c.status.toUpperCase()}
-              </span>
+      {/* Customers Table / Card List */}
+      {isMobile ? (
+        /* Mobile card list */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {customers.length === 0 ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              {search ? 'No customers match your search.' : 'No customer data yet.'}
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            customers.map((c, idx) => (
+              <div key={idx} style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.92rem', fontWeight: 700, color: 'var(--cream)', marginBottom: '2px' }}>{c.name}</p>
+                    {c.lastOrderAt && <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Last: {new Date(c.lastOrderAt).toLocaleDateString('en-IN')}</p>}
+                  </div>
+                  <span style={{ padding: '3px 10px', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', background: `${statusColor[c.status]}15`, color: statusColor[c.status], border: `1px solid ${statusColor[c.status]}30` }}>{c.status.toUpperCase()}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{c.email}</span>
+                  {c.phone !== '—' && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.phone}</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '20px' }}>
+                  <div><p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '2px' }}>ORDERS</p><p style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--cream)' }}>{c.totalOrders}</p></div>
+                  <div><p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '2px' }}>SPENT</p><p style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--gold)' }}>₹{c.totalSpent.toLocaleString('en-IN')}</p></div>
+                  <div><p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '2px' }}>RESERVATIONS</p><p style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--cream)' }}>{c.reservations}</p></div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        /* Desktop table */
+        <div style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+          {/* Head */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr 80px',
+            padding: '12px 20px', borderBottom: '1px solid var(--dark-border)',
+            fontFamily: 'var(--font-sans)', fontSize: '0.58rem', fontWeight: 700,
+            letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-muted)',
+          }}>
+            <span>Customer</span>
+            <span>Contact</span>
+            <span>Orders</span>
+            <span>Spent</span>
+            <span>Reservations</span>
+            <span>Status</span>
+          </div>
+
+          {customers.length === 0 ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              {search ? 'No customers match your search.' : 'No customer data yet. Orders and reservations will appear here.'}
+            </div>
+          ) : (
+            customers.map((c, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr 80px',
+                  padding: '14px 20px', alignItems: 'center',
+                  borderBottom: idx < customers.length - 1 ? '1px solid var(--dark-border)' : 'none',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dark-surface)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <div>
+                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.86rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px' }}>{c.name}</p>
+                  {c.lastOrderAt && (
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                      Last order: {new Date(c.lastOrderAt).toLocaleDateString('en-IN')}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>{c.email}</p>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{c.phone}</p>
+                </div>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--cream)' }}>{c.totalOrders}</p>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--gold)' }}>₹{c.totalSpent.toLocaleString('en-IN')}</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{c.reservations}</p>
+                <span style={{
+                  padding: '3px 8px', fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', background: `${statusColor[c.status]}15`,
+                  color: statusColor[c.status], border: `1px solid ${statusColor[c.status]}30`,
+                }}>
+                  {c.status.toUpperCase()}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

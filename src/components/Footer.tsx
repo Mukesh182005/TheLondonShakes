@@ -9,7 +9,6 @@ import { Phone, Mail, MapPin } from 'lucide-react';
 const footerLinks = {
   explore: [
     { label: 'Our Menu',      href: '/menu' },
-    { label: 'Order Online',  href: '/order' },
     { label: 'Reservations',  href: '/reservations' },
     { label: 'Gallery',       href: '/gallery' },
     { label: 'Events',        href: '/events' },
@@ -67,7 +66,7 @@ export default function Footer() {
                 marginBottom:  '6px',
                 letterSpacing: '0.02em',
               }}>
-                The London <em style={{ fontStyle: 'italic', color: 'var(--gold)', fontWeight: 400 }}>Shakes</em>
+                The London <em style={{ fontStyle: 'italic', color: 'var(--red)', fontWeight: 400 }}>Shakes</em>
               </p>
               <p style={{
                 fontFamily:    'var(--font-sans)',

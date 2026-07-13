@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRestaurantStore, useCMSStore, type Order, type CartItem, type BillAdditive } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { CheckCircle, XCircle, Truck, ShoppingBag, Search, ChevronDown, Trash2, Plus, X, Edit, FileText } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher-client';
 import toast from 'react-hot-toast';
@@ -190,7 +191,6 @@ const printOrderReceipt = (order: Order) => {
       <div class="text-center footer">
         <div class="bold">Thank you for visiting!</div>
         <div>Please visit again.</div>
-        <div style="margin-top: 5px; font-size: 8px;">Software Powered by Antigravity</div>
       </div>
     </body>
     </html>
@@ -229,6 +229,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter]     = useState<string>('all');
+  const isMobile = useIsMobile();
 
   // Order editing states
   const [editOrder, setEditOrder] = useState<Order | null>(null);
@@ -453,7 +454,7 @@ export default function OrdersPage() {
         </div>
         {[
           { label: 'Status', val: statusFilter, set: setStatusFilter, opts: ['all', 'confirmed', 'preparing', 'out for delivery', 'delivered', 'cancelled'] },
-          { label: 'Type',   val: typeFilter,   set: setTypeFilter,   opts: ['all', 'pickup', 'delivery', 'dine-in'] },
+          { label: 'Type',   val: typeFilter,   set: setTypeFilter,   opts: ['all', 'pickup', 'dine-in'] },
         ].map(({ label, val, set, opts }) => (
           <div key={label} style={{ position: 'relative' }}>
             <select
@@ -499,7 +500,7 @@ export default function OrdersPage() {
                     background: `${STATUS_COLOR[order.status]}15`, color: STATUS_COLOR[order.status], border: `1px solid ${STATUS_COLOR[order.status]}30`,
                   }}>{order.status}</span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                    {order.type === 'delivery' ? <Truck size={12} style={{ display: 'inline', marginRight: '4px' }} /> : <ShoppingBag size={12} style={{ display: 'inline', marginRight: '4px' }} />}
+                    <ShoppingBag size={12} style={{ display: 'inline', marginRight: '4px' }} />
                     {order.type}
                   </span>
                   {order.tableNumber && (
@@ -515,16 +516,11 @@ export default function OrdersPage() {
               </div>
 
               {/* Customer + Items */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px' }}>
                 <div>
                   <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>Customer</p>
                   <p style={{ fontSize: '0.85rem', color: 'var(--cream)', marginBottom: '2px' }}>{order.customerName || order.address.name || 'Guest'}</p>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{order.address.phone || '—'}</p>
-                  {order.type === 'delivery' && order.address.street && (
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      {order.address.flat} {order.address.street}, {order.address.city}
-                    </p>
-                  )}
                 </div>
                 <div>
                   <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>Items ({order.items.filter(i => !i.isAdditive && i.id !== 'discount' && i.id !== 'tax-cgst' && i.id !== 'tax-sgst').length})</p>

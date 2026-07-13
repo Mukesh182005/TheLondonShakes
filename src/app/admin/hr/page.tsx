@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Clock, Star, Plus, Search, Pencil, Trash2, X, Check, ChevronDown } from 'lucide-react';
 import { useIsMounted } from '@/store/restaurantStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 type Staff = {
   id:         string;
@@ -70,6 +71,7 @@ export default function HRPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EditForm>(EMPTY_FORM);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const saveStaffList = (list: Staff[]) => {
     setStaffList(list);
@@ -162,126 +164,112 @@ export default function HRPage() {
         />
       </div>
 
-      {/* Table */}
-      <div style={{ background:'var(--dark-card)', border:'1px solid var(--dark-border)', overflow:'hidden' }}>
-        {/* Table Header */}
-        <div style={{
-          display:'grid', gridTemplateColumns:'1fr 120px 160px 100px 80px 80px',
-          padding:'12px 20px', borderBottom:'1px solid var(--dark-border)',
-          background:'var(--dark-surface)',
-        }}>
-          {['Team Member','Status','Shift','Attendance','Rating','Actions'].map((h) => (
-            <p key={h} style={{ fontFamily:'var(--font-sans)', fontSize:'0.58rem', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--text-secondary)' }}>{h}</p>
-          ))}
-        </div>
-
-        {/* Rows */}
-        {filtered.length === 0 ? (
-          <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-            No staff found matching the query.
-          </div>
-        ) : (
-          filtered.map((s, i) => {
-            const cfg = STATUS_CFG[s.status];
-            return (
-              <div key={s.id} style={{
-                display:'grid', gridTemplateColumns:'1fr 120px 160px 100px 80px 80px',
-                padding:'16px 20px',
-                borderBottom: i < filtered.length - 1 ? '1px solid var(--dark-border)' : 'none',
-                alignItems:'center',
-              }}>
-                {/* Name */}
-                <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
-                  <div style={{
-                    width:'38px', height:'38px', flexShrink:0,
-                    background:'rgba(197,168,92,0.1)', border:'1px solid rgba(197,168,92,0.2)',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontFamily:'var(--font-sans)', fontSize:'0.78rem', fontWeight:700, color:'var(--gold)',
-                  }}>
-                    {s.name.split(' ').map((n) => n[0]).join('').slice(0,2)}
-                  </div>
-                  <div>
-                    <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.84rem', fontWeight:600, color:'var(--cream)', marginBottom:'2px' }}>{s.name}</p>
-                    <p style={{ fontSize:'0.72rem', color:'var(--text-secondary)' }}>{s.role}</p>
-                  </div>
-                </div>
-
-                {/* Status */}
-                <span style={{
-                  padding:'3px 10px', fontSize:'0.58rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase',
-                  color: cfg.color, background:`${cfg.color}14`, border:`1px solid ${cfg.color}30`,
-                  width:'fit-content',
-                }}>
-                  {cfg.label}
-                </span>
-
-                {/* Shift */}
-                <div style={{ display:'flex', alignItems:'center', gap:'6px', color:'var(--text-secondary)' }}>
-                  <Clock size={12} />
-                  <span style={{ fontSize:'0.75rem' }}>{s.shift}</span>
-                </div>
-
-                {/* Attendance */}
-                <div>
-                  <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.82rem', fontWeight:600, color: s.attendance >= 90 ? '#10b981' : s.attendance >= 80 ? '#f59e0b' : '#ef4444' }}>
-                    {s.attendance}%
-                  </p>
-                  <div style={{ height:'3px', background:'var(--dark-border-2)', borderRadius:'2px', marginTop:'4px', width:'60px' }}>
-                    <div style={{ height:'3px', width:`${s.attendance}%`, background: s.attendance >= 90 ? '#10b981' : s.attendance >= 80 ? '#f59e0b' : '#ef4444', borderRadius:'2px' }} />
-                  </div>
-                </div>
-
-                {/* Rating */}
-                <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
-                  <Star size={12} fill="var(--gold)" color="var(--gold)" />
-                  <span style={{ fontFamily:'var(--font-sans)', fontSize:'0.82rem', fontWeight:600, color:'var(--cream)' }}>{s.rating}</span>
-                </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button
-                    onClick={() => openEdit(s)}
-                    title="Edit"
-                    style={{
-                      width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)',
-                      cursor: 'pointer', transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--gold)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.4)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)'; }}
-                  >
-                    <Pencil size={13} />
-                  </button>
-                  {confirmDel === s.id ? (
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button onClick={() => handleDelete(s.id)} title="Confirm delete" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer' }}>
-                        <Check size={13} />
-                      </button>
-                      <button onClick={() => setConfirmDel(null)} title="Cancel" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                        <X size={13} />
-                      </button>
+      {/* Staff table / card list */}
+      {isMobile ? (
+        /* Mobile card list */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>No staff found matching the query.</div>
+          ) : (
+            filtered.map((s) => {
+              const cfg = STATUS_CFG[s.status];
+              return (
+                <div key={s.id} style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '44px', height: '44px', flexShrink: 0, background: 'rgba(197,168,92,0.1)', border: '1px solid rgba(197,168,92,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-sans)', fontSize: '0.82rem', fontWeight: 700, color: 'var(--gold)' }}>
+                        {s.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                      </div>
+                      <div>
+                        <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.92rem', fontWeight: 700, color: 'var(--cream)', marginBottom: '2px' }}>{s.name}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{s.role}</p>
+                      </div>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDel(s.id)}
-                      title="Delete"
-                      style={{
-                        width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)',
-                        cursor: 'pointer', transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.4)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)'; }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
+                    <span style={{ padding: '3px 10px', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: cfg.color, background: `${cfg.color}14`, border: `1px solid ${cfg.color}30` }}>{cfg.label}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}><Clock size={13} /><span style={{ fontSize: '0.78rem' }}>{s.shift}</span></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Star size={13} fill="var(--gold)" color="var(--gold)" /><span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--cream)' }}>{s.rating}</span></div>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: s.attendance >= 90 ? '#10b981' : s.attendance >= 80 ? '#f59e0b' : '#ef4444' }}>{s.attendance}% attendance</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => openEdit(s)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontFamily: 'var(--font-sans)', fontSize: '0.72rem' }}><Pencil size={13} /> Edit</button>
+                    {confirmDel === s.id ? (
+                      <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
+                        <button onClick={() => handleDelete(s.id)} style={{ flex: 1, padding: '10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontFamily: 'var(--font-sans)', fontSize: '0.72rem' }}><Check size={13} /> Confirm</button>
+                        <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontFamily: 'var(--font-sans)', fontSize: '0.72rem' }}><X size={13} /> Cancel</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDel(s.id)} style={{ padding: '10px 16px', background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'var(--font-sans)', fontSize: '0.72rem' }}><Trash2 size={13} /></button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        /* Desktop table */
+        <div style={{ background:'var(--dark-card)', border:'1px solid var(--dark-border)', overflow:'hidden' }}>
+          {/* Table Header */}
+          <div style={{
+            display:'grid', gridTemplateColumns:'1fr 120px 160px 100px 80px 80px',
+            padding:'12px 20px', borderBottom:'1px solid var(--dark-border)',
+            background:'var(--dark-surface)',
+          }}>
+            {['Team Member','Status','Shift','Attendance','Rating','Actions'].map((h) => (
+              <p key={h} style={{ fontFamily:'var(--font-sans)', fontSize:'0.58rem', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--text-secondary)' }}>{h}</p>
+            ))}
+          </div>
+
+          {/* Rows */}
+          {filtered.length === 0 ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>No staff found matching the query.</div>
+          ) : (
+            filtered.map((s, i) => {
+              const cfg = STATUS_CFG[s.status];
+              return (
+                <div key={s.id} style={{
+                  display:'grid', gridTemplateColumns:'1fr 120px 160px 100px 80px 80px',
+                  padding:'16px 20px',
+                  borderBottom: i < filtered.length - 1 ? '1px solid var(--dark-border)' : 'none',
+                  alignItems:'center',
+                }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
+                    <div style={{ width:'38px', height:'38px', flexShrink:0, background:'rgba(197,168,92,0.1)', border:'1px solid rgba(197,168,92,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-sans)', fontSize:'0.78rem', fontWeight:700, color:'var(--gold)' }}>
+                      {s.name.split(' ').map((n) => n[0]).join('').slice(0,2)}
+                    </div>
+                    <div>
+                      <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.84rem', fontWeight:600, color:'var(--cream)', marginBottom:'2px' }}>{s.name}</p>
+                      <p style={{ fontSize:'0.72rem', color:'var(--text-secondary)' }}>{s.role}</p>
+                    </div>
+                  </div>
+                  <span style={{ padding:'3px 10px', fontSize:'0.58rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color: cfg.color, background:`${cfg.color}14`, border:`1px solid ${cfg.color}30`, width:'fit-content' }}>{cfg.label}</span>
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px', color:'var(--text-secondary)' }}><Clock size={12} /><span style={{ fontSize:'0.75rem' }}>{s.shift}</span></div>
+                  <div>
+                    <p style={{ fontFamily:'var(--font-sans)', fontSize:'0.82rem', fontWeight:600, color: s.attendance >= 90 ? '#10b981' : s.attendance >= 80 ? '#f59e0b' : '#ef4444' }}>{s.attendance}%</p>
+                    <div style={{ height:'3px', background:'var(--dark-border-2)', borderRadius:'2px', marginTop:'4px', width:'60px' }}>
+                      <div style={{ height:'3px', width:`${s.attendance}%`, background: s.attendance >= 90 ? '#10b981' : s.attendance >= 80 ? '#f59e0b' : '#ef4444', borderRadius:'2px' }} />
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:'4px' }}><Star size={12} fill="var(--gold)" color="var(--gold)" /><span style={{ fontFamily:'var(--font-sans)', fontSize:'0.82rem', fontWeight:600, color:'var(--cream)' }}>{s.rating}</span></div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => openEdit(s)} title="Edit" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--gold)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.4)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)'; }}><Pencil size={13} /></button>
+                    {confirmDel === s.id ? (
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button onClick={() => handleDelete(s.id)} title="Confirm delete" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer' }}><Check size={13} /></button>
+                        <button onClick={() => setConfirmDel(null)} title="Cancel" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={13} /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDel(s.id)} title="Delete" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.4)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)'; }}><Trash2 size={13} /></button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Add / Edit Form Modal */}
       {showForm && (
