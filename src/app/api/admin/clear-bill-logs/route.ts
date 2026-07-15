@@ -8,6 +8,15 @@ export async function POST(req: NextRequest) {
       where: { action: 'BILL_EDITED' },
     });
 
+    // Record log of clearing bill logs
+    await prisma.auditLog.create({
+      data: {
+        action: 'CLEAR_BILL_LOGS',
+        details: `Cleared ${result.count} bill modification log(s).`,
+        adminEmail: 'Super Admin | thelondonshakessilchar@gmail.com',
+      },
+    }).catch(() => {});
+
     return NextResponse.json({
       success: true,
       message: `Cleared ${result.count} bill modification log(s).`,

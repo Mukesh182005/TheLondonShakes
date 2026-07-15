@@ -264,6 +264,23 @@ export const useRestaurantStore = create<RestaurantState>()(
         set((state) => ({
           reservations: [newRes, ...state.reservations],
         }));
+
+        // Log action to DB
+        try {
+          const user = get().user;
+          fetch('/api/admin/logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'ADD_RESERVATION',
+              details: `Added new reservation ID: ${id} for ${res.name} (guests: ${res.guests}) on ${res.date} at ${res.time}.`,
+              adminEmail: user?.email || 'unknown@thelondon.co.uk',
+            }),
+          }).catch(() => {});
+        } catch (e) {
+          console.warn('Failed to log reservation addition:', e);
+        }
+
         return id;
       },
       cancelReservation: (id) => {
@@ -272,6 +289,25 @@ export const useRestaurantStore = create<RestaurantState>()(
             r.id === id ? { ...r, status: 'cancelled' as const } : r
           ),
         }));
+
+        // Log action to DB
+        try {
+          const user = get().user;
+          const res = get().reservations.find((r) => r.id === id);
+          if (res) {
+            fetch('/api/admin/logs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'CANCEL_RESERVATION',
+                details: `Cancelled reservation ID: ${id} for ${res.name} on ${res.date} at ${res.time}.`,
+                adminEmail: user?.email || 'unknown@thelondon.co.uk',
+              }),
+            }).catch(() => {});
+          }
+        } catch (e) {
+          console.warn('Failed to log reservation cancellation:', e);
+        }
       },
 
       orders: [],
@@ -394,6 +430,23 @@ export const useRestaurantStore = create<RestaurantState>()(
           }).catch(() => {/* silent */});
         }
 
+        // Log action to DB
+        try {
+          const user = get().user;
+          const actor = user ? `Admin (${user.name})` : `Customer (${newOrder.address.name})`;
+          fetch('/api/admin/logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'PLACE_ORDER',
+              details: `Placed new order ${id} (${newOrder.type}) via ${newOrder.paymentMethod}. Total: ₹${newOrder.total}. Actor: ${actor}`,
+              adminEmail: user?.email || newOrder.address.email || 'customer@thelondon.co.uk',
+            }),
+          }).catch(() => {});
+        } catch (e) {
+          console.warn('Failed to log order placement:', e);
+        }
+
         get().clearCart();
         return id;
       },
@@ -411,6 +464,22 @@ export const useRestaurantStore = create<RestaurantState>()(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orderId: id, status }),
         }).catch(err => console.warn('Failed to sync status update:', err));
+
+        // Log order status change
+        try {
+          const user = get().user;
+          fetch('/api/admin/logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'UPDATE_ORDER_STATUS',
+              details: `Updated order ${id} status to "${status}".`,
+              adminEmail: user?.email || 'unknown@thelondon.co.uk',
+            }),
+          }).catch(() => {});
+        } catch (e) {
+          console.warn('Failed to log order status change:', e);
+        }
       },
       updateOrder: (id, status) => {
         set((state) => ({
@@ -421,6 +490,22 @@ export const useRestaurantStore = create<RestaurantState>()(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orderId: id, status }),
         }).catch(err => console.warn('Failed to sync status update:', err));
+
+        // Log order status change
+        try {
+          const user = get().user;
+          fetch('/api/admin/logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'UPDATE_ORDER_STATUS',
+              details: `Updated order ${id} status to "${status}".`,
+              adminEmail: user?.email || 'unknown@thelondon.co.uk',
+            }),
+          }).catch(() => {});
+        } catch (e) {
+          console.warn('Failed to log order status change:', e);
+        }
       },
       updateOrderPaymentStatus: (id, status) => {
         set((state) => ({
@@ -431,6 +516,22 @@ export const useRestaurantStore = create<RestaurantState>()(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orderId: id, paymentStatus: status }),
         }).catch(err => console.warn('Failed to sync payment status update:', err));
+
+        // Log order payment status change
+        try {
+          const user = get().user;
+          fetch('/api/admin/logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'UPDATE_ORDER_PAYMENT',
+              details: `Updated order ${id} payment status to "${status}".`,
+              adminEmail: user?.email || 'unknown@thelondon.co.uk',
+            }),
+          }).catch(() => {});
+        } catch (e) {
+          console.warn('Failed to log order payment status change:', e);
+        }
       },
       clearOrders: () => {
         set({ 

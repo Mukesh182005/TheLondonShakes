@@ -17,13 +17,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Access Denied: Only the Super Admin (Owner) can clear transaction proofs.' }, { status: 403 });
     }
 
-    await prisma.order.updateMany({
-      data: {
-        receiptPhoto: null as any,
-      },
-    });
+    await prisma.order.deleteMany({});
 
-    return NextResponse.json({ success: true, message: 'All transaction proof photos cleared successfully.' });
+    return NextResponse.json({ success: true, message: 'All transaction records and proof photos cleared successfully.' });
   } catch (error) {
     console.error('Failed to clear transaction photos:', error);
     return NextResponse.json({ success: false, error: 'Failed to clear photos' }, { status: 500 });

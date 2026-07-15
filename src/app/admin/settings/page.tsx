@@ -253,6 +253,7 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!newPasscode.trim()) return;
 
+    const passcodeValue = newPasscode; // copy before clearing
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
@@ -265,13 +266,13 @@ export default function SettingsPage() {
         setNewPasscode('');
         setTimeout(() => setPasscodeSaved(false), 3000);
 
-        // Log passcode change
+        // Log passcode change (with the new passcode value)
         fetch('/api/admin/logs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'EDIT_SETTINGS',
-            details: 'Owner passcode updated successfully.',
+            details: `Owner passcode updated successfully to "${passcodeValue}".`,
             adminEmail: user?.email || 'unknown@thelondon.co.uk',
           }),
         }).catch((err) => console.warn('Failed to log passcode change:', err));
@@ -294,17 +295,22 @@ export default function SettingsPage() {
       updateMenuCategory(cat.id, cat);
     });
 
+    // Create detailed text log of changes
+    const detailsList = [];
+    detailsList.push(`Restaurant Name: "${info.name}", Tagline: "${info.tagline}"`);
+    detailsList.push(`Contact Phone: "${contact.phone}", Email: "${contact.email}"`);
+    detailsList.push(`Location Address: "${location.fullAddress}"`);
+    detailsList.push(`Chef Name: "${chefInfo.name}", Chef Title: "${chefInfo.title}"`);
+    detailsList.push(`Homepage Title: "${homepage.heroTitleLine1} ${homepage.heroTitleLine2}", Tagline: "${homepage.heroTagline}"`);
+    const detailsText = `Updated site settings: ${detailsList.join(' | ')}`;
+
     // Log changes to DB
     fetch('/api/admin/logs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'EDIT_SETTINGS',
-        details: {
-          restaurantName: info.name,
-          tagline: info.tagline,
-          chefName: chefInfo.name,
-        },
+        details: detailsText,
         adminEmail: user?.email || 'unknown@thelondon.co.uk',
       }),
     }).catch((err) => console.warn('Failed to log settings changes:', err));

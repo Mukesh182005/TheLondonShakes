@@ -102,11 +102,31 @@ export async function PATCH(req: NextRequest) {
     updateData.passwordHash = await bcrypt.hash(password, 12);
   }
 
+  const oldAccount = await prisma.staffAccount.findUnique({ where: { id } });
+  if (!oldAccount) {
+    return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+  }
+
   const account = await prisma.staffAccount.update({
     where: { id },
     data: updateData,
     select: { id: true, name: true, email: true, role: true, active: true, updatedAt: true },
   });
+
+  // Audit log
+  const changedFields: string[] = [];
+  if (name !== undefined) changedFields.push(`name to "${name}"`);
+  if (role !== undefined) changedFields.push(`role to "${role}"`);
+  if (active !== undefined) changedFields.push(`status active to "${active}"`);
+  if (password) changedFields.push(`password`);
+
+  await prisma.auditLog.create({
+    data: {
+      action: 'UPDATE_STAFF_ACCOUNT',
+      details: `Updated staff account for ${account.email}. Changed: ${changedFields.join(', ')}`,
+      adminEmail: SUPER_ADMIN_EMAIL,
+    },
+  }).catch(() => {});
 
   return NextResponse.json({ success: true, account });
 }
@@ -120,15 +140,18 @@ export async function DELETE(req: NextRequest) {
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
-  await prisma.staffAccount.delete({ where: { id } });
+  const oldAccount = await prisma.staffAccount.findUnique({ where: { id } });
+  if (oldAccount) {
+    await prisma.staffAccount.delete({ where: { id } });
 
-  await prisma.auditLog.create({
-    data: {
-      action: 'DELETE_STAFF_ACCOUNT',
-      details: `Deleted staff account id=${id}`,
-      adminEmail: SUPER_ADMIN_EMAIL,
-    },
-  }).catch(() => {});
+    await prisma.auditLog.create({
+      data: {
+        action: 'DELETE_STAFF_ACCOUNT',
+        details: `Deleted staff account for ${oldAccount.email} (${oldAccount.name}, role: ${oldAccount.role})`,
+        adminEmail: SUPER_ADMIN_EMAIL,
+      },
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ success: true });
 }

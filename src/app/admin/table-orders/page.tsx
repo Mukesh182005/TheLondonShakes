@@ -940,6 +940,431 @@ export default function TableOrdersPage() {
             </button>
           ))}
         </div>
+
+        {/* Bill Modal (Mobile Viewport Rendering) */}
+        {showBillModal && (() => {
+          const order = tableOrders.find((t) => t.tableNumber === showBillModal);
+          if (!order) return null;
+          
+          const subtotal = order.items.reduce((s: number, i: CartItem) => s + i.price * i.qty, 0);
+          const additivesList = order.additives || [];
+          
+          const calculatedAdditives = additivesList.map((add) => {
+            let val = 0;
+            if (add.type === 'percentage') {
+              val = Math.round(subtotal * (add.value / 100));
+            } else {
+              val = add.value;
+            }
+            return { ...add, calculatedValue: val };
+          });
+
+          const additivesSum = calculatedAdditives.reduce((sum, add) => sum + add.calculatedValue, 0);
+          const grandTotal = subtotal + additivesSum;
+
+          const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                setReceiptPhoto(reader.result as string);
+                toast.success("Transaction receipt photo captured!");
+              };
+              reader.readAsDataURL(file);
+            }
+          };
+
+          const handleSimulatePhoto = () => {
+            setReceiptPhoto("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='200' viewBox='0 0 150 200'><rect width='100%' height='100%' fill='%2310b981'/><text x='15' y='40' fill='white' font-family='sans-serif' font-weight='bold' font-size='12'>TRANSACTION SLIP</text><text x='15' y='70' fill='white' font-family='sans-serif' font-size='10'>Amount: INR " + grandTotal + "</text><text x='15' y='90' fill='white' font-family='sans-serif' font-size='10'>Status: SUCCESS</text><text x='15' y='110' fill='white' font-family='sans-serif' font-size='9'>Txn ID: 987654321098</text></svg>");
+            toast.success("Simulated receipt photo loaded!");
+          };
+
+          return (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+              <style>{`
+                @keyframes laser-move {
+                  0%, 100% { transform: translateY(0); }
+                  50% { transform: translateY(180px); }
+                }
+                @keyframes pulse-light {
+                  0%, 100% { opacity: 0.3; }
+                  50% { opacity: 0.8; }
+                }
+              `}</style>
+              <div style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+                
+                {/* Modal Header */}
+                <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--dark-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                  <div>
+                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: 'var(--cream)', margin: 0 }}>Checkout — {order.tableNumber}</h2>
+                    <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>PAY BEFORE FOOD SYSTEM</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setShowBillModal(null);
+                      setBillPaymentMethod(null);
+                      setUpiProvider(null);
+                      setReceiptPhoto(null);
+                    }} 
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+                  
+                  {/* ── Bill Summary (Collapsed) ── */}
+                  <div style={{ background: 'var(--dark-surface)', padding: '12px 16px', border: '1px solid var(--dark-border)', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                      <span>Table Subtotal:</span>
+                      <span>₹{subtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    {calculatedAdditives.map((add) => (
+                      <div key={add.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                        <span>{add.name}:</span>
+                        <span>{add.calculatedValue < 0 ? '-' : ''}₹{Math.abs(add.calculatedValue)}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed var(--dark-border)', marginTop: '8px', paddingTop: '8px' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--cream)' }}>Grand Total:</span>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>₹{grandTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  {/* ── STEP 1: Select Payment Method ── */}
+                  {!billPaymentMethod && (
+                    <div>
+                      <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Select Payment Type</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <button
+                          onClick={() => setBillPaymentMethod('cod')}
+                          style={{
+                            padding: '24px 16px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)',
+                            color: 'var(--cream)', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px'
+                          }}
+                        >
+                          <span style={{ fontSize: '1.8rem' }}>💵</span>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Cash at Counter</span>
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>Pay cash directly</span>
+                        </button>
+
+                        <button
+                          onClick={() => setBillPaymentMethod('upi')}
+                          style={{
+                            padding: '24px 16px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)',
+                            color: 'var(--cream)', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px'
+                          }}
+                        >
+                          <span style={{ fontSize: '1.8rem' }}>📱</span>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Scan & Pay (UPI)</span>
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>Google Pay / PhonePe</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── STEP 2: UPI flow ── */}
+                  {billPaymentMethod === 'upi' && (
+                    <div>
+                      <button 
+                        onClick={() => {
+                          setBillPaymentMethod(null);
+                          setUpiProvider(null);
+                          setReceiptPhoto(null);
+                        }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '14px', padding: 0 }}
+                      >
+                        ← Back to payment methods
+                      </button>
+
+                      {!upiProvider && (
+                        <div>
+                          <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Choose UPI Provider</p>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <button
+                              onClick={() => setUpiProvider('gpay')}
+                              style={{
+                                padding: '16px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)',
+                                color: 'var(--cream)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px'
+                              }}
+                            >
+                              <span style={{ fontSize: '1.4rem' }}>📱</span>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Google Pay</span>
+                              <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)' }}>Show Google Pay QR</span>
+                            </button>
+
+                            <button
+                              onClick={() => setUpiProvider('phonepe')}
+                              style={{
+                                padding: '16px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)',
+                                color: 'var(--cream)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px'
+                              }}
+                            >
+                              <span style={{ fontSize: '1.4rem' }}>🔳</span>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>PhonePe QR</span>
+                              <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)' }}>Show PhonePe QR</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {upiProvider === 'gpay' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '10px' }}>
+                          <div style={{ background: '#fff', padding: '10px', border: '4px solid #fff', display: 'inline-block' }}>
+                            <img 
+                              src="/gpay-qr.jpg" 
+                              alt="Google Pay QR Code" 
+                              style={{ width: '180px', height: 'auto', display: 'block' }}
+                            />
+                          </div>
+                          <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Show GPay QR to the customer to scan
+                          </p>
+                          <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                            UPI ID: gpay-11251382996@okbizaxis
+                          </span>
+                        </div>
+                      )}
+
+                      {upiProvider === 'phonepe' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '10px' }}>
+                          <div style={{ background: '#fff', padding: '10px', border: '4px solid #fff', display: 'inline-block' }}>
+                            <img 
+                              src="/phonepe-qr.jpg" 
+                              alt="PhonePe Payment QR Code" 
+                              style={{ width: '180px', height: 'auto', display: 'block' }}
+                            />
+                          </div>
+                          <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Show PhonePe QR code to the customer to scan
+                          </p>
+                        </div>
+                      )}
+
+                      {upiProvider && requireReceiptPhoto && (
+                        <div style={{ marginTop: '20px', borderTop: '1px solid var(--dark-border)', paddingTop: '16px' }}>
+                          <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+                            📷 Transaction Proof (Receipt Photo) <span style={{ color: '#ef4444' }}>*</span>
+                          </p>
+
+                          {!receiptPhoto ? (
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => document.getElementById('receipt-capture-input-mobile')?.click()}
+                                style={{
+                                  flex: 1, padding: '10px', background: 'var(--dark-surface)', border: '1px dashed var(--gold)',
+                                  color: 'var(--gold)', fontFamily: 'var(--font-sans)', fontSize: '0.7rem', fontWeight: 700,
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                }}
+                              >
+                                Take / Upload Photo
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSimulatePhoto}
+                                style={{ padding: '10px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', fontSize: '0.7rem', cursor: 'pointer' }}
+                              >
+                                Simulate
+                              </button>
+                              <input 
+                                id="receipt-capture-input-mobile"
+                                type="file" 
+                                accept="image/*" 
+                                capture="environment"
+                                onChange={handlePhotoUpload}
+                                style={{ display: 'none' }}
+                              />
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--dark-surface)', padding: '10px', border: '1px solid var(--dark-border)' }}>
+                              <img src={receiptPhoto} alt="Receipt proof" style={{ width: '45px', height: '60px', objectFit: 'cover', border: '1px solid var(--dark-border-2)' }} />
+                              <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 600, margin: 0 }}>Receipt Photo Captured</p>
+                                <span style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Ready for verification</span>
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => setReceiptPhoto(null)}
+                                style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 'bold' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {billPaymentMethod === 'cod' && (
+                    <div>
+                      <button 
+                        onClick={() => {
+                          setBillPaymentMethod(null);
+                          setReceiptPhoto(null);
+                        }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '14px', padding: 0 }}
+                      >
+                        ← Back to payment methods
+                      </button>
+                      
+                      <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '16px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '2rem' }}>💵</span>
+                        <h3 style={{ fontSize: '0.9rem', color: 'var(--cream)', margin: '8px 0 4px 0', fontWeight: 700 }}>Counter Pay Selected</h3>
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0 }}>
+                          Verify and accept cash at the counter before marking the order as paid.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Modal Footer */}
+                <div style={{ padding: '16px 20px', borderTop: '1px solid var(--dark-border)', display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: 0 }}>
+                  <button
+                    onClick={() => printThermalReceipt(order)}
+                    style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid var(--gold)', color: 'var(--gold)', fontFamily: 'var(--font-sans)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <ShoppingBag size={12} /> Print Receipt / Save PDF
+                  </button>
+
+                  <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                    <button
+                      onClick={() => {
+                        setShowBillModal(null);
+                        setBillPaymentMethod(null);
+                        setUpiProvider(null);
+                        setReceiptPhoto(null);
+                      }}
+                      style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => markPaid(showBillModal!, billPaymentMethod || 'cod')}
+                      disabled={!billPaymentMethod || (billPaymentMethod === 'upi' && requireReceiptPhoto && !receiptPhoto)}
+                      style={{
+                        flex: 1, padding: '11px', background: (billPaymentMethod && (billPaymentMethod !== 'upi' || !requireReceiptPhoto || receiptPhoto)) ? 'var(--gold)' : 'var(--dark-surface)',
+                        border: 'none', color: (billPaymentMethod && (billPaymentMethod !== 'upi' || !requireReceiptPhoto || receiptPhoto)) ? 'var(--black)' : 'var(--text-muted)',
+                        fontFamily: 'var(--font-sans)', fontSize: '0.7rem', fontWeight: 700,
+                        letterSpacing: '0.08em', textTransform: 'uppercase',
+                        cursor: (billPaymentMethod && (billPaymentMethod !== 'upi' || !requireReceiptPhoto || receiptPhoto)) ? 'pointer' : 'not-allowed',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
+                      }}
+                    >
+                      <Check size={14} /> Place Order
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Portion Selection Modal (Mobile Viewport Rendering) */}
+        {portionSelect && (() => {
+          const item = portionSelect.item;
+          const portions = item.portions || {
+            small: { available: false, price: 0 },
+            medium: { available: true, price: item.price },
+            large: { available: false, price: 0 }
+          };
+          return (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300,
+              padding: '16px', backdropFilter: 'blur(4px)'
+            }}>
+              <div style={{
+                background: 'var(--dark-card)', border: '1px solid var(--dark-border)',
+                width: '100%', maxWidth: '380px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: 'var(--cream)', margin: 0 }}>
+                    Select Portion Size
+                  </h3>
+                  <button
+                    onClick={() => setPortionSelect(null)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  Choose the size for <strong style={{ color: 'var(--cream)' }}>{item.name}</strong>:
+                </p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                  {(['small', 'medium', 'large'] as const).map((size) => {
+                    const config = portions[size];
+                    if (!config?.available) return null;
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          addItemWithPortion(item, size, config.price);
+                          setPortionSelect(null);
+                        }}
+                        style={{
+                          padding: '14px',
+                          background: 'var(--dark-surface)',
+                          border: '1px solid var(--dark-border)',
+                          color: 'var(--cream)',
+                          fontFamily: 'var(--font-sans)',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          textTransform: 'capitalize',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--gold)';
+                          e.currentTarget.style.background = 'rgba(197,168,92,0.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--dark-border)';
+                          e.currentTarget.style.background = 'var(--dark-surface)';
+                        }}
+                      >
+                        <span>{size} Portion</span>
+                        <span style={{ color: 'var(--gold)' }}>₹{config.price}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => setPortionSelect(null)}
+                  style={{
+                    padding: '10px',
+                    background: 'transparent',
+                    border: '1px solid var(--dark-border)',
+                    color: 'var(--text-secondary)',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginTop: '6px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }

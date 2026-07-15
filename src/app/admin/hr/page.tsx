@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Clock, Star, Plus, Search, Pencil, Trash2, X, Check, ChevronDown } from 'lucide-react';
-import { useIsMounted } from '@/store/restaurantStore';
+import { useIsMounted, useRestaurantStore } from '@/store/restaurantStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 type Staff = {
@@ -100,11 +100,17 @@ export default function HRPage() {
     setShowForm(true);
   };
 
+  const user = useRestaurantStore((s) => s.user);
+
   const handleSave = () => {
     if (!form.name.trim() || !form.role.trim()) return;
     let newList: Staff[];
+    let actionType = '';
+    let detailsText = '';
     if (editingId) {
       newList = staffList.map((s) => (s.id === editingId ? { ...s, ...form } as Staff : s));
+      actionType = 'EDIT_STAFF';
+      detailsText = `Updated staff member "${form.name}" (Role: ${form.role}, Email: ${form.email}, Status: ${form.status}, Shift: ${form.shift}).`;
     } else {
       const newStaff: Staff = {
         ...form,
@@ -112,15 +118,42 @@ export default function HRPage() {
         joinDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
       } as Staff;
       newList = [...staffList, newStaff];
+      actionType = 'ADD_STAFF';
+      detailsText = `Added new staff member "${form.name}" (Role: ${form.role}, Email: ${form.email}, Shift: ${form.shift}).`;
     }
     saveStaffList(newList);
+
+    // Log action to DB
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: actionType,
+        details: detailsText,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log staff change:', err));
+
     setShowForm(false);
     setEditingId(null);
   };
 
   const handleDelete = (id: string) => {
+    const staff = staffList.find((s) => s.id === id);
     const newList = staffList.filter((s) => s.id !== id);
     saveStaffList(newList);
+
+    // Log action to DB
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'DELETE_STAFF',
+        details: `Removed staff member "${staff?.name || id}" (Role: ${staff?.role || 'unknown'}).`,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch((err) => console.warn('Failed to log staff deletion:', err));
+
     setConfirmDel(null);
   };
 

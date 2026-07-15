@@ -40,6 +40,7 @@ const navGroups = [
       { label: 'Site Settings', href: '/admin/settings',   icon: Settings },
       { label: 'Analytics',       href: '/admin/analytics', icon: BarChart2 },
       { label: 'Transaction Bills', href: '/admin/transaction-bills', icon: ImageIcon },
+      { label: 'All Logs', href: '/admin/all-logs', icon: ClipboardList },
     ],
   },
 ];
@@ -134,7 +135,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             items: group.items.filter(item => 
               item.label !== 'Transaction Bills' && 
               item.label !== 'Analytics' && 
-              item.label !== 'Site Settings'
+              item.label !== 'Site Settings' &&
+              item.label !== 'All Logs'
             )
           };
         }
@@ -156,7 +158,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const systemPaths = [
       '/admin/transaction-bills',
       '/admin/analytics',
-      '/admin/settings'
+      '/admin/settings',
+      '/admin/all-logs'
     ];
     if (systemPaths.some(p => path.startsWith(p)) && !isOwner) {
       return false;

@@ -92,22 +92,22 @@
    Gold accents → Red/Crimson · Parchment → Deep warm blacks
    ═══════════════════════════════════════════════════════════════ */
 html.dark {
-  /* ── Core Backgrounds (parchment → warm blacks with subtle midnight navy) ── */
-  --black:          #090C12;
-  --void:           #05070A;
+  /* ── Core Backgrounds (parchment → warm blacks) ── */
+  --black:          #0E0C09;
+  --void:           #0A0806;
   --charcoal:       #141210;
-  --dark-bg:        #090C12;
-  --dark-card:      #111520;
-  --dark-card-2:    #181D2A;
-  --dark-surface:   #0D111A;
+  --dark-bg:        #0E0C09;
+  --dark-card:      #1A1714;
+  --dark-card-2:    #211E19;
+  --dark-surface:   #161410;
 
   /* ── Borders (inverted for dark surfaces) ── */
-  --dark-border:    rgba(164, 194, 244, 0.06);
+  --dark-border:    rgba(242, 238, 228, 0.08);
   --dark-border-2:  rgba(225, 29, 46, 0.3);
   --dark-border-3:  rgba(225, 29, 46, 0.5);
 
   /* ── Dark Panels (stay dark, slightly adjusted) ── */
-  --panel-dark:     #040608;
+  --panel-dark:     #080604;
   --panel-navy:     #08060A;
   --panel-crimson:  #120608;
 
@@ -122,15 +122,15 @@ html.dark {
   --amber-glow:     rgba(225, 29, 46, 0.06);
 
   /* ── British Heritage Accents ── */
-  --navy:           #2A5A9F;
-  --navy-glow:      rgba(42, 90, 159, 0.18);
+  --navy:           #1A2E4D;
+  --navy-glow:      rgba(26, 46, 77, 0.15);
   --crimson:        #C1121F;
   --crimson-glow:   rgba(193, 18, 31, 0.12);
 
   /* ── Paper & Texture (inverted) ── */
-  --paper:          #111520;
-  --paper-dark:     #0D111A;
-  --paper-border:   #181D2A;
+  --paper:          #1A1714;
+  --paper-dark:     #141210;
+  --paper-border:   #2A2520;
 
   /* ── Text (dark ink → warm parchment white) ── */
   --cream:          #F2EEE4;

@@ -947,8 +947,7 @@ export default function MenuPage() {
         paddingTop:   '48px',
         paddingBottom:'48px',
         background:   `
-          radial-gradient(ellipse 40% 40% at 30% 40%, rgba(42,90,159,0.06) 0%, transparent 80%),
-          radial-gradient(ellipse 50% 50% at 70% 60%, rgba(225,29,46,0.04) 0%, transparent 80%),
+          radial-gradient(ellipse 70% 60% at 50% 50%, rgba(225,29,46,0.05) 0%, transparent 70%),
           var(--black)
         `,
         borderBottom: '1px solid var(--dark-border)',

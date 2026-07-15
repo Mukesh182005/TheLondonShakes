@@ -21,13 +21,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid payload' }, { status: 400 });
     }
 
-    // Sensitive data masking
-    let maskedDetails = typeof details === 'object' ? JSON.stringify(details) : String(details);
-    if (
-      action === 'EDIT_SETTINGS' &&
-      (maskedDetails.toLowerCase().includes('passcode') || maskedDetails.toLowerCase().includes('password'))
-    ) {
-      maskedDetails = 'Updated Owner security settings (Passcode value masked for security).';
+    let finalAdminEmail = adminEmail;
+    try {
+      if (adminEmail && !adminEmail.includes('|')) {
+        const staff = await prisma.staffAccount.findUnique({
+          where: { email: adminEmail },
+        });
+        if (staff) {
+          finalAdminEmail = `${staff.name} | ${adminEmail}`;
+        } else if (adminEmail === 'thelondonshakessilchar@gmail.com') {
+          finalAdminEmail = `Super Admin | ${adminEmail}`;
+        } else {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: adminEmail },
+          });
+          if (dbUser && dbUser.name) {
+            finalAdminEmail = `${dbUser.name} | ${adminEmail}`;
+          } else {
+            finalAdminEmail = `Staff | ${adminEmail}`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to resolve staff name:', e);
     }
 
     let savedLog = null;
@@ -35,8 +51,8 @@ export async function POST(req: NextRequest) {
       savedLog = await prisma.auditLog.create({
         data: {
           action,
-          details: maskedDetails,
-          adminEmail,
+          details: typeof details === 'object' ? JSON.stringify(details) : String(details),
+          adminEmail: finalAdminEmail,
         },
       });
     } catch (dbError) {
@@ -44,8 +60,8 @@ export async function POST(req: NextRequest) {
       savedLog = {
         id: 'mock-' + Math.random().toString(36).substring(2, 9),
         action,
-        details: maskedDetails,
-        adminEmail,
+        details: typeof details === 'object' ? JSON.stringify(details) : String(details),
+        adminEmail: finalAdminEmail,
         createdAt: new Date().toISOString(),
       };
     }

@@ -91,7 +91,7 @@ export default function TransactionBillsPage() {
   });
 
   const handleClearAllPhotos = async () => {
-    if (!window.confirm('Are you absolutely sure you want to clear all transaction proof photos from the system? This action is permanent and cannot be undone.')) {
+    if (!window.confirm('Are you absolutely sure you want to delete all transaction records and proof photos from the system? This action is permanent and cannot be undone.')) {
       return;
     }
 
@@ -102,16 +102,14 @@ export default function TransactionBillsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success('All transaction proof photos cleared successfully.');
-        // Update local store state to reflect deletion
-        useRestaurantStore.setState((state) => ({
-          orders: state.orders.map(o => ({ ...o, receiptPhoto: undefined }))
-        }));
+        toast.success('All transaction records and proof photos cleared successfully.');
+        // Update local store state immediately to reflect deletion
+        setOrders([]);
       } else {
-        toast.error(data.error || 'Failed to clear photos');
+        toast.error(data.error || 'Failed to clear transaction records');
       }
     } catch (err) {
-      toast.error('An error occurred while clearing transaction photos.');
+      toast.error('An error occurred while clearing transaction records.');
       console.error(err);
     } finally {
       setClearing(false);

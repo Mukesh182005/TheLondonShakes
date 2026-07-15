@@ -23,6 +23,7 @@ export default function FloorPage() {
   const resetTables = useCMSStore((s) => s.resetTables);
   const tableOrders = useRestaurantStore((s) => s.tableOrders);
   const setTableOrders = useRestaurantStore((s) => s.setTableOrders);
+  const user = useRestaurantStore((s) => s.user);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -53,6 +54,16 @@ export default function FloorPage() {
 
     const tbl = tables.find((t) => t.id === id);
     if (!tbl) return;
+
+    fetch('/api/admin/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'UPDATE_TABLE_STATUS',
+        details: `Updated Table ${tbl.number} status to "${next}".`,
+        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+      }),
+    }).catch(() => {});
 
     const tableNumber = `Table ${tbl.number}`;
     if (next === 'available' || next === 'cleaning') {
@@ -108,6 +119,15 @@ export default function FloorPage() {
           onClick={() => {
             if (window.confirm('Are you sure you want to reset all tables to default layout?')) {
               resetTables();
+              fetch('/api/admin/logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'RESET_TABLES',
+                  details: 'Reset all floor plan tables to default layout.',
+                  adminEmail: user?.email || 'unknown@thelondon.co.uk',
+                }),
+              }).catch(() => {});
               setSelectedId(null);
               setTableOrders([]); // Clear active table orders
               toast.success('Floor plan reset to default layout!');
@@ -268,7 +288,17 @@ export default function FloorPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    const newNum = tables.length > 0 ? Math.max(...tables.map(t => t.number)) + 1 : 1;
                     addTable(newTableSeats);
+                    fetch('/api/admin/logs', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        action: 'ADD_TABLE',
+                        details: `Added new table (Table ${newNum}) with ${newTableSeats} seats.`,
+                        adminEmail: user?.email || 'unknown@thelondon.co.uk',
+                      }),
+                    }).catch(() => {});
                     setShowAddForm(false);
                     setNewTableSeats(4);
                     toast.success('Table added successfully!');
@@ -410,6 +440,15 @@ export default function FloorPage() {
                       const s = parseInt(editSeatsVal);
                       if (!isNaN(s) && s > 0) {
                         updateTableSeats(selected.id, s);
+                        fetch('/api/admin/logs', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            action: 'UPDATE_TABLE_SEATS',
+                            details: `Updated Table ${selected.number} seats count to ${s}.`,
+                            adminEmail: user?.email || 'unknown@thelondon.co.uk',
+                          }),
+                        }).catch(() => {});
                         toast.success('Table seats count updated!');
                       } else {
                         toast.error('Invalid seats count');
@@ -429,6 +468,15 @@ export default function FloorPage() {
               onClick={() => {
                 if (window.confirm(`Are you sure you want to delete Table ${selected.number}?`)) {
                   deleteTable(selected.id);
+                  fetch('/api/admin/logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'DELETE_TABLE',
+                      details: `Deleted Table ${selected.number} from floor plan.`,
+                      adminEmail: user?.email || 'unknown@thelondon.co.uk',
+                    }),
+                  }).catch(() => {});
                   setSelectedId(null);
                   toast.success(`Table ${selected.number} deleted successfully.`);
                 }

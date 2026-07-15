@@ -302,7 +302,66 @@ function AccountPageContent() {
           background: 'var(--black)',
           padding: '60px 24px',
           position: 'relative',
+          overflow: 'hidden',
         }}>
+          {/* Mobile-only snake pattern background */}
+          <div
+            className="login-mobile-snake"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'hidden',
+              pointerEvents: 'none',
+              zIndex: 0,
+              opacity: 0.6,
+              maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+              animation: 'verticalScroll 30s linear infinite',
+              paddingTop: '20px',
+            }}>
+              {duplicatedDishes.map((dish, idx) => (
+                <div key={`mobile-snake-${idx}`} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', width: '100%' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      color: '#dfba6b',
+                      opacity: 0.85,
+                      letterSpacing: '0.12em',
+                      textShadow: '0 0 14px rgba(223,186,107,0.45)',
+                      animation: 'snakeSway 6s ease-in-out infinite alternate',
+                      animationDelay: `${-idx * 0.5}s`,
+                    }}
+                  >
+                    {dish}
+                  </span>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      color: '#FF1E39',
+                      fontSize: '0.85rem',
+                      opacity: 0.75,
+                      textShadow: '0 0 10px rgba(255,30,57,0.45)',
+                      animation: 'snakeSway 6s ease-in-out infinite alternate',
+                      animationDelay: `${-idx * 0.5 - 0.25}s`,
+                    }}
+                  >
+                    ★
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Slant decorative elements matching the image */}
           <div style={{
             position: 'absolute',
@@ -314,7 +373,7 @@ function AccountPageContent() {
             pointerEvents: 'none',
           }} />
           
-          <div style={{ maxWidth: '420px', width: '100%', padding: '40px 32px', background: 'var(--paper)', border: '1px solid var(--paper-border)', borderRadius: '12px', boxShadow: '0 20px 48px rgba(0, 0, 0, 0.08)', backdropFilter: 'blur(10px)', animation: 'cardFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <div style={{ maxWidth: '420px', width: '100%', padding: '40px 32px', background: 'var(--paper)', border: '1px solid var(--paper-border)', borderRadius: '12px', boxShadow: '0 20px 48px rgba(0, 0, 0, 0.08)', backdropFilter: 'blur(10px)', animation: 'cardFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards', position: 'relative', zIndex: 1 }}>
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <span style={{
@@ -475,6 +534,14 @@ function AccountPageContent() {
           @media (max-width: 991px) {
             .login-visual-panel {
               display: none !important;
+            }
+          }
+          .login-mobile-snake {
+            display: none !important;
+          }
+          @media (max-width: 991px) {
+            .login-mobile-snake {
+              display: block !important;
             }
           }
           .login-input:focus {
