@@ -456,7 +456,7 @@ export default function HomePage() {
                   The London Shakes — Silchar
                 </span>
               </div>
-              <a href="https://www.google.com/maps/place/The+London+Shakes+Silchar/@24.8227801,92.7972719,17z"
+              <a href={restaurantInfo.location?.googleMapsUrl || 'https://maps.app.goo.gl/1JdFt5kDFpdefg3j9'}
                 target="_blank" rel="noopener noreferrer"
                 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(242,238,228,0.7)', transition: 'color 0.2s ease' }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--on-dark)')}

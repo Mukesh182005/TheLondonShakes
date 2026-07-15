@@ -38,6 +38,7 @@ export interface MenuCategory {
   gutterImageLeftBottom?: string | null;
   gutterImageRightTop?: string | null;
   gutterImageRightBottom?: string | null;
+  bannerImage?: string | null;
 }
 
 
@@ -80,7 +81,8 @@ export const restaurantInfo = {
     fullAddress: "T-22, 3rd Floor, near Goldighi Mall Office, Premtala, Silchar — 788001",
     latitude: "24.8208",
     longitude: "92.8005",
-    googleMapsEmbedUrl: ""
+    googleMapsEmbedUrl: "",
+    googleMapsUrl: "https://maps.app.goo.gl/1JdFt5kDFpdefg3j9"
   },
   contact: {
     phone: "+91 97063 88102",
@@ -135,12 +137,12 @@ export const chef = {
 };
 
 export const menuCategories: MenuCategory[] = [
-  { id: "shakes", label: "Shakes & Coolers", icon: "✦", desc: "Premium thick shakes and cooling mocktails" },
-  { id: "burgers", label: "Burgers & Sandwiches", icon: "◈", desc: "Toasted buns with juicy patties" },
-  { id: "pastas", label: "Pasta & Noodles", icon: "◉", desc: "Creamy white sauce and Italian herbs" },
-  { id: "snacks", label: "Snacks & Sides", icon: "▣", desc: "Crispy chicken delights and golden fries" },
-  { id: "waffles", label: "Waffles & Desserts", icon: "◇", desc: "Fresh bubble waffles and sweet treats" },
-  { id: "drinks", label: "Hot & Cold Drinks", icon: "○", desc: "Classic masala tea and daily brews" }
+  { id: "shakes", label: "Shakes & Coolers", icon: "✦", desc: "Premium thick shakes and cooling mocktails", bannerImage: "/event-shake.png" },
+  { id: "burgers", label: "Burgers & Sandwiches", icon: "◈", desc: "Toasted buns with juicy patties", bannerImage: "/menu-burger.png" },
+  { id: "pastas", label: "Pasta & Noodles", icon: "◉", desc: "Creamy white sauce and Italian herbs", bannerImage: "/menu-pasta.png" },
+  { id: "snacks", label: "Snacks & Sides", icon: "▣", desc: "Crispy chicken delights and golden fries", bannerImage: "/menu-fries.png" },
+  { id: "waffles", label: "Waffles & Desserts", icon: "◇", desc: "Fresh bubble waffles and sweet treats", bannerImage: "/event-waffle.png" },
+  { id: "drinks", label: "Hot & Cold Drinks", icon: "○", desc: "Classic masala tea and daily brews", bannerImage: "/menu-coffee.png" }
 ];
 
 export const menuItems: MenuItem[] = [

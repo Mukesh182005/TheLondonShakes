@@ -138,14 +138,31 @@ function MobileGrid({ items, renderCard }: { items: any[]; renderCard: (item: an
 
   return (
     <div
+      className="mobile-dish-scroll"
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '8px',
+        display: 'flex',
+        flexDirection: 'row',
+        gap: '12px',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        padding: '4px 4px 12px 4px',
+        width: 'calc(100% + 8px)',
+        margin: '0 -4px',
+        msOverflowStyle: 'none',
+        scrollbarWidth: 'none',
       }}
     >
+      <style>{`
+        .mobile-dish-scroll::-webkit-scrollbar {
+          display: none;
+        }
+        .mobile-dish-card-wrapper {
+          flex: 0 0 130px;
+          width: 130px;
+        }
+      `}</style>
       {items.map((item) => (
-        <div key={item.id}>
+        <div key={item.id} className="mobile-dish-card-wrapper">
           {renderCard(item)}
         </div>
       ))}
@@ -228,6 +245,17 @@ export default function MenuPage() {
       }
     }
   }, [isMounted]);
+
+  useEffect(() => {
+    if (activeDetailItem) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [activeDetailItem]);
 
   const list1 = useMemo(() => menuItems.map(i => i.name), [menuItems]);
   const list2 = useMemo(() => [...list1].reverse(), [list1]);
@@ -428,7 +456,8 @@ export default function MenuPage() {
     setDietary((prev) => prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key]);
 
   const renderCategoryBanner = (catId: string, label: string, desc: string, itemCount: number) => {
-    const bgImage = CATEGORY_BANNER_IMAGES[catId] || CATEGORY_BANNER_IMAGES['new-arrivals'];
+    const categoryObj = menuCategories.find((c) => c.id === catId);
+    const bgImage = categoryObj?.bannerImage || CATEGORY_BANNER_IMAGES[catId] || CATEGORY_BANNER_IMAGES['new-arrivals'];
     
     return (
       <div
@@ -918,7 +947,8 @@ export default function MenuPage() {
         paddingTop:   '48px',
         paddingBottom:'48px',
         background:   `
-          radial-gradient(ellipse 70% 60% at 50% 50%, rgba(225,29,46,0.05) 0%, transparent 70%),
+          radial-gradient(ellipse 40% 40% at 30% 40%, rgba(42,90,159,0.06) 0%, transparent 80%),
+          radial-gradient(ellipse 50% 50% at 70% 60%, rgba(225,29,46,0.04) 0%, transparent 80%),
           var(--black)
         `,
         borderBottom: '1px solid var(--dark-border)',
@@ -1064,7 +1094,7 @@ export default function MenuPage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.2s ease',
               }}>
-                <img src="/menu-burger.png" alt="All" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+                <img src="/menu-burger.png" alt="All" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <span style={{
                 fontFamily: 'var(--font-sans)',
@@ -1137,7 +1167,7 @@ export default function MenuPage() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'all 0.2s ease',
                   }}>
-                    <img src={imgPath} alt={cat.label} style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+                    <img src={imgPath} alt={cat.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                   <span style={{
                     fontFamily: 'var(--font-sans)',
@@ -1583,7 +1613,7 @@ export default function MenuPage() {
             backdropFilter: 'blur(8px)',
             zIndex: 9999,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: isMobile ? 'flex-end' : 'center',
             justifyContent: 'center',
             padding: isMobile ? '0' : '24px',
           }}
@@ -1646,29 +1676,26 @@ export default function MenuPage() {
               </>
             )}
 
-            {/* Modal Card */}
-            <div style={{
-              background: 'var(--dark-card)',
-              border: isMobile ? 'none' : '1px solid rgba(225, 29, 46, 0.25)',
-              width: '100%',
-              maxWidth: isMobile ? '100vw' : '520px',
-              height: isMobile ? '100vh' : 'auto',
-              position: 'relative',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-              display: 'flex',
-              flexDirection: 'column',
-              borderRadius: isMobile ? '0' : '18px',
-              overflow: 'hidden',
-            }}
-            onClick={(e) => e.stopPropagation()}
+            {/* Modal Card Wrapper */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: isMobile ? '100vw' : '520px',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
             >
               {/* Close button */}
               <button
                 onClick={() => setActiveDetailItem(null)}
                 style={{
                   position: 'absolute',
-                  top: '16px',
-                  right: '16px',
+                  top: isMobile ? '-56px' : '16px',
+                  right: isMobile ? 'auto' : '16px',
+                  left: isMobile ? '50%' : 'auto',
+                  transform: isMobile ? 'translateX(-50%)' : 'none',
                   background: 'rgba(0, 0, 0, 0.6)',
                   border: '1px solid rgba(255, 255, 255, 0.15)',
                   color: '#fff',
@@ -1679,107 +1706,122 @@ export default function MenuPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: '50%',
-                  zIndex: 10,
+                  zIndex: 10000,
                 }}
               >
                 <X size={18} />
               </button>
 
+              {/* Inner Modal Card */}
+              <div style={{
+                background: 'var(--dark-card)',
+                border: isMobile ? 'none' : '1px solid rgba(225, 29, 46, 0.25)',
+                width: '100%',
+                height: isMobile ? 'auto' : 'auto',
+                maxHeight: isMobile ? '82vh' : '85vh',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: isMobile ? '24px 24px 0 0' : '18px',
+                overflow: 'hidden',
+              }}>
+
               {/* Top - Image Section */}
               <div style={{
                 position: 'relative',
                 width: '100%',
-                height: isMobile ? '40vh' : '260px',
+                height: isMobile ? '220px' : '260px',
                 background: item.image ? '#000' : undefined,
                 flexShrink: 0,
+                padding: isMobile ? '16px 16px 0 16px' : '0',
+                boxSizing: 'border-box',
               }}
-              className={!item.image ? `food-photo ${item.gradient}` : 'food-photo'}
               >
-                {item.image ? (
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 40vw"
-                    style={{ objectFit: 'cover' }}
-                    unoptimized={item.image.startsWith('data:') || item.image.startsWith('blob:')}
-                  />
-                ) : (
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
-                    🥤
-                  </div>
-                )}
-                {item.badge && (
-                  <span className="badge-red" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.6rem' }}>
-                    {item.badge}
-                  </span>
-                )}
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: isMobile ? '16px' : '0',
+                  overflow: 'hidden',
+                }}
+                className={!item.image ? `food-photo ${item.gradient}` : 'food-photo'}
+                >
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 40vw"
+                      style={{ objectFit: 'cover' }}
+                      unoptimized={item.image.startsWith('data:') || item.image.startsWith('blob:')}
+                    />
+                  ) : (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
+                      🥤
+                    </div>
+                  )}
+                  {item.badge && (
+                    <span className="badge-red" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.6rem' }}>
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Middle - Information (No Scrolling of Content) */}
+              {/* Middle - Information (Scrollable on Mobile) */}
               <div style={{
-                padding: '24px 20px',
+                padding: isMobile ? '16px 20px' : '24px 20px',
                 display: 'flex',
                 flexDirection: 'column',
                 flex: 1,
-                overflow: 'hidden',
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
               }}>
-                {/* Category & Course Tag */}
-                <span style={{
-                  fontFamily: 'var(--font-sans)',
-                  fontSize: '0.62rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  color: 'var(--red)',
-                  display: 'block',
-                }}>
-                  {item.course} — {item.category}
-                </span>
-
-                {/* Name */}
-                <h2 style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '1.6rem',
-                  color: 'var(--cream)',
-                  marginTop: '6px',
-                  marginBottom: '10px',
-                  lineHeight: 1.2,
-                  fontWeight: 400,
-                }}>
-                  {item.name}
-                </h2>
-
-                {/* Badges: Veg + Rating */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                {/* Veg / Non-Veg Icon & Name Row */}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  {/* Veg / Non-Veg Icon */}
                   <div style={{
                     width: '14px', height: '14px',
                     border: `1.5px solid ${isVeg ? '#1F543C' : '#8F1D2F'}`,
                     borderRadius: '3px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    marginTop: '4px',
                   }}>
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isVeg ? '#1F543C' : '#8F1D2F' }} />
                   </div>
-                  <div style={{
-                    background: '#1F543C',
-                    color: '#FFFFFF',
-                    fontSize: '0.6rem',
-                    fontWeight: 800,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '2px',
+                  
+                  {/* Name */}
+                  <h2 style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: isMobile ? '1.35rem' : '1.6rem',
+                    color: 'var(--cream)',
+                    margin: 0,
+                    lineHeight: 1.2,
+                    fontWeight: 400,
                   }}>
-                    <span>★</span>
-                    <span>{mockRating.toFixed(1)}</span>
-                  </div>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Highly reordered</span>
+                    {item.name}
+                  </h2>
                 </div>
 
-                {/* Description - Wraps cleanly with no inner scrollbar */}
+                {/* Popularity Badge (Zomato-style Pill) */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'rgba(31,84,60,0.06)',
+                  border: '1px solid rgba(31,84,60,0.12)',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  alignSelf: 'flex-start',
+                  marginBottom: '14px',
+                }}>
+                  <div style={{ width: '24px', height: '5px', background: '#1F543C', borderRadius: '3px' }} />
+                  <span style={{ fontSize: '0.65rem', color: '#88cca7', fontWeight: 700, letterSpacing: '0.02em' }}>Highly reordered</span>
+                </div>
+
+                {/* Description */}
                 <p style={{
-                  fontSize: '0.82rem',
+                  fontSize: isMobile ? '0.78rem' : '0.82rem',
                   color: 'var(--text-secondary)',
                   lineHeight: 1.5,
                   margin: '0 0 16px 0',
@@ -1789,9 +1831,9 @@ export default function MenuPage() {
 
                 {/* Dietary Tags */}
                 {item.dietary.length > 0 && (
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
                     {item.dietary.map((tag) => (
-                      <span key={tag} className={`dietary-tag ${tag}`} style={{ padding: '3px 8px', fontSize: '0.58rem' }}>{tag.toUpperCase()}</span>
+                      <span key={tag} className={`dietary-tag ${tag}`} style={{ padding: '3px 8px', fontSize: '0.58rem', borderRadius: '4px' }}>{tag.toUpperCase()}</span>
                     ))}
                   </div>
                 )}
@@ -1839,48 +1881,26 @@ export default function MenuPage() {
                 )}
               </div>
 
-              {/* Bottom - Red Action Button (Sticky Footer) */}
+              {/* Bottom - Sticky Footer with Price */}
               <div style={{
                 borderTop: '1px solid var(--dark-border)',
                 padding: '16px 20px',
                 background: 'var(--dark-card)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Price</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '2px' }}>Price</span>
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--cream)', fontWeight: 700 }}>₹{currentPrice}</span>
                 </div>
-                <button
-                  onClick={() => {
-                    // Logic to add to cart or handle item selection
-                    setActiveDetailItem(null);
-                  }}
-                  style={{
-                    background: 'var(--red)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '12px 24px',
-                    fontFamily: 'var(--font-sans)',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(225, 29, 46, 0.3)',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  Add item · ₹{currentPrice}
-                </button>
               </div>
             </div>
           </div>
-        );
-      })()}
-    </main>
-  );
+        </div>
+      );
+    })()}
+  </main>
+);
 }

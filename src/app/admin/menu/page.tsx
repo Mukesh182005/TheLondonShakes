@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCMSStore, useRestaurantStore } from '@/store/restaurantStore';
 import ImageUploader from '@/components/ImageUploader';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -27,12 +27,154 @@ const EMPTY_FORM: EditForm = {
   price: 0, badge: null, dietary: [], allergens: [], image: null,
 };
 
+function CategoryBannerEditor({ 
+  category, 
+  onUpdate 
+}: { 
+  category: any; 
+  onUpdate: (updated: any) => void 
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [label, setLabel] = useState(category.label);
+  const [desc, setDesc] = useState(category.desc);
+  const [bannerImage, setBannerImage] = useState(category.bannerImage);
+
+  useEffect(() => {
+    setLabel(category.label);
+    setDesc(category.desc);
+    setBannerImage(category.bannerImage);
+    setIsEditing(false);
+  }, [category]);
+
+  const handleSave = () => {
+    onUpdate({ label, desc, bannerImage });
+    setIsEditing(false);
+  };
+
+  return (
+    <div style={{
+      background: 'var(--dark-card)',
+      border: '1px solid var(--dark-border)',
+      padding: '16px 20px',
+      marginBottom: '24px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--cream)', margin: 0 }}>
+            Category Info & Banner: {category.label}
+          </h3>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.4 }}>
+            {category.desc || 'No description set.'}
+          </p>
+        </div>
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: '1px solid var(--dark-border)',
+            color: 'var(--text-secondary)',
+            fontSize: '0.68rem',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197, 168, 92, 0.4)';
+            (e.currentTarget as HTMLElement).style.color = '#F2EEE4';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)';
+            (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+          }}
+        >
+          {isEditing ? 'Cancel' : 'Edit Banner / Desc'}
+        </button>
+      </div>
+
+      {isEditing && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          borderTop: '1px solid var(--dark-border)',
+          paddingTop: '16px',
+          marginTop: '4px'
+        }}>
+          {/* Banner Image */}
+          <ImageUploader
+            label="Category Banner Background Image"
+            value={bannerImage || ''}
+            aspectRatio="21/9"
+            onChange={(val) => setBannerImage(val)}
+          />
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+            {/* Label */}
+            <div>
+              <label style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '6px' }}>Category Name</label>
+              <input
+                style={{ width: '100%', padding: '10px 14px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)', color: 'var(--cream)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+              />
+            </div>
+            {/* Description */}
+            <div>
+              <label style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '6px' }}>Description</label>
+              <input
+                style={{ width: '100%', padding: '10px 14px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)', color: 'var(--cream)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
+            <button
+              onClick={handleSave}
+              style={{
+                padding: '8px 20px',
+                background: 'var(--gold)',
+                border: 'none',
+                color: 'rgba(18, 12, 9, 0.95)',
+                fontSize: '0.68rem',
+                fontFamily: 'var(--font-sans)',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'var(--gold-bright)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'var(--gold)';
+              }}
+            >
+              Save Category Changes
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MenuEditorPage() {
   const menuItems       = useCMSStore((s) => s.menuItems);
   const menuCategories  = useCMSStore((s) => s.menuCategories);
   const addMenuItem     = useCMSStore((s) => s.addMenuItem);
   const updateMenuItem  = useCMSStore((s) => s.updateMenuItem);
   const deleteMenuItem  = useCMSStore((s) => s.deleteMenuItem);
+  const updateMenuCategory = useCMSStore((s) => s.updateMenuCategory);
   const user            = useRestaurantStore((s) => s.user);
 
   const newArrivalsDaysThreshold = useCMSStore((s) => s.newArrivalsDaysThreshold) || 10;
@@ -214,6 +356,18 @@ export default function MenuEditorPage() {
           </button>
         ))}
       </div>
+
+      {/* Category Details Banner Editor */}
+      {activeTab !== 'new-arrivals' && (() => {
+        const currentCat = menuCategories.find((c) => c.id === activeTab);
+        if (!currentCat) return null;
+        return (
+          <CategoryBannerEditor 
+            category={currentCat} 
+            onUpdate={(updated) => updateMenuCategory(currentCat.id, updated)} 
+          />
+        );
+      })()}
 
       {/* Items Table / Card List */}
       {isMobile ? (

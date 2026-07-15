@@ -556,7 +556,7 @@ function AboutAwards({ awards }: { awards: Array<{ year: string; award: string; 
 }
 
 function AboutVisitUs({ location, contact }: {
-  location: { address: string; city: string; postcode: string };
+  location: { address: string; city: string; postcode: string; googleMapsUrl?: string; fullAddress?: string };
   contact: { phone: string; email: string };
 }) {
   return (
@@ -579,6 +579,7 @@ function AboutVisitUs({ location, contact }: {
               icon: <MapPin size={22} />,
               label: 'Location',
               lines: [location.address, `${location.city} — ${location.postcode}`],
+              href: location.googleMapsUrl || 'https://maps.app.goo.gl/1JdFt5kDFpdefg3j9',
             },
             {
               icon: <Clock size={22} />,
@@ -589,11 +590,13 @@ function AboutVisitUs({ location, contact }: {
               icon: <Phone size={22} />,
               label: 'Call Us',
               lines: [contact.phone],
+              href: `tel:${contact.phone}`,
             },
             {
               icon: <Mail size={22} />,
               label: 'Email',
               lines: [contact.email],
+              href: `mailto:${contact.email}`,
             },
           ].map((item, i) => (
             <div key={i} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
@@ -612,7 +615,15 @@ function AboutVisitUs({ location, contact }: {
                 </div>
                 {item.lines.map((line, j) => (
                   <div key={j} style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.6 }}>
-                    {line}
+                    {item.href ? (
+                      <a href={item.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--gold)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}>
+                        {line}
+                      </a>
+                    ) : (
+                      line
+                    )}
                   </div>
                 ))}
               </div>

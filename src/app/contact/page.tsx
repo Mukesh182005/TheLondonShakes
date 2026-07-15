@@ -68,7 +68,7 @@ export default function ContactPage() {
 
             <div style={{ display:'flex', flexDirection:'column', gap:'24px', marginBottom:'40px' }}>
               {[
-                { icon:<MapPin size={18} />, title:'Address', content: restaurantInfo.location.fullAddress },
+                { icon:<MapPin size={18} />, title:'Address', content: restaurantInfo.location.fullAddress, href: restaurantInfo.location.googleMapsUrl || 'https://maps.app.goo.gl/1JdFt5kDFpdefg3j9' },
                 { icon:<Phone size={18} />, title:'Phone', content: restaurantInfo.contact.phone, href:`tel:${restaurantInfo.contact.phone}` },
                 { icon:<Mail size={18} />, title:'Email', content: restaurantInfo.contact.email, href:`mailto:${restaurantInfo.contact.email}` },
                 { icon:<InstagramIcon />, title:'Instagram', content: restaurantInfo.contact.instagram, href:`https://instagram.com/${restaurantInfo.contact.instagram.replace('@','')}` },
@@ -217,7 +217,7 @@ export default function ContactPage() {
               </span>
             </div>
             <a
-              href="https://www.google.com/maps/place/The+London+Shakes+Silchar/@24.8227801,92.7972719,17z"
+              href={restaurantInfo.location.googleMapsUrl || 'https://maps.app.goo.gl/1JdFt5kDFpdefg3j9'}
               target="_blank"
               rel="noopener noreferrer"
               style={{

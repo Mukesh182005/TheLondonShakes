@@ -826,6 +826,18 @@ export default function SettingsPage() {
                         }}
                       />
                     </div>
+
+                    {/* Category Banner Image */}
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label style={LABEL}>Category Banner Background Image</label>
+                      <ImageUploader
+                        value={cat.bannerImage || ''}
+                        aspectRatio="21/9"
+                        onChange={(val) => {
+                          setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, bannerImage: val } : c));
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}

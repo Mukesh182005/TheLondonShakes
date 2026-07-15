@@ -220,9 +220,23 @@ export default function Footer() {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <MapPin size={13} color="var(--gold)" style={{ flexShrink: 0, marginTop: '3px' }} />
                 <div>
-                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-dark)', lineHeight: 1.6 }}>
+                  <a
+                    href={restaurantInfo.location?.googleMapsUrl || 'https://maps.app.goo.gl/1JdFt5kDFpdefg3j9'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '0.75rem',
+                      color: 'var(--on-dark)',
+                      lineHeight: 1.6,
+                      textDecoration: 'none',
+                      transition: 'color 0.25s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--gold)'}
+                    onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--on-dark)'}
+                  >
                     {restaurantInfo.location?.fullAddress || restaurantInfo.location?.address || '3rd Floor, East Point Mall, Silchar, Assam 788001'}
-                  </p>
+                  </a>
                 </div>
               </div>
 

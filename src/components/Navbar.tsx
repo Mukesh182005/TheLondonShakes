@@ -321,11 +321,46 @@ export default function Navbar() {
               </button>
             </nav>
 
+            {/* Theme Toggle — mobile */}
+            {isMobile && (
+              <button
+                onClick={toggleTheme}
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                style={{
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  width:          '40px',
+                  height:         '40px',
+                  background:     'transparent',
+                  border:         (isPrivateEvents || isDark)
+                    ? '1px solid rgba(242, 238, 228, 0.25)' 
+                    : '1px solid rgba(28, 24, 16, 0.15)',
+                  color:          (isPrivateEvents || isDark) ? '#F2EEE4' : 'var(--text-muted)',
+                  cursor:         'pointer',
+                  marginLeft:     '8px',
+                  transition:     'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = (isPrivateEvents || isDark) ? 'var(--gold-pale)' : 'var(--cream)';
+                  (e.currentTarget as HTMLElement).style.color = (isPrivateEvents || isDark) ? 'var(--gold-pale)' : 'var(--cream)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = (isPrivateEvents || isDark)
+                    ? 'rgba(242, 238, 228, 0.25)'
+                    : 'rgba(28, 24, 16, 0.15)';
+                  (e.currentTarget as HTMLElement).style.color = (isPrivateEvents || isDark) ? '#F2EEE4' : 'var(--text-muted)';
+                }}
+              >
+                {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            )}
+
             {/* Hamburger — mobile */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               style={{
-                display:        'flex',
+                display:        isMobile ? 'flex' : 'none',
                 alignItems:     'center',
                 justifyContent: 'center',
                 width:          '40px',
