@@ -33,13 +33,13 @@ const occasions = ['None', 'Birthday', 'Anniversary', 'Corporate Dinner', 'Date 
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '11px 14px',
-  border: '1px solid #d4d0c8',
+  border: '1px solid var(--dark-border)',
   borderRadius: '6px',
-  background: '#faf9f7',
-  color: '#1a1a1a',
+  background: 'var(--dark-surface)',
+  color: 'var(--text-primary)',
   fontSize: '0.9rem',
   outline: 'none',
-  transition: 'border-color 0.2s',
+  transition: 'border-color 0.2s, background 0.2s',
   fontFamily: 'var(--font-sans)',
   boxSizing: 'border-box',
 };
@@ -50,14 +50,14 @@ const labelStyle: React.CSSProperties = {
   fontWeight: 600,
   letterSpacing: '0.06em',
   textTransform: 'uppercase',
-  color: '#5a5040',
+  color: 'var(--text-secondary)',
   marginBottom: '6px',
   fontFamily: 'var(--font-sans)',
 };
 
 const errorStyle: React.CSSProperties = {
   fontSize: '0.75rem',
-  color: '#c0392b',
+  color: 'var(--red-bright)',
   marginTop: '4px',
 };
 
@@ -107,7 +107,7 @@ export default function ReservationsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f3ee', paddingTop: '80px', position: 'relative' }}>
+    <div className="page-wrapper" style={{ background: 'var(--black)', color: 'var(--text-primary)', position: 'relative' }}>
 
       {/* Watercolor background */}
       <div style={{
@@ -123,14 +123,22 @@ export default function ReservationsPage() {
       }} />
 
       {/* Page Header */}
-      <div style={{ background: 'rgba(255,255,255,0.88)', borderBottom: '1px solid #e8e4da', padding: '64px 24px 48px', textAlign: 'center', position: 'relative', zIndex: 1, backdropFilter: 'blur(2px)' }}>
-        <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c0a060', marginBottom: '12px', fontFamily: 'var(--font-sans)' }}>
+      <div style={{
+        background: 'var(--dark-card)',
+        borderBottom: '1px solid var(--dark-border)',
+        padding: '64px 24px 48px',
+        textAlign: 'center',
+        position: 'relative',
+        zIndex: 1,
+        backdropFilter: 'blur(2px)',
+      }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '12px', fontFamily: 'var(--font-sans)' }}>
           Reserve a Table
         </div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 2.8rem)', fontWeight: 300, color: '#1a1a1a', margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 2.8rem)', fontWeight: 300, color: 'var(--text-primary)', margin: 0 }}>
           Book Your Experience
         </h1>
-        <p style={{ fontFamily: 'var(--font-serif)', color: '#7a6f5e', fontSize: '1rem', marginTop: '12px', fontStyle: 'italic' }}>
+        <p style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-muted)', fontSize: '1rem', marginTop: '12px', fontStyle: 'italic' }}>
           Reservations open 30 days in advance &middot; Tables held for 15 minutes
         </p>
       </div>
@@ -147,8 +155,8 @@ export default function ReservationsPage() {
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 0.4 }}
               style={{
-                background: '#fff',
-                border: '1px solid #e8e4da',
+                background: 'var(--dark-card)',
+                border: '1px solid var(--dark-border)',
                 borderRadius: '12px',
                 padding: '56px 40px',
                 textAlign: 'center',
@@ -157,17 +165,17 @@ export default function ReservationsPage() {
                 boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
               }}
             >
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#eef7ee', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-                <CheckCircle size={26} color="#2e7d32" />
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--gold-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                <CheckCircle size={26} color="var(--green)" />
               </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 300, color: '#1a1a1a', margin: '0 0 6px' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 300, color: 'var(--text-primary)', margin: '0 0 6px' }}>
                 Booking Confirmed
               </h2>
-              <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.18em', color: '#c0a060', textTransform: 'uppercase', marginBottom: '32px', fontFamily: 'var(--font-sans)' }}>
+              <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--gold)', textTransform: 'uppercase', marginBottom: '32px', fontFamily: 'var(--font-sans)' }}>
                 Ref #{bookingRef}
               </p>
 
-              <div style={{ borderTop: '1px solid #e8e4da', paddingTop: '24px', marginBottom: '32px', textAlign: 'left' }}>
+              <div style={{ borderTop: '1px solid var(--dark-border)', paddingTop: '24px', marginBottom: '32px', textAlign: 'left' }}>
                 {[
                   ['Name', formData.name],
                   ['Date', formData.date],
@@ -175,27 +183,27 @@ export default function ReservationsPage() {
                   ['Guests', `${formData.guests} ${parseInt(formData.guests) === 1 ? 'Guest' : 'Guests'}`],
                   ['Occasion', formData.occasion || 'None'],
                 ].map(([label, value]) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f0ece4' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#7a6f5e', fontFamily: 'var(--font-sans)' }}>{label}</span>
-                    <span style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily: 'var(--font-serif)' }}>{value}</span>
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--dark-border)' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>{label}</span>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontFamily: 'var(--font-serif)' }}>{value}</span>
                   </div>
                 ))}
               </div>
 
-              <p style={{ fontFamily: 'var(--font-serif)', color: '#7a6f5e', fontSize: '0.88rem', fontStyle: 'italic', marginBottom: '28px' }}>
-                A confirmation has been sent to <strong style={{ color: '#1a1a1a', fontWeight: 500 }}>{formData.email}</strong>.
+              <p style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-muted)', fontSize: '0.88rem', fontStyle: 'italic', marginBottom: '28px' }}>
+                A confirmation has been sent to <strong style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{formData.email}</strong>.
               </p>
 
               <button
                 onClick={handleReset}
+                className="res-btn-primary"
                 style={{
-                  width: '100%', padding: '13px', background: '#1a1a1a', color: '#fff',
+                  width: '100%', padding: '13px',
+                  background: 'var(--gold)', color: 'var(--on-dark)',
                   border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700,
                   letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer',
-                  fontFamily: 'var(--font-sans)', transition: 'background 0.2s',
+                  fontFamily: 'var(--font-sans)', transition: 'opacity 0.2s',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#333')}
-                onMouseLeave={e => (e.currentTarget.style.background = '#1a1a1a')}
               >
                 Make Another Booking
               </button>
@@ -218,8 +226,8 @@ export default function ReservationsPage() {
               className="res-outer"
             >
               {/* Form Card */}
-              <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8e4da', padding: '36px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 400, color: '#1a1a1a', margin: '0 0 28px' }}>
+              <div style={{ background: 'var(--dark-card)', borderRadius: '12px', border: '1px solid var(--dark-border)', padding: '36px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 400, color: 'var(--text-primary)', margin: '0 0 28px' }}>
                   Your Details
                 </h2>
 
@@ -228,8 +236,8 @@ export default function ReservationsPage() {
                   <div>
                     <label style={labelStyle}>Full Name *</label>
                     <input type="text" placeholder="Your full name" style={inputStyle} {...register('name')}
-                      onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
-                      onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--dark-border)')}
                     />
                     {errors.name && <p style={errorStyle}>{errors.name.message}</p>}
                   </div>
@@ -239,16 +247,16 @@ export default function ReservationsPage() {
                     <div>
                       <label style={labelStyle}>Phone *</label>
                       <input type="tel" placeholder="Contact number" style={inputStyle} {...register('phone')}
-                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
-                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--dark-border)')}
                       />
                       {errors.phone && <p style={errorStyle}>{errors.phone.message}</p>}
                     </div>
                     <div>
                       <label style={labelStyle}>Email *</label>
                       <input type="email" placeholder="you@example.com" style={inputStyle} {...register('email')}
-                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
-                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--dark-border)')}
                       />
                       {errors.email && <p style={errorStyle}>{errors.email.message}</p>}
                     </div>
@@ -259,16 +267,16 @@ export default function ReservationsPage() {
                     <div>
                       <label style={labelStyle}>Date *</label>
                       <input type="date" min={new Date().toISOString().split('T')[0]} style={inputStyle} {...register('date')}
-                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
-                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--dark-border)')}
                       />
                       {errors.date && <p style={errorStyle}>{errors.date.message}</p>}
                     </div>
                     <div>
                       <label style={labelStyle}>Time *</label>
                       <select style={inputStyle} {...register('time')}
-                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
-                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--dark-border)')}
                       >
                         <option value="">Choose slot</option>
                         {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
@@ -282,8 +290,8 @@ export default function ReservationsPage() {
                     <div>
                       <label style={labelStyle}>Guests *</label>
                       <select style={inputStyle} {...register('guests')}
-                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
-                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--dark-border)')}
                       >
                         {[1,2,3,4,5,6,7,8].map(n => (
                           <option key={n} value={n.toString()}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
@@ -293,8 +301,8 @@ export default function ReservationsPage() {
                     <div>
                       <label style={labelStyle}>Occasion</label>
                       <select style={inputStyle} {...register('occasion')}
-                        onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
-                        onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--dark-border)')}
                       >
                         {occasions.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
@@ -309,8 +317,8 @@ export default function ReservationsPage() {
                       rows={3}
                       style={{ ...inputStyle, resize: 'vertical' }}
                       {...register('requests')}
-                      onFocus={e => (e.currentTarget.style.borderColor = '#c0a060')}
-                      onBlur={e => (e.currentTarget.style.borderColor = '#d4d0c8')}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--dark-border)')}
                     />
                   </div>
 
@@ -318,16 +326,16 @@ export default function ReservationsPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
+                    className="res-btn-primary"
                     style={{
-                      width: '100%', padding: '14px', background: '#1a1a1a',
-                      color: '#fff', border: 'none', borderRadius: '6px',
+                      width: '100%', padding: '14px',
+                      background: 'var(--gold)',
+                      color: 'var(--on-dark)', border: 'none', borderRadius: '6px',
                       fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em',
                       textTransform: 'uppercase', cursor: isSubmitting ? 'not-allowed' : 'pointer',
                       fontFamily: 'var(--font-sans)', opacity: isSubmitting ? 0.7 : 1,
-                      transition: 'background 0.2s',
+                      transition: 'opacity 0.2s',
                     }}
-                    onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.background = '#333'; }}
-                    onMouseLeave={e => { if (!isSubmitting) e.currentTarget.style.background = '#1a1a1a'; }}
                   >
                     {isSubmitting ? 'Confirming…' : 'Confirm Reservation'}
                   </button>
@@ -337,8 +345,8 @@ export default function ReservationsPage() {
               {/* Sidebar */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Policies */}
-                <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8e4da', padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 400, color: '#1a1a1a', margin: '0 0 18px' }}>
+                <div style={{ background: 'var(--dark-card)', borderRadius: '12px', border: '1px solid var(--dark-border)', padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 400, color: 'var(--text-primary)', margin: '0 0 18px' }}>
                     Good to Know
                   </h3>
                   {[
@@ -347,27 +355,27 @@ export default function ReservationsPage() {
                     ['Large Groups', 'Parties of 8+ please call us directly.'],
                     ['Hours', 'Lunch: 12–14:00 · Dinner: 18–21:30'],
                   ].map(([title, desc]) => (
-                    <div key={title} style={{ borderBottom: '1px solid #f0ece4', paddingBottom: '12px', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5a5040', marginBottom: '3px', fontFamily: 'var(--font-sans)' }}>{title}</div>
-                      <div style={{ fontSize: '0.82rem', color: '#7a6f5e', lineHeight: 1.5, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>{desc}</div>
+                    <div key={title} style={{ borderBottom: '1px solid var(--dark-border)', paddingBottom: '12px', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '3px', fontFamily: 'var(--font-sans)' }}>{title}</div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>{desc}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Contact card */}
-                <div style={{ background: '#1a1a1a', borderRadius: '12px', padding: '28px' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#c0a060', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>
+                <div style={{ background: 'var(--panel-dark)', borderRadius: '12px', padding: '28px' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>
                     Need Help?
                   </div>
-                  <p style={{ fontFamily: 'var(--font-serif)', color: '#c8c0b0', fontSize: '0.85rem', fontStyle: 'italic', lineHeight: 1.6, margin: '0 0 16px' }}>
+                  <p style={{ fontFamily: 'var(--font-serif)', color: 'var(--on-dark-muted)', fontSize: '0.85rem', fontStyle: 'italic', lineHeight: 1.6, margin: '0 0 16px' }}>
                     Our team can help with special arrangements.
                   </p>
                   <a
                     href="tel:+441234567890"
                     style={{
                       display: 'block', textAlign: 'center', padding: '11px',
-                      background: 'rgba(192,160,96,0.1)', border: '1px solid rgba(192,160,96,0.3)',
-                      borderRadius: '6px', color: '#c0a060', fontSize: '0.72rem',
+                      background: 'var(--gold-muted)', border: '1px solid var(--dark-border-2)',
+                      borderRadius: '6px', color: 'var(--gold)', fontSize: '0.72rem',
                       fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
                       textDecoration: 'none', fontFamily: 'var(--font-sans)',
                     }}
@@ -384,6 +392,9 @@ export default function ReservationsPage() {
       <style>{`
         @media (max-width: 720px) {
           .res-outer { grid-template-columns: 1fr !important; }
+        }
+        .res-btn-primary:hover {
+          opacity: 0.88;
         }
       `}</style>
     </div>

@@ -9,7 +9,6 @@ import WelcomeSplashScreen from './WelcomeSplashScreen';
 import PageTransition from './PageTransition';
 import { Info } from 'lucide-react';
 import { MotionConfig } from 'framer-motion';
-import MouseTrailer from './MouseTrailer';
 import { useCMSStore, useIsMounted } from '@/store/restaurantStore';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -30,21 +29,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     return () => clearInterval(interval);
   }, [loadSystemSettings]);
 
-  // Unregister active service worker to clear cached assets/pages
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (const registration of registrations) {
-          registration.unregister().then((success) => {
-            if (success) {
-              console.log('Stale Service Worker unregistered.');
-              window.location.reload();
-            }
-          });
-        }
-      });
-    }
-  }, []);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -53,8 +37,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {!isAdmin && <ScrollProgress />}
         {!isAdmin && <div className="lux-grain" aria-hidden />}
 
-        {/* Mouse Trailer (Customer pages only) */}
-        {!isAdmin && <MouseTrailer />}
 
         {/* Welcome Screen (Customer pages only) */}
         {!isAdmin && <WelcomeSplashScreen />}

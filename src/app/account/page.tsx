@@ -299,10 +299,7 @@ function AccountPageContent() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundImage: "linear-gradient(rgba(250, 247, 242, 0.5), rgba(250, 247, 242, 0.5)), url('/login-pattern.jpg')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
+          background: 'var(--black)',
           padding: '60px 24px',
           position: 'relative',
         }}>
@@ -317,7 +314,7 @@ function AccountPageContent() {
             pointerEvents: 'none',
           }} />
           
-          <div style={{ maxWidth: '420px', width: '100%', padding: '40px 32px', background: 'rgba(255, 255, 255, 0.95)', border: '1px solid rgba(197, 168, 92, 0.22)', borderRadius: '12px', boxShadow: '0 20px 48px rgba(28, 25, 21, 0.08)', backdropFilter: 'blur(10px)', animation: 'cardFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <div style={{ maxWidth: '420px', width: '100%', padding: '40px 32px', background: 'var(--paper)', border: '1px solid var(--paper-border)', borderRadius: '12px', boxShadow: '0 20px 48px rgba(0, 0, 0, 0.08)', backdropFilter: 'blur(10px)', animation: 'cardFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <span style={{
@@ -356,8 +353,8 @@ function AccountPageContent() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   style={{
-                    background: '#fff',
-                    border: '1px solid rgba(28, 25, 21, 0.15)',
+                    background: 'var(--paper)',
+                    border: '1px solid var(--dark-border)',
                     borderRadius: '4px',
                     color: 'var(--text-primary)',
                     padding: '13px 16px',
@@ -369,11 +366,11 @@ function AccountPageContent() {
                   }}
                   className="login-input"
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--gold)';
-                    e.currentTarget.style.boxShadow = '0 0 10px rgba(197, 168, 92, 0.15)';
+                    e.currentTarget.style.borderColor = '#E11D2E';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(225, 29, 46, 0.15)';
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(28, 25, 21, 0.15)';
+                    e.currentTarget.style.borderColor = 'var(--dark-border)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 />
@@ -387,8 +384,8 @@ function AccountPageContent() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your full name"
                   style={{
-                    background: '#fff',
-                    border: '1px solid rgba(28, 25, 21, 0.15)',
+                    background: 'var(--paper)',
+                    border: '1px solid var(--dark-border)',
                     borderRadius: '4px',
                     color: 'var(--text-primary)',
                     padding: '13px 16px',
@@ -404,7 +401,7 @@ function AccountPageContent() {
                     e.currentTarget.style.boxShadow = '0 0 10px rgba(197, 168, 92, 0.15)';
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(28, 25, 21, 0.15)';
+                    e.currentTarget.style.borderColor = 'var(--dark-border)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 />
@@ -418,8 +415,8 @@ function AccountPageContent() {
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 XXXXX XXXXX"
                   style={{
-                    background: '#fff',
-                    border: '1px solid rgba(28, 25, 21, 0.15)',
+                    background: 'var(--paper)',
+                    border: '1px solid var(--dark-border)',
                     borderRadius: '4px',
                     color: 'var(--text-primary)',
                     padding: '13px 16px',
@@ -435,7 +432,7 @@ function AccountPageContent() {
                     e.currentTarget.style.boxShadow = '0 0 10px rgba(197, 168, 92, 0.15)';
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(28, 25, 21, 0.15)';
+                    e.currentTarget.style.borderColor = 'var(--dark-border)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 />
@@ -567,10 +564,10 @@ function AccountPageContent() {
 
               {/* Reservations */}
               <div style={{
-                background: '#FAF7F2',
-                border:     '1px solid rgba(158,128,67,0.15)',
+                background: 'var(--paper)',
+                border:     '1px solid var(--paper-border)',
                 padding:    '40px',
-                boxShadow:  '0 2px 20px rgba(28,25,21,0.04)',
+                boxShadow:  '0 2px 20px rgba(0,0,0,0.04)',
               }}>
                 <h3 style={{
                   fontFamily:   'var(--font-display)',
@@ -593,8 +590,8 @@ function AccountPageContent() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {userReservations.map(res => (
                       <div key={res.id} style={{
-                        background:     '#fff',
-                        border:         '1px solid rgba(28,25,21,0.08)',
+                        background:     'var(--dark-card)',
+                        border:         '1px solid var(--dark-border)',
                         padding:        '24px',
                         display:        'flex',
                         flexDirection:  'column',
@@ -649,10 +646,10 @@ function AccountPageContent() {
 
               {/* Order History */}
               <div style={{
-                background: '#FAF7F2',
-                border:     '1px solid rgba(158,128,67,0.15)',
+                background: 'var(--paper)',
+                border:     '1px solid var(--paper-border)',
                 padding:    '40px',
-                boxShadow:  '0 2px 20px rgba(28,25,21,0.04)',
+                boxShadow:  '0 2px 20px rgba(0,0,0,0.04)',
               }}>
                 <h3 style={{
                   fontFamily:   'var(--font-display)',
@@ -674,7 +671,7 @@ function AccountPageContent() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {userOrders.map(order => (
-                      <div key={order.id} style={{ background: '#fff', border: '1px solid rgba(28,25,21,0.08)', padding: '24px' }}>
+                      <div key={order.id} style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', padding: '24px' }}>
                         <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
                           <div>
                             <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontWeight: 600 }}>#{order.id}</span>
@@ -701,8 +698,8 @@ function AccountPageContent() {
                               .filter((item: any) => !item.isAdditive && item.id !== 'discount' && item.id !== 'tax-cgst' && item.id !== 'tax-sgst')
                               .map(item => (
                                 <span key={item.id} style={{
-                                  background: '#FAF7F2',
-                                  border:     '1px solid rgba(28,25,21,0.1)',
+                                  background: 'var(--paper)',
+                                  border:     '1px solid var(--dark-border)',
                                   padding:    '4px 10px',
                                   fontSize:   '0.75rem',
                                   color:      'var(--text-secondary)',
@@ -726,7 +723,7 @@ function AccountPageContent() {
                           )}
                         </div>
 
-                        <div className="flex justify-between items-center text-sm pt-4" style={{ borderTop: '1px solid rgba(28,25,21,0.08)' }}>
+                        <div className="flex justify-between items-center text-sm pt-4" style={{ borderTop: '1px solid var(--dark-border)' }}>
                           <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Type: {order.type.toUpperCase()}</span>
                           <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--text-primary)' }}>₹{order.total}</span>
                         </div>
@@ -743,10 +740,10 @@ function AccountPageContent() {
 
               {/* Membership Status */}
               <div style={{
-                background: '#FAF7F2',
-                border:     '1px solid rgba(158,128,67,0.15)',
+                background: 'var(--paper)',
+                border:     '1px solid var(--paper-border)',
                 padding:    '40px',
-                boxShadow:  '0 2px 20px rgba(28,25,21,0.04)',
+                boxShadow:  '0 2px 20px rgba(0,0,0,0.04)',
               }}>
                 <Award size={24} color="var(--gold)" style={{ marginBottom: '16px' }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
@@ -764,10 +761,10 @@ function AccountPageContent() {
 
               {/* Preferences */}
               <div style={{
-                background: '#FAF7F2',
-                border:     '1px solid rgba(158,128,67,0.15)',
+                background: 'var(--paper)',
+                border:     '1px solid var(--paper-border)',
                 padding:    '40px',
-                boxShadow:  '0 2px 20px rgba(28,25,21,0.04)',
+                boxShadow:  '0 2px 20px rgba(0,0,0,0.04)',
               }}>
                 <Heart size={20} color="var(--gold)" style={{ marginBottom: '16px' }} />
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '16px' }}>
@@ -780,7 +777,7 @@ function AccountPageContent() {
                     { label: 'Dietary Constraints', value: 'Gluten-conscious, Shellfish allergy' },
                     { label: 'Preferred Seating', value: 'Hearth-side Counter / Main Room Vault' },
                   ].map(({ label, value }) => (
-                    <div key={label} style={{ borderBottom: '1px solid rgba(28,25,21,0.06)', paddingBottom: '12px' }}>
+                    <div key={label} style={{ borderBottom: '1px solid var(--dark-border)', paddingBottom: '12px' }}>
                       <div style={{ color: 'var(--text-primary)', fontSize: '0.82rem', fontWeight: 600, marginBottom: '4px', fontFamily: 'var(--font-sans)' }}>{label}</div>
                       <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>{value}</div>
                     </div>

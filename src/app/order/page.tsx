@@ -50,6 +50,43 @@ const LABEL: React.CSSProperties = {
   marginBottom: '6px',
 };
 
+// ── Step indicator component
+function StepIndicator({ step, C }: { step: number; C: Record<string, string> }) {
+  const steps = [{ n: 1, label: 'Review' }, { n: 2, label: 'Details' }, { n: 3, label: 'Payment' }];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0', marginBottom: '36px' }}>
+      {steps.map((s, idx) => {
+        const active = step === s.n;
+        const done   = step > s.n;
+        return (
+          <React.Fragment key={s.n}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? C.gold : active ? C.text : 'transparent', border: `2px solid ${done || active ? (done ? C.gold : C.text) : C.border}`, color: done || active ? '#fff' : C.textMuted, fontSize: '0.82rem', fontWeight: 700, transition: 'all 0.3s', flexShrink: 0 }}>
+                {done ? '✓' : s.n}
+              </div>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: active ? C.text : C.textMuted }}>
+                {s.label}
+              </span>
+            </div>
+            {idx < steps.length - 1 && (
+              <div style={{ width: '32px', height: '1px', background: C.border, margin: '0 8px', flexShrink: 0 }} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Back button component
+function BackBtn({ onClick, C }: { onClick: () => void; C: Record<string, string> }) {
+  return (
+    <button type="button" onClick={onClick} style={{ padding: '14px 24px', borderRadius: '50px', border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+      ← Back
+    </button>
+  );
+}
+
 export default function OrderPage() {
   const storeCart          = useRestaurantStore((s) => s.cart);
   const user               = useRestaurantStore((s) => s.user);
@@ -336,40 +373,6 @@ export default function OrderPage() {
   // MAIN CHECKOUT WIZARD
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Step indicator
-  const StepIndicator = () => {
-    const steps = [{ n: 1, label: 'Review' }, { n: 2, label: 'Details' }, { n: 3, label: 'Payment' }];
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0', marginBottom: '36px' }}>
-        {steps.map((s, idx) => {
-          const active = step === s.n;
-          const done   = step > s.n;
-          return (
-            <React.Fragment key={s.n}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? C.gold : active ? C.text : 'transparent', border: `2px solid ${done || active ? (done ? C.gold : C.text) : C.border}`, color: done || active ? '#fff' : C.textMuted, fontSize: '0.82rem', fontWeight: 700, transition: 'all 0.3s', flexShrink: 0 }}>
-                  {done ? '✓' : s.n}
-                </div>
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: active ? C.text : C.textMuted }}>
-                  {s.label}
-                </span>
-              </div>
-              {idx < steps.length - 1 && (
-                <div style={{ width: '32px', height: '1px', background: C.border, margin: '0 8px', flexShrink: 0 }} />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-    );
-  };
-
-  // Back button
-  const BackBtn = ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick} style={{ padding: '14px 24px', borderRadius: '50px', border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-      ← Back
-    </button>
-  );
 
   // ── Not accepting orders ───────────────────────────────────────────────────
   if (!acceptingOrders) {
@@ -419,7 +422,7 @@ export default function OrderPage() {
 
         {/* ── Step indicator */}
         <div style={{ padding: '28px 0 4px' }}>
-          <StepIndicator />
+          <StepIndicator step={step} C={C} />
         </div>
 
         {/* ── Card */}
@@ -545,7 +548,7 @@ export default function OrderPage() {
 
               {/* Buttons */}
               <div style={{ display: 'flex', gap: '12px', marginTop: '28px' }}>
-                <BackBtn onClick={() => setStep(1)} />
+                <BackBtn onClick={() => setStep(1)} C={C} />
                 <motion.button
                   type="button"
                   whileHover={{ scale: 1.015 }}
@@ -652,7 +655,7 @@ export default function OrderPage() {
 
               {/* Buttons */}
               <div style={{ display: 'flex', gap: '12px' }}>
-                <BackBtn onClick={() => setStep(2)} />
+                <BackBtn onClick={() => setStep(2)} C={C} />
                 <motion.button
                   type="submit"
                   whileHover={cart.type === 'dine-in' && availableTables.length === 0 ? undefined : { scale: 1.015 }}

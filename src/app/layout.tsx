@@ -75,6 +75,23 @@ export default function RootLayout({
 }>) {
   const content = (
     <html lang="en" suppressHydrationWarning className={`h-full ${cormorant.variable} ${inter.variable} ${ebGaramond.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            try {
+              var t = localStorage.getItem('theme');
+              if (t === 'dark') {
+                document.documentElement.classList.add('dark');
+              } else if (!t) {
+                var h = new Date().getHours();
+                if (h >= 19 || h < 7) {
+                  document.documentElement.classList.add('dark');
+                }
+              }
+            } catch(e) {}
+          })();
+        `}} />
+      </head>
       <body className="min-h-full bg-black" suppressHydrationWarning>
         <ClientLayout>{children}</ClientLayout>
       </body>

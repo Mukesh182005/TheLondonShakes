@@ -146,8 +146,16 @@ export default function Footer() {
                   letterSpacing: '0.04em',
                   transition:    'color 0.25s ease',
                 }}
-                  onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--on-dark)'}
-                  onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--on-dark-muted)'}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.color = '#E11D2E';
+                    el.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.color = 'var(--on-dark-muted)';
+                    el.style.textDecoration = 'none';
+                  }}
                 >
                   {link.label}
                 </Link>
@@ -178,8 +186,16 @@ export default function Footer() {
                   letterSpacing: '0.04em',
                   transition:    'color 0.25s ease',
                 }}
-                  onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--on-dark)'}
-                  onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--on-dark-muted)'}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.color = '#E11D2E';
+                    el.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.color = 'var(--on-dark-muted)';
+                    el.style.textDecoration = 'none';
+                  }}
                 >
                   {link.label}
                 </Link>

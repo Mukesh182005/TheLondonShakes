@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRestaurantStore, useIsMounted } from '@/store/restaurantStore';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sun, Moon } from 'lucide-react';
 
 const leftLinks = [
   { label: 'About',       href: '/about' },
@@ -81,6 +81,7 @@ export default function Navbar() {
 
   const isMounted = useIsMounted();
   const [isMobile, setIsMobile] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -88,6 +89,48 @@ export default function Navbar() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Sync dark mode state on mount + auto time-based switching
+  useEffect(() => {
+    const applyTimeBasedTheme = () => {
+      const stored = localStorage.getItem('theme');
+      if (!stored) {
+        // No manual preference — use time-based auto switching
+        const hour = new Date().getHours();
+        const shouldBeDark = hour >= 19 || hour < 7;
+        const html = document.documentElement;
+        if (shouldBeDark && !html.classList.contains('dark')) {
+          html.classList.add('dark');
+          setIsDark(true);
+        } else if (!shouldBeDark && html.classList.contains('dark')) {
+          html.classList.remove('dark');
+          setIsDark(false);
+        } else {
+          setIsDark(html.classList.contains('dark'));
+        }
+      } else {
+        setIsDark(document.documentElement.classList.contains('dark'));
+      }
+    };
+
+    applyTimeBasedTheme();
+    // Re-check every 60 seconds for time boundary crossing
+    const interval = setInterval(applyTimeBasedTheme, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const toggleTheme = () => {
+    const html = document.documentElement;
+    const next = !isDark;
+    if (next) {
+      html.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      html.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+    setIsDark(next);
+  };
 
   const user = isMounted ? storeUser : null;
 
@@ -123,7 +166,6 @@ export default function Navbar() {
   const isPrivateEvents = pathname === '/private-events';
   const drawerBg = isPrivateEvents ? 'var(--panel-dark)' : 'var(--black)';
   const drawerText = isPrivateEvents ? '#F2EEE4' : 'var(--text-primary)';
-  const drawerBorder = isPrivateEvents ? '1px solid var(--dark-border)' : '1px solid rgba(28, 24, 16, 0.08)';
 
   return (
     <>
@@ -140,12 +182,16 @@ export default function Navbar() {
           alignItems:     'center',
           background:     isPrivateEvents
             ? (scrolled ? 'rgba(11, 4, 18, 0.95)' : 'rgba(11, 4, 18, 0.75)')
-            : (scrolled ? 'rgba(242, 238, 228, 0.96)' : 'rgba(242, 238, 228, 0.6)'),
+            : isDark
+              ? (scrolled ? 'rgba(14, 12, 9, 0.95)' : 'rgba(14, 12, 9, 0.6)')
+              : (scrolled ? 'rgba(242, 238, 228, 0.96)' : 'rgba(242, 238, 228, 0.6)'),
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
           borderBottom:   isPrivateEvents
             ? '1px solid rgba(139, 92, 246, 0.2)'
-            : (scrolled ? '1px solid rgba(28, 24, 16, 0.08)' : '1px solid rgba(28, 24, 16, 0.04)'),
+            : isDark
+              ? (scrolled ? '1px solid rgba(242, 238, 228, 0.06)' : '1px solid rgba(242, 238, 228, 0.03)')
+              : (scrolled ? '1px solid rgba(28, 24, 16, 0.08)' : '1px solid rgba(28, 24, 16, 0.04)'),
           opacity:        navVisible ? 1 : 0,
           transform:      navVisible ? 'translateY(0)' : 'translateY(-100%)',
           pointerEvents:  navVisible ? 'auto' : 'none',
@@ -180,7 +226,7 @@ export default function Navbar() {
               fontFamily:    'var(--font-display)',
               fontSize:      isMobile ? '1.45rem' : '1.9rem',
               fontWeight:    300,
-              color:         isPrivateEvents ? '#F2EEE4' : 'var(--cream)',
+              color:         (isPrivateEvents || isDark) ? '#F2EEE4' : 'var(--cream)',
               letterSpacing: '0.04em',
               lineHeight:    1,
               whiteSpace:    'nowrap',
@@ -239,6 +285,40 @@ export default function Navbar() {
               >
                 {isMounted && user ? 'Account' : 'Sign In'}
               </Link>
+
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                style={{
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  width:          '36px',
+                  height:         '36px',
+                  background:     'transparent',
+                  border:         isPrivateEvents || isDark
+                    ? '1px solid rgba(242, 238, 228, 0.2)'
+                    : '1px solid rgba(28, 24, 16, 0.15)',
+                  borderRadius:   '50%',
+                  color:          isPrivateEvents || isDark ? '#F2EEE4' : 'var(--text-muted)',
+                  cursor:         'pointer',
+                  marginLeft:     '10px',
+                  transition:     'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = '#E11D2E';
+                  (e.currentTarget as HTMLElement).style.color = '#E11D2E';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = (isPrivateEvents || isDark)
+                    ? 'rgba(242, 238, 228, 0.2)'
+                    : 'rgba(28, 24, 16, 0.15)';
+                  (e.currentTarget as HTMLElement).style.color = (isPrivateEvents || isDark) ? '#F2EEE4' : 'var(--text-muted)';
+                }}
+              >
+                {isDark ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
             </nav>
 
             {/* Hamburger — mobile */}
@@ -251,22 +331,22 @@ export default function Navbar() {
                 width:          '40px',
                 height:         '40px',
                 background:     'transparent',
-                border:         isPrivateEvents 
+                border:         (isPrivateEvents || isDark)
                   ? '1px solid rgba(242, 238, 228, 0.25)' 
                   : '1px solid rgba(28, 24, 16, 0.15)',
-                color:          isPrivateEvents ? '#F2EEE4' : 'var(--text-muted)',
+                color:          (isPrivateEvents || isDark) ? '#F2EEE4' : 'var(--text-muted)',
                 cursor:         'pointer',
                 marginLeft:     '8px',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = isPrivateEvents ? 'var(--gold-pale)' : 'var(--cream)';
-                (e.currentTarget as HTMLElement).style.color = isPrivateEvents ? 'var(--gold-pale)' : 'var(--cream)';
+                (e.currentTarget as HTMLElement).style.borderColor = (isPrivateEvents || isDark) ? 'var(--gold-pale)' : 'var(--cream)';
+                (e.currentTarget as HTMLElement).style.color = (isPrivateEvents || isDark) ? 'var(--gold-pale)' : 'var(--cream)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = isPrivateEvents 
+                (e.currentTarget as HTMLElement).style.borderColor = (isPrivateEvents || isDark)
                   ? 'rgba(242, 238, 228, 0.25)' 
                   : 'rgba(28, 24, 16, 0.15)';
-                (e.currentTarget as HTMLElement).style.color = isPrivateEvents ? '#F2EEE4' : 'var(--text-muted)';
+                (e.currentTarget as HTMLElement).style.color = (isPrivateEvents || isDark) ? '#F2EEE4' : 'var(--text-muted)';
               }}
             >
               {mobileOpen ? <X size={17} /> : <Menu size={17} />}
@@ -275,7 +355,7 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* ── Mobile Drawer ── */}
+      {/* ── Mobile Drawer (Redesigned) ── */}
       <div style={{
         position:   'fixed',
         inset:      0,
@@ -286,76 +366,185 @@ export default function Navbar() {
         paddingTop: 'var(--navbar-h)',
         transform:  mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.55s cubic-bezier(0.19,1,0.22,1)',
+        overflow: 'hidden',
       }}>
-        <nav style={{ flex: 1, padding: '48px 32px', display: 'flex', flexDirection: 'column', gap: '0px' }}>
-          {allLinks.map((link) => (
+        {/* Decorative red accent line */}
+        <div style={{
+          height: '2px',
+          background: 'linear-gradient(90deg, transparent, var(--red), var(--gold), transparent)',
+          opacity: 0.6,
+        }} />
+
+        <nav style={{
+          flex: 1,
+          padding: '36px 32px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0px',
+          position: 'relative',
+        }}>
+          {/* Mobile theme toggle */}
+          <button
+            onClick={toggleTheme}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              padding: '16px 0',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: `1px solid ${isDark ? 'rgba(242,238,228,0.06)' : 'rgba(28, 24, 16, 0.06)'}`,
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '50%',
+              border: `1px solid ${isDark ? 'rgba(242,238,228,0.15)' : 'rgba(28,24,16,0.12)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: isDark ? 'rgba(242,238,228,0.04)' : 'rgba(28,24,16,0.03)',
+            }}>
+              {isDark ? <Sun size={16} color="#F2EEE4" /> : <Moon size={16} color={drawerText} />}
+            </div>
+            <span style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              color: isDark ? 'rgba(242,238,228,0.6)' : 'rgba(28,24,16,0.5)',
+            }}>
+              {isDark ? 'Light Mode' : 'Dark Mode'}
+            </span>
+          </button>
+
+          {/* Nav links with stagger animation feel */}
+          {allLinks.map((link, i) => (
             <Link
               key={link.href}
               href={link.href}
               style={{
                 fontFamily:    'var(--font-display)',
-                fontSize:      '1.4rem',
+                fontSize:      '1.6rem',
                 fontWeight:    300,
                 color:         isActive(link.href) ? 'var(--gold)' : drawerText,
                 textDecoration:'none',
-                padding:       '12px 0',
-                borderBottom:  drawerBorder,
-                display:       'block',
+                padding:       '16px 0',
+                borderBottom:  `1px solid ${isDark ? 'rgba(242,238,228,0.04)' : 'rgba(28,24,16,0.04)'}`,
+                display:       'flex',
+                alignItems:    'center',
+                justifyContent:'space-between',
+                transition:    'color 0.3s ease',
               }}
             >
-              {link.label}
+              <span>{link.label}</span>
+              {isActive(link.href) && (
+                <span style={{
+                  width: '6px', height: '6px', borderRadius: '50%',
+                  background: 'var(--gold)',
+                  boxShadow: '0 0 8px rgba(191,163,114,0.5)',
+                }} />
+              )}
+              {!isActive(link.href) && (
+                <span style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '0.55rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.2em',
+                  color: isDark ? 'rgba(242,238,228,0.15)' : 'rgba(28,24,16,0.12)',
+                }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+              )}
             </Link>
           ))}
+
           {isAdmin && (
             <Link
               href="/admin"
               style={{
                 fontFamily:    'var(--font-display)',
-                fontSize:      '1.4rem',
+                fontSize:      '1.6rem',
                 fontWeight:    300,
                 color:         isActive('/admin') ? 'var(--gold)' : drawerText,
                 textDecoration:'none',
-                padding:       '12px 0',
-                borderBottom:  drawerBorder,
-                display:       'block',
+                padding:       '16px 0',
+                borderBottom:  `1px solid ${isDark ? 'rgba(242,238,228,0.04)' : 'rgba(28,24,16,0.04)'}`,
+                display:       'flex',
+                alignItems:    'center',
+                gap:           '10px',
               }}
             >
               Admin Dashboard
+              <span style={{
+                fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase',
+                padding: '2px 6px', borderRadius: '3px', letterSpacing: '0.1em',
+                background: 'rgba(225,29,46,0.1)', color: 'var(--red)', border: '1px solid rgba(225,29,46,0.2)',
+              }}>
+                Admin
+              </span>
             </Link>
           )}
-          {isMounted && user ? (
+
+          {/* Sign In / Account CTA */}
+          <div style={{ marginTop: '24px' }}>
             <Link
               href="/account"
               style={{
-                fontFamily:    'var(--font-display)',
-                fontSize:      '1.4rem',
-                fontWeight:    300,
-                color:         isActive('/account') ? 'var(--gold)' : drawerText,
-                textDecoration:'none',
-                padding:       '12px 0',
-                display:       'block',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '14px 24px',
+                background: '#E8102A',
+                color: 'white',
+                fontFamily: 'var(--font-sans)',
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                textDecoration: 'none',
+                borderRadius: '4px',
+                boxShadow: '0 4px 20px rgba(232, 16, 42, 0.3)',
+                transition: 'all 0.25s ease',
               }}
             >
-              My Account ({user.name.split(' ')[0]})
+              {isMounted && user ? `My Account (${user.name.split(' ')[0]})` : 'Sign In'}
             </Link>
-          ) : (
-            <Link
-              href="/account"
-              style={{
-                fontFamily:    'var(--font-display)',
-                fontSize:      '1.4rem',
-                fontWeight:    300,
-                color:         isActive('/account') ? 'var(--gold)' : drawerText,
-                textDecoration:'none',
-                padding:       '12px 0',
-                display:       'block',
-              }}
-            >
-              Sign In
-            </Link>
-          )}
+          </div>
         </nav>
+
+        {/* Bottom branding strip */}
+        <div style={{
+          padding: '20px 32px',
+          borderTop: `1px solid ${isDark ? 'rgba(242,238,228,0.04)' : 'rgba(28,24,16,0.04)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '0.5rem',
+            fontWeight: 600,
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            color: isDark ? 'rgba(242,238,228,0.2)' : 'rgba(28,24,16,0.2)',
+          }}>
+            Est. 2021 · Silchar
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '0.75rem',
+            fontStyle: 'italic',
+            color: 'var(--gold)',
+            opacity: 0.4,
+          }}>
+            The London Shakes
+          </span>
+        </div>
       </div>
+
 
 
     </>

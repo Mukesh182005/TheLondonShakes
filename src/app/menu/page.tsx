@@ -2,13 +2,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { useCMSStore, useRestaurantStore } from '@/store/restaurantStore';
-import { useRouter } from 'next/navigation';
+import { useCMSStore } from '@/store/restaurantStore';
 import { 
   menuItems as initialMenuItems,
   menuCategories as initialMenuCategories 
 } from '@/data/restaurantData';
 import { Search, Filter, X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 const DIETARY_OPTIONS = [
   { key: 'v',  label: 'Vegetarian' },
@@ -103,22 +103,67 @@ const DEFAULT_CATEGORY_IMAGES: Record<string, { left: FloatingImageConfig[]; rig
   }
 };
 
+const CATEGORY_BANNER_IMAGES: Record<string, string> = {
+  shakes: '/event-shake.png',
+  burgers: '/menu-burger.png',
+  pastas: '/menu-pasta.png',
+  snacks: '/menu-fries.png',
+  waffles: '/event-waffle.png',
+  drinks: '/menu-coffee.png',
+  'new-arrivals': '/london-gallery-bg.jpg'
+};
+
+const getBadgeStyle = (badge?: string | null) => {
+  if (!badge) return {};
+  const b = badge.toLowerCase();
+  if (b.includes('best') || b.includes('must')) {
+    return { background: '#FFF0F2', color: '#E11D2E', border: '1px solid rgba(225, 29, 46, 0.1)' };
+  }
+  if (b.includes('popular') || b.includes('trending') || b.includes('hot')) {
+    return { background: '#E6F4FE', color: '#0E223D', border: '1px solid rgba(14, 34, 61, 0.1)' };
+  }
+  if (b.includes('season') || b.includes('spicy')) {
+    return { background: '#FFF3E0', color: '#FF9800', border: '1px solid rgba(255, 152, 0, 0.1)' };
+  }
+  if (b.includes('classic') || b.includes('comfort') || b.includes('favorite') || b.includes('favourite')) {
+    return { background: '#E8F5E9', color: '#1F543C', border: '1px solid rgba(31, 84, 60, 0.1)' };
+  }
+  return { background: '#FFF8E1', color: '#78602E', border: '1px solid rgba(120, 96, 46, 0.1)' };
+};
+
+/* ── Mobile 3-Column Grid (Swiggy / Zomato style) ── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function MobileGrid({ items, renderCard }: { items: any[]; renderCard: (item: any) => React.ReactNode }) {
+  if (items.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '8px',
+      }}
+    >
+      {items.map((item) => (
+        <div key={item.id}>
+          {renderCard(item)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MenuPage() {
   const storeMenuItems      = useCMSStore((s) => s.menuItems);
   const storeMenuCategories = useCMSStore((s) => s.menuCategories);
-  const user                = useRestaurantStore((s) => s.user);
-  const router              = useRouter();
 
   const [isMounted, setIsMounted] = useState(false);
+  const isMobile = useIsMobile();
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (isMounted && !user) {
-      router.push('/account?redirect=/menu');
-    }
-  }, [isMounted, user, router]);
+
 
   const menuItems      = isMounted ? storeMenuItems : initialMenuItems;
   const menuCategories = isMounted ? storeMenuCategories : initialMenuCategories;
@@ -131,6 +176,48 @@ export default function MenuPage() {
   const [filterOpen,     setFilterOpen]     = useState(false);
   const [selectedSizes,  setSelectedSizes]  = useState<Record<string, 'small' | 'medium' | 'large'>>({});
   const [activeDetailItem, setActiveDetailItem] = useState<typeof menuItems[0] | null>(null);
+
+  const handleNextDish = () => {
+    if (!activeDetailItem || filtered.length <= 1) return;
+    const idx = filtered.findIndex(item => item.id === activeDetailItem.id);
+    if (idx !== -1) {
+      const nextIdx = (idx + 1) % filtered.length;
+      setActiveDetailItem(filtered[nextIdx]);
+    }
+  };
+
+  const handlePrevDish = () => {
+    if (!activeDetailItem || filtered.length <= 1) return;
+    const idx = filtered.findIndex(item => item.id === activeDetailItem.id);
+    if (idx !== -1) {
+      const prevIdx = (idx - 1 + filtered.length) % filtered.length;
+      setActiveDetailItem(filtered[prevIdx]);
+    }
+  };
+
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    if (isLeftSwipe) {
+      handleNextDish();
+    } else if (isRightSwipe) {
+      handlePrevDish();
+    }
+  };
 
   useEffect(() => {
     if (isMounted) {
@@ -272,7 +359,21 @@ export default function MenuPage() {
     return items;
   }, [menuItems, activeCategory, searchQuery, dietary, maxPrice, sortBy, newArrivalsDaysThreshold]);
 
-  if (!isMounted || !user) {
+  const itemsByCategory = useMemo(() => {
+    const grouped: Record<string, typeof menuItems> = {};
+    menuCategories.forEach((cat) => {
+      grouped[cat.id] = [];
+    });
+    filtered.forEach((item) => {
+      if (!grouped[item.category]) {
+        grouped[item.category] = [];
+      }
+      grouped[item.category].push(item);
+    });
+    return grouped;
+  }, [filtered, menuCategories]);
+
+  if (!isMounted) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--void)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.875rem' }}>Loading Menu…</p>
@@ -326,164 +427,484 @@ export default function MenuPage() {
   const toggleDietary = (key: string) =>
     setDietary((prev) => prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key]);
 
+  const renderCategoryBanner = (catId: string, label: string, desc: string, itemCount: number) => {
+    const bgImage = CATEGORY_BANNER_IMAGES[catId] || CATEGORY_BANNER_IMAGES['new-arrivals'];
+    
+    return (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '160px',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          marginBottom: '24px',
+          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.05)',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${bgImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.2) 100%)',
+          }}
+        />
+        <div
+          style={{
+            position: 'relative',
+            height: '100%',
+            padding: '24px 32px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'flex-start',
+            gap: '8px',
+            zIndex: 1,
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              borderRadius: '999px',
+              backgroundColor: '#FFFFFF',
+              color: '#1C1915',
+              fontSize: '0.62rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: '#E11D2E',
+              }}
+            />
+            {itemCount} Item{itemCount !== 1 ? 's' : ''}
+          </div>
+          
+          <h2
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.85rem',
+              fontWeight: 400,
+              color: '#FFFFFF',
+              margin: 0,
+              lineHeight: 1.1,
+            }}
+          >
+            {label}
+          </h2>
+          
+          <p
+            style={{
+              fontSize: '0.8rem',
+              color: 'rgba(255, 255, 255, 0.8)',
+              margin: 0,
+              maxWidth: '500px',
+              lineHeight: 1.4,
+            }}
+          >
+            {desc}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const renderMenuItemCard = (item: typeof menuItems[0]) => {
     const portions = getPortionsConfig(item);
     const availableSizes = (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available);
     const selectedSize = selectedSizes[item.id];
-    // Ensure currentSize always points to an available portion
     const currentSize = (selectedSize && portions[selectedSize]?.available)
       ? selectedSize
       : (availableSizes[0] || 'medium');
     const currentPrice = portions[currentSize]?.price || item.price;
+    const isVeg = item.dietary.includes('v') || item.dietary.includes('vg');
+
+    return (
+      <div
+        key={item.id}
+        onClick={() => setActiveDetailItem(item)}
+        style={{
+          background: 'var(--dark-card)',
+          border: '1px solid var(--dark-border)',
+          borderRadius: '16px',
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '16px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+          transition: 'transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease',
+          position: 'relative',
+          gap: '16px',
+          width: '100%',
+          cursor: 'pointer',
+        }}
+        onMouseEnter={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.backgroundColor = 'var(--dark-card-2)';
+          el.style.transform = 'translateY(-2px)';
+          el.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.06)';
+        }}
+        onMouseLeave={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.backgroundColor = 'var(--dark-card)';
+          el.style.transform = 'translateY(0)';
+          el.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.03)';
+        }}
+      >
+        {/* Left Column: Details */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: 0 }}>
+          {/* Badge & Veg Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Veg / Non-veg Indicator */}
+            <div style={{
+              width: '14px',
+              height: '14px',
+              border: `1.5px solid ${isVeg ? '#1F543C' : '#8F1D2F'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '3px',
+              flexShrink: 0,
+            }}>
+              <div style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: isVeg ? '#1F543C' : '#8F1D2F',
+              }} />
+            </div>
+
+            {/* Badge Tag */}
+            {item.badge && (
+              <span style={{
+                fontSize: '0.55rem',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                letterSpacing: '0.05em',
+                ...getBadgeStyle(item.badge),
+              }}>
+                {item.badge}
+              </span>
+            )}
+          </div>
+
+          {/* Item Name */}
+          <h3 style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '1.05rem',
+            fontWeight: 600,
+            color: 'var(--cream)',
+            margin: 0,
+            lineHeight: 1.2,
+          }}>
+            {item.name}
+          </h3>
+
+          {/* Price */}
+          <span style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '0.95rem',
+            fontWeight: 700,
+            color: 'var(--cream)',
+            lineHeight: 1,
+          }}>
+            ₹{currentPrice}
+          </span>
+
+          {/* Description */}
+          <p style={{
+            fontSize: '0.8rem',
+            color: 'var(--text-secondary)',
+            lineHeight: 1.4,
+            margin: 0,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {item.description}
+          </p>
+
+          {/* Portion Size Selection */}
+          {availableSizes.length > 1 && (
+            <div
+              onClick={(e) => e.stopPropagation()} // Prevent modal trigger
+              style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}
+            >
+              <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Size:</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {availableSizes.map((size) => {
+                  const active = currentSize === size;
+                  return (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSizes((prev) => ({ ...prev, [item.id]: size }))}
+                      style={{
+                        padding: '2px 6px',
+                        background: active ? 'rgba(143, 29, 47, 0.08)' : 'transparent',
+                        border: `1px solid ${active ? 'var(--red)' : 'var(--dark-border)'}`,
+                        color: active ? 'var(--red)' : 'var(--text-secondary)',
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '0.55rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Image */}
+        <div style={{
+          position: 'relative',
+          width: '96px',
+          height: '96px',
+          flexShrink: 0,
+          borderRadius: '12px',
+          overflow: 'hidden',
+          backgroundColor: '#000',
+        }}>
+          {!item.image ? (
+            <div
+              className={`food-photo ${item.gradient}`}
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.75rem',
+              }}
+            >
+              {item.category === 'shakes' ? '🥤' : item.category === 'burgers' ? '🍔' : item.category === 'pastas' ? '🍝' : item.category === 'snacks' ? '🍟' : item.category === 'waffles' ? '🧇' : '☕'}
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.image}
+              alt={item.name}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                border: '1px solid var(--dark-border)',
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ── Compact Mobile Card (Swiggy / Zomato style) ── */
+  const renderMobileCard = (item: typeof menuItems[0]) => {
+    const portions = getPortionsConfig(item);
+    const availableSizes = (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available);
+    const selectedSize = selectedSizes[item.id];
+    const currentSize = (selectedSize && portions[selectedSize]?.available)
+      ? selectedSize
+      : (availableSizes[0] || 'medium');
+    const currentPrice = portions[currentSize]?.price || item.price;
+    const isVeg = item.dietary.includes('v') || item.dietary.includes('vg');
+
+    // Create a stable mock rating based on item id
+    const mockRating = ((item.name.charCodeAt(0) + item.name.charCodeAt(1 || 0)) % 6) / 10 + 4.0;
+
     return (
       <div
         key={item.id}
         style={{
-          background:   'var(--dark-card)',
-          border:       '1px solid var(--dark-border)',
-          display:      'flex',
-          flexDirection:'column',
-          overflow:     'hidden',
-          transition:   'background 0.3s ease, transform 0.4s var(--ease-expo), box-shadow 0.4s var(--ease-expo)',
-          width:        '100%',
-        }}
-        onMouseEnter={(e) => {
-          const el = e.currentTarget as HTMLElement;
-          el.style.background = 'var(--dark-card-2)';
-          el.style.transform = 'translateY(-5px)';
-          el.style.boxShadow = '0 24px 48px rgba(0,0,0,0.28)';
-        }}
-        onMouseLeave={(e) => {
-          const el = e.currentTarget as HTMLElement;
-          el.style.background = 'var(--dark-card)';
-          el.style.transform = 'translateY(0)';
-          el.style.boxShadow = 'none';
+          background: 'var(--dark-card)',
+          border: '1px solid var(--dark-border)',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
         }}
       >
-        {/* Clickable Area for Pop-up Details */}
+        {/* Top: Square image section with overlays */}
         <div
           onClick={() => setActiveDetailItem(item)}
-          style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', flex: 1 }}
+          style={{
+            position: 'relative',
+            width: '100%',
+            aspectRatio: '1',
+            backgroundColor: '#0a0a14',
+            cursor: 'pointer',
+            overflow: 'hidden',
+          }}
         >
-          {/* Image Zone */}
-          <div
-            style={{
-              height: '160px', position: 'relative', overflow: 'hidden',
-              background: (item as { image?: string | null }).image ? '#000' : undefined,
-            }}
-            className={!(item as { image?: string | null }).image ? `food-photo img-zoom-wrap ${item.gradient}` : 'food-photo img-zoom-wrap'}
-          >
-            {(item as { image?: string | null }).image && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={(item as { image?: string | null }).image!}
-                alt={item.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-            )}
-            {item.badge && (
-              <span className="badge-red" style={{ position:'absolute', top:'12px', left:'12px', fontSize:'0.5rem' }}>
-                {item.badge}
-              </span>
-            )}
-            {/* Category chip */}
-            <span style={{
-              position:      'absolute',
-              bottom:        '12px',
-              right:         '12px',
-              fontFamily:    'var(--font-sans)',
-              fontSize:      '0.52rem',
-              fontWeight:    700,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color:         'rgba(225,29,46,0.55)',
+          {!item.image ? (
+            <div className={`food-photo ${item.gradient}`} style={{
+              width: '100%', height: '100%', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem',
             }}>
-              {item.course}
-            </span>
+              {item.category === 'shakes' ? '🥤' : item.category === 'burgers' ? '🍔' : item.category === 'pastas' ? '🍝' : item.category === 'snacks' ? '🍟' : item.category === 'waffles' ? '🧇' : '☕'}
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+
+          {/* Overlay 1: Veg / Non-veg tag (Top-right) */}
+          <div style={{
+            position: 'absolute',
+            top: '4px',
+            right: '4px',
+            width: '12px',
+            height: '12px',
+            background: 'rgba(10, 10, 20, 0.75)',
+            border: `1px solid ${isVeg ? '#1F543C' : '#8F1D2F'}`,
+            borderRadius: '2px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2,
+          }}>
+            <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: isVeg ? '#1F543C' : '#8F1D2F' }} />
           </div>
 
-          {/* Content */}
-          <div style={{ padding:'24px 20px', flex:1, display:'flex', flexDirection:'column', gap:'8px' }}>
-            <h3 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize:   '1.15rem',
-              color:      'var(--cream)',
-              lineHeight: 1.1,
+          {/* Overlay 2: Bestseller / Popular badge (Top-left) */}
+          {item.badge && (
+            <span style={{
+              position: 'absolute',
+              top: '4px',
+              left: '4px',
+              fontSize: '0.42rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              padding: '1px 4px',
+              borderRadius: '3px',
+              letterSpacing: '0.02em',
+              zIndex: 2,
+              ...getBadgeStyle(item.badge),
             }}>
-              {item.name}
-            </h3>
-            <p style={{ fontSize:'0.8rem', color:'var(--text-secondary)', lineHeight:1.6, flex:1 }}>
-              {item.description}
-            </p>
+              {item.badge}
+            </span>
+          )}
 
-            {/* Dietary */}
-            {item.dietary.length > 0 && (
-              <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px' }}>
-                {item.dietary.map((tag) => (
-                  <span key={tag} className={`dietary-tag ${tag}`}>{tag.toUpperCase()}</span>
-                ))}
-              </div>
-            )}
-
-            {/* Allergens */}
-            {item.allergens.length > 0 && (
-              <p style={{ fontSize:'0.62rem', color:'var(--text-muted)', letterSpacing:'0.05em', marginTop:'4px' }}>
-                Contains: {item.allergens.join(', ')}
-              </p>
-            )}
+          {/* Overlay 3: Rating (Bottom-left) */}
+          <div style={{
+            position: 'absolute',
+            bottom: '4px',
+            left: '4px',
+            background: '#1F543C',
+            color: '#FFFFFF',
+            fontSize: '0.45rem',
+            fontWeight: 800,
+            padding: '1px 4px',
+            borderRadius: '3px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+            zIndex: 2,
+          }}>
+            <span>★</span>
+            <span>{mockRating.toFixed(1)}</span>
           </div>
         </div>
 
-        {/* Portion Size Selection */}
-        {availableSizes.length > 1 && (
-          <div style={{ display: 'flex', gap: '8px', padding: '0 20px 12px', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>Size:</span>
-            <div style={{ display: 'flex', gap: '4px' }}>
+        {/* Bottom details */}
+        <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+          {/* Name (2-line limit) */}
+          <h4 style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '0.62rem',
+            fontWeight: 600,
+            color: 'var(--cream)',
+            margin: 0,
+            lineHeight: 1.25,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            minHeight: '2.5em',
+          }}>
+            {item.name}
+          </h4>
+
+          {/* Price */}
+          <span style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '0.62rem',
+            fontWeight: 700,
+            color: 'var(--cream)',
+            marginTop: '2px',
+            display: 'block',
+          }}>
+            ₹{currentPrice}
+          </span>
+
+          {/* Size Selector (Compact S / M / L) */}
+          {availableSizes.length > 1 && (
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                marginTop: 'auto',
+                paddingTop: '4px',
+              }}
+            >
               {availableSizes.map((size) => {
                 const active = currentSize === size;
+                const abbrev = size === 'small' ? 'S' : size === 'medium' ? 'M' : 'L';
                 return (
                   <button
                     key={size}
                     onClick={() => setSelectedSizes((prev) => ({ ...prev, [item.id]: size }))}
                     style={{
-                      padding: '4px 10px',
-                      background: active ? 'rgba(225,29,46,0.12)' : 'transparent',
+                      padding: '1px 3px',
+                      background: active ? 'rgba(225,29,46,0.1)' : 'transparent',
                       border: `1px solid ${active ? 'var(--red)' : 'var(--dark-border)'}`,
                       color: active ? 'var(--red)' : 'var(--text-secondary)',
                       fontFamily: 'var(--font-sans)',
-                      fontSize: '0.6rem',
-                      fontWeight: 750,
-                      textTransform: 'uppercase',
+                      fontSize: '0.42rem',
+                      fontWeight: 700,
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease',
+                      borderRadius: '3px',
+                      flex: 1,
+                      textAlign: 'center',
                     }}
                   >
-                    {size}
+                    {abbrev}
                   </button>
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div style={{
-          padding:      '16px 20px',
-          borderTop:    '1px solid var(--dark-border)',
-          display:      'flex',
-          alignItems:   'center',
-          justifyContent:'space-between',
-          gap:          '12px',
-        }}>
-          <span style={{
-            fontFamily: 'var(--font-display)',
-            fontSize:   '1.85rem',
-            color:      'var(--red)',
-            lineHeight: 1,
-            whiteSpace: 'nowrap',
-          }}>
-            ₹{currentPrice}
-          </span>
+          )}
         </div>
       </div>
     );
@@ -601,7 +1022,7 @@ export default function MenuPage() {
       </div>
 
 
-      {/* ── Category Tabs ── */}
+      {/* ── Category Tabs (Zomato / Swiggy style circular icons on mobile) ── */}
       <div style={{
         background:     'var(--dark-surface)',
         borderBottom:   '1px solid var(--dark-border)',
@@ -609,36 +1030,160 @@ export default function MenuPage() {
         top:            'var(--navbar-h)',
         zIndex:         40,
         overflowX:      'auto',
+        msOverflowStyle: 'none',
+        scrollbarWidth:  'none',
+        padding:        isMobile ? '16px 0 10px' : '0',
       }}>
-        <div className="container" style={{ display:'flex', alignItems:'center', gap:'0', padding:'0 var(--container-px)' }}>
-          <button
-            onClick={() => setActiveCategory('all')}
-            className={`menu-tab ${activeCategory === 'all' ? 'active' : ''}`}
+        <style>{`
+          .mobile-cat-scroll::-webkit-scrollbar { display: none; }
+        `}</style>
+        {isMobile ? (
+          <div 
+            className="mobile-cat-scroll"
+            style={{ 
+              display: 'flex', 
+              gap: '16px', 
+              padding: '0 20px', 
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              width: '100%',
+            }}
           >
-            All
-          </button>
-          {(hasNewArrivals || activeCategory === 'new-arrivals') && (
-            <button
-              onClick={() => setActiveCategory('new-arrivals')}
-              className={`menu-tab ${activeCategory === 'new-arrivals' ? 'active' : ''}`}
-              style={{
-                borderColor: activeCategory === 'new-arrivals' ? 'var(--red)' : undefined,
-                color: activeCategory === 'new-arrivals' ? 'var(--red)' : undefined,
-              }}
+            {/* "All" category */}
+            <div 
+              onClick={() => setActiveCategory('all')}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}
             >
-              New Arrivals ✨
-            </button>
-          )}
-          {menuCategories.map((cat) => (
+              <div style={{
+                width: '60px', height: '60px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                border: activeCategory === 'all' ? '2.5px solid var(--red)' : '1px solid var(--dark-border)',
+                background: 'var(--dark-card)',
+                boxShadow: activeCategory === 'all' ? '0 0 10px rgba(225, 29, 46, 0.25)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}>
+                <img src="/menu-burger.png" alt="All" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+              </div>
+              <span style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '0.65rem',
+                fontWeight: activeCategory === 'all' ? 700 : 500,
+                color: activeCategory === 'all' ? 'var(--red)' : 'var(--text-secondary)',
+                marginTop: '6px',
+                textAlign: 'center',
+              }}>
+                All
+              </span>
+            </div>
+
+            {/* "New Arrivals" category */}
+            {(hasNewArrivals || activeCategory === 'new-arrivals') && (
+              <div 
+                onClick={() => setActiveCategory('new-arrivals')}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+              >
+                <div style={{
+                  width: '60px', height: '60px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  border: activeCategory === 'new-arrivals' ? '2.5px solid var(--red)' : '1px solid var(--dark-border)',
+                  background: 'var(--dark-card)',
+                  boxShadow: activeCategory === 'new-arrivals' ? '0 0 10px rgba(225, 29, 46, 0.25)' : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s ease',
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>✨</span>
+                </div>
+                <span style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '0.65rem',
+                  fontWeight: activeCategory === 'new-arrivals' ? 700 : 500,
+                  color: activeCategory === 'new-arrivals' ? 'var(--red)' : 'var(--text-secondary)',
+                  marginTop: '6px',
+                  textAlign: 'center',
+                }}>
+                  New
+                </span>
+              </div>
+            )}
+
+            {/* Regular categories */}
+            {menuCategories.map((cat) => {
+              const active = activeCategory === cat.id;
+              // Dynamically map category ID to representative image
+              let imgPath = '/menu-burger.png';
+              if (cat.id === 'shakes') imgPath = '/event-shake.png';
+              else if (cat.id === 'burgers') imgPath = '/menu-burger.png';
+              else if (cat.id === 'pastas') imgPath = '/menu-pasta.png';
+              else if (cat.id === 'snacks') imgPath = '/menu-fries.png';
+              else if (cat.id === 'waffles') imgPath = '/event-waffle.png';
+              else if (cat.id === 'drinks') imgPath = '/menu-coffee.png';
+
+              return (
+                <div 
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  <div style={{
+                    width: '60px', height: '60px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: active ? '2.5px solid var(--red)' : '1px solid var(--dark-border)',
+                    background: 'var(--dark-card)',
+                    boxShadow: active ? '0 0 10px rgba(225, 29, 46, 0.25)' : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                  }}>
+                    <img src={imgPath} alt={cat.label} style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+                  </div>
+                  <span style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '0.65rem',
+                    fontWeight: active ? 700 : 500,
+                    color: active ? 'var(--red)' : 'var(--text-secondary)',
+                    marginTop: '6px',
+                    textAlign: 'center',
+                  }}>
+                    {cat.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="container" style={{ display:'flex', alignItems:'center', gap:'0', padding:'0 var(--container-px)' }}>
             <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`menu-tab ${activeCategory === cat.id ? 'active' : ''}`}
+              onClick={() => setActiveCategory('all')}
+              className={`menu-tab ${activeCategory === 'all' ? 'active' : ''}`}
             >
-              {cat.label}
+              All
             </button>
-          ))}
-        </div>
+            {(hasNewArrivals || activeCategory === 'new-arrivals') && (
+              <button
+                onClick={() => setActiveCategory('new-arrivals')}
+                className={`menu-tab ${activeCategory === 'new-arrivals' ? 'active' : ''}`}
+                style={{
+                  borderColor: activeCategory === 'new-arrivals' ? 'var(--red)' : undefined,
+                  color: activeCategory === 'new-arrivals' ? 'var(--red)' : undefined,
+                }}
+              >
+                New Arrivals ✨
+              </button>
+            )}
+            {menuCategories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`menu-tab ${activeCategory === cat.id ? 'active' : ''}`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="container" style={{ padding:'40px var(--container-px)' }}>
@@ -780,129 +1325,46 @@ export default function MenuPage() {
             <p style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'var(--cream)', marginBottom:'8px' }}>No items found</p>
             <p style={{ fontSize:'0.875rem' }}>Try adjusting your filters or search query.</p>
           </div>
-        ) : filtered.length === 1 ? (
-          // Single Item: Premium horizontal banner layout, centered and perfectly sized
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            {(() => {
-              const item = filtered[0];
-              return (
-                <div
-                  style={{
-                    background: 'var(--dark-card)',
-                    border: '1px solid var(--dark-border)',
-                    display: 'flex',
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    width: '100%',
-                    maxWidth: '850px',
-                    minHeight: '320px',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* Image Zone */}
-                  <div
-                    style={{
-                      flex: '1 1 350px',
-                      height: 'auto',
-                      minHeight: '260px',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      background: (item as { image?: string | null }).image ? '#000' : undefined,
-                    }}
-                    className={!(item as { image?: string | null }).image ? `food-photo ${item.gradient}` : 'food-photo'}
-                  >
-                    {(item as { image?: string | null }).image && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={(item as { image?: string | null }).image!}
-                        alt={item.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }}
-                      />
-                    )}
-                    {item.badge && (
-                      <span className="badge-red" style={{ position:'absolute', top:'16px', left:'16px', fontSize:'0.55rem' }}>
-                        {item.badge}
-                      </span>
-                    )}
-                    <span style={{
-                      position:      'absolute',
-                      bottom:        '16px',
-                      right:         '16px',
-                      fontFamily:    'var(--font-sans)',
-                      fontSize:      '0.55rem',
-                      fontWeight:    700,
-                      letterSpacing: '0.18em',
-                      textTransform: 'uppercase',
-                      color:         'rgba(225,29,46,0.7)',
-                    }}>
-                      {item.course}
-                    </span>
-                  </div>
-
-                  {/* Content & Action Zone */}
-                  <div style={{ flex: '1 2 400px', padding: '36px 30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '24px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--cream)', margin: 0, lineHeight: 1.1 }}>
-                        {item.name}
-                      </h3>
-                      <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-                        {item.description}
-                      </p>
-                      
-                      {/* Dietary */}
-                      {item.dietary.length > 0 && (
-                        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
-                          {item.dietary.map((tag) => (
-                            <span key={tag} className={`dietary-tag ${tag}`} style={{ fontSize: '0.62rem', padding: '2px 8px' }}>{tag.toUpperCase()}</span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Allergens */}
-                      {item.allergens.length > 0 && (
-                        <p style={{ fontSize:'0.65rem', color:'var(--text-muted)', letterSpacing:'0.05em', margin: 0 }}>
-                          Contains: {item.allergens.join(', ')}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Footer / Price — view-only, no add button */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', paddingTop: '16px', borderTop: '1px solid var(--dark-border)' }}>
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.85rem', color: 'var(--red)' }}>
-                        ₹{item.price}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        ) : filtered.length === 2 ? (
-          // Dual Items: Grid with centered columns that wrap nicely on mobile
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '24px',
-              width: '100%',
-              maxWidth: '850px',
-            }}>
-              {filtered.map(renderMenuItemCard)}
-            </div>
+        ) : activeCategory === 'new-arrivals' ? (
+          <div style={{ marginBottom: '56px' }}>
+            {renderCategoryBanner('new-arrivals', 'New Arrivals ✨', 'Check out our latest creations, fresh from the kitchen.', filtered.length)}
+            {isMobile ? (
+              <MobileGrid items={filtered} renderCard={renderMobileCard} />
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                gap: '24px',
+              }}>
+                {filtered.map(renderMenuItemCard)}
+              </div>
+            )}
           </div>
         ) : (
-          // 3 or more items: Flexbox layout that centers incomplete rows and prevents empty spaces
-          <div style={{
-            display:        'flex',
-            flexWrap:       'wrap',
-            gap:            '24px',
-            justifyContent: 'center',
-          }}>
-            {filtered.map((item) => (
-              <div key={item.id} style={{ flex: '1 1 300px', maxWidth: '380px', display: 'flex' }}>
-                {renderMenuItemCard(item)}
-              </div>
-            ))}
+          <div>
+            {menuCategories.map((cat) => {
+              if (activeCategory !== 'all' && activeCategory !== cat.id) return null;
+              
+              const catItems = itemsByCategory[cat.id] || [];
+              if (catItems.length === 0) return null;
+              
+              return (
+                <div key={cat.id} style={{ marginBottom: '56px' }}>
+                  {renderCategoryBanner(cat.id, cat.label, cat.desc, catItems.length)}
+                  {isMobile ? (
+                    <MobileGrid items={catItems} renderCard={renderMobileCard} />
+                  ) : (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                      gap: '24px',
+                    }}>
+                      {catItems.map(renderMenuItemCard)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1100,7 +1562,7 @@ export default function MenuPage() {
         })()}
       </div>
 
-      {/* ── CUSTOMER MENU DETAILS POPUP MODAL ──────────────────────────────── */}
+      {/* ── CUSTOMER MENU DETAILS POPUP MODAL (Zomato Style) ── */}
       {activeDetailItem && (() => {
         const item = activeDetailItem;
         const portions = getPortionsConfig(item);
@@ -1110,6 +1572,8 @@ export default function MenuPage() {
           ? selectedSize
           : (availableSizes[0] || 'medium');
         const currentPrice = portions[currentSize]?.price || item.price;
+        const isVeg = item.dietary.includes('v') || item.dietary.includes('vg');
+        const mockRating = ((item.name.charCodeAt(0) + item.name.charCodeAt(1 || 0)) % 6) / 10 + 4.0;
 
         return (
           <div style={{
@@ -1121,22 +1585,80 @@ export default function MenuPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '24px',
+            padding: isMobile ? '0' : '24px',
           }}
           onClick={() => setActiveDetailItem(null)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           >
+            {/* Nav Arrows (Desktop Only) */}
+            {!isMobile && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handlePrevDish(); }}
+                  aria-label="Previous dish"
+                  style={{
+                    position: 'absolute',
+                    left: '40px',
+                    background: 'rgba(20, 20, 30, 0.6)',
+                    border: '1px solid rgba(225, 29, 46, 0.3)',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: '50px',
+                    height: '50px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 10000,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(225, 29, 46, 0.25)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(20, 20, 30, 0.6)'; }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleNextDish(); }}
+                  aria-label="Next dish"
+                  style={{
+                    position: 'absolute',
+                    right: '40px',
+                    background: 'rgba(20, 20, 30, 0.6)',
+                    border: '1px solid rgba(225, 29, 46, 0.3)',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: '50px',
+                    height: '50px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 10000,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(225, 29, 46, 0.25)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(20, 20, 30, 0.6)'; }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </>
+            )}
+
             {/* Modal Card */}
             <div style={{
               background: 'var(--dark-card)',
-              border: '1px solid rgba(225, 29, 46, 0.25)',
+              border: isMobile ? 'none' : '1px solid rgba(225, 29, 46, 0.25)',
               width: '100%',
-              maxWidth: '780px',
+              maxWidth: isMobile ? '100vw' : '520px',
+              height: isMobile ? '100vh' : 'auto',
               position: 'relative',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              maxHeight: '90vh',
-              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: isMobile ? '0' : '18px',
+              overflow: 'hidden',
             }}
             onClick={(e) => e.stopPropagation()}
             >
@@ -1147,9 +1669,9 @@ export default function MenuPage() {
                   position: 'absolute',
                   top: '16px',
                   right: '16px',
-                  background: 'rgba(0, 0, 0, 0.4)',
-                  border: '1px solid rgba(225, 29, 46, 0.2)',
-                  color: 'var(--red)',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#fff',
                   cursor: 'pointer',
                   width: '36px',
                   height: '36px',
@@ -1158,19 +1680,18 @@ export default function MenuPage() {
                   justifyContent: 'center',
                   borderRadius: '50%',
                   zIndex: 10,
-                  transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(225, 29, 46, 0.15)'; e.currentTarget.style.borderColor = 'var(--red)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.4)'; e.currentTarget.style.borderColor = 'rgba(225, 29, 46, 0.2)'; }}
               >
                 <X size={18} />
               </button>
 
-              {/* Left - Image */}
+              {/* Top - Image Section */}
               <div style={{
                 position: 'relative',
-                height: '340px',
+                width: '100%',
+                height: isMobile ? '40vh' : '260px',
                 background: item.image ? '#000' : undefined,
+                flexShrink: 0,
               }}
               className={!item.image ? `food-photo ${item.gradient}` : 'food-photo'}
               >
@@ -1189,122 +1710,172 @@ export default function MenuPage() {
                   </div>
                 )}
                 {item.badge && (
-                  <span className="badge-red" style={{ position: 'absolute', top: '20px', left: '20px' }}>
+                  <span className="badge-red" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.6rem' }}>
                     {item.badge}
                   </span>
                 )}
               </div>
 
-              {/* Right - Details */}
+              {/* Middle - Information (No Scrolling of Content) */}
               <div style={{
-                padding: '36px 28px',
+                padding: '24px 20px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '20px',
-                justifyContent: 'space-between',
+                flex: 1,
+                overflow: 'hidden',
               }}>
-                <div>
-                  <span style={{
-                    fontFamily: 'var(--font-sans)',
-                    fontSize: '0.62rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.2em',
-                    textTransform: 'uppercase',
-                    color: 'var(--red)',
-                  }}>
-                    {item.course} — {item.category}
-                  </span>
-                  <h2 style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '2rem',
-                    color: 'var(--cream)',
-                    marginTop: '6px',
-                    marginBottom: '12px',
-                    lineHeight: 1.15,
-                  }}>
-                    {item.name}
-                  </h2>
-                  <p style={{
-                    fontSize: '0.88rem',
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.75,
-                    marginBottom: '20px',
-                  }}>
-                    {item.description}
-                  </p>
-
-                  {/* Dietary Tags */}
-                  {item.dietary.length > 0 && (
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                      {item.dietary.map((tag) => (
-                        <span key={tag} className={`dietary-tag ${tag}`} style={{ padding: '4px 10px', fontSize: '0.65rem' }}>{tag.toUpperCase()}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Allergens */}
-                  {item.allergens.length > 0 && (
-                    <div style={{ borderTop: '1px solid var(--dark-border)', paddingTop: '16px', marginBottom: '16px' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Allergen Info:</span>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        Contains {item.allergens.join(', ')}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Portion selection */}
-                  {availableSizes.length > 1 && (
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '16px', borderTop: '1px solid var(--dark-border)', paddingTop: '16px' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>Choose Size:</span>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {availableSizes.map((size) => {
-                          const active = currentSize === size;
-                          return (
-                            <button
-                              key={size}
-                              onClick={() => setSelectedSizes((prev) => ({ ...prev, [item.id]: size }))}
-                              style={{
-                                padding: '6px 12px',
-                                background: active ? 'rgba(225,29,46,0.12)' : 'transparent',
-                                border: `1px solid ${active ? 'var(--red)' : 'var(--dark-border)'}`,
-                                color: active ? 'var(--red)' : 'var(--text-secondary)',
-                                fontFamily: 'var(--font-sans)',
-                                fontSize: '0.65rem',
-                                fontWeight: 750,
-                                textTransform: 'uppercase',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              {size}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Action */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderTop: '1px solid var(--dark-border)',
-                  paddingTop: '20px',
-                  marginTop: '20px',
-                  gap: '16px',
+                {/* Category & Course Tag */}
+                <span style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '0.62rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  color: 'var(--red)',
+                  display: 'block',
                 }}>
-                  <span style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '2.25rem',
-                    color: 'var(--red)',
-                    lineHeight: 1,
-                    whiteSpace: 'nowrap',
+                  {item.course} — {item.category}
+                </span>
+
+                {/* Name */}
+                <h2 style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '1.6rem',
+                  color: 'var(--cream)',
+                  marginTop: '6px',
+                  marginBottom: '10px',
+                  lineHeight: 1.2,
+                  fontWeight: 400,
+                }}>
+                  {item.name}
+                </h2>
+
+                {/* Badges: Veg + Rating */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                  <div style={{
+                    width: '14px', height: '14px',
+                    border: `1.5px solid ${isVeg ? '#1F543C' : '#8F1D2F'}`,
+                    borderRadius: '3px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}>
-                    ₹{currentPrice}
-                  </span>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isVeg ? '#1F543C' : '#8F1D2F' }} />
+                  </div>
+                  <div style={{
+                    background: '#1F543C',
+                    color: '#FFFFFF',
+                    fontSize: '0.6rem',
+                    fontWeight: 800,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                  }}>
+                    <span>★</span>
+                    <span>{mockRating.toFixed(1)}</span>
+                  </div>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Highly reordered</span>
                 </div>
+
+                {/* Description - Wraps cleanly with no inner scrollbar */}
+                <p style={{
+                  fontSize: '0.82rem',
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                  margin: '0 0 16px 0',
+                }}>
+                  {item.description}
+                </p>
+
+                {/* Dietary Tags */}
+                {item.dietary.length > 0 && (
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+                    {item.dietary.map((tag) => (
+                      <span key={tag} className={`dietary-tag ${tag}`} style={{ padding: '3px 8px', fontSize: '0.58rem' }}>{tag.toUpperCase()}</span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Allergens info */}
+                {item.allergens.length > 0 && (
+                  <div style={{ borderTop: '1px solid var(--dark-border)', paddingTop: '12px', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Allergens:</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '6px' }}>
+                      Contains {item.allergens.join(', ')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Portion Sizing */}
+                {availableSizes.length > 1 && (
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', borderTop: '1px solid var(--dark-border)', paddingTop: '12px', marginTop: 'auto' }}>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700 }}>Size:</span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {availableSizes.map((size) => {
+                        const active = currentSize === size;
+                        return (
+                          <button
+                            key={size}
+                            onClick={() => setSelectedSizes((prev) => ({ ...prev, [item.id]: size }))}
+                            style={{
+                              padding: '4px 10px',
+                              background: active ? 'rgba(225,29,46,0.12)' : 'transparent',
+                              border: `1px solid ${active ? 'var(--red)' : 'var(--dark-border)'}`,
+                              color: active ? 'var(--red)' : 'var(--text-secondary)',
+                              fontFamily: 'var(--font-sans)',
+                              fontSize: '0.6rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              cursor: 'pointer',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            {size}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom - Red Action Button (Sticky Footer) */}
+              <div style={{
+                borderTop: '1px solid var(--dark-border)',
+                padding: '16px 20px',
+                background: 'var(--dark-card)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexShrink: 0,
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Price</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--cream)', fontWeight: 700 }}>₹{currentPrice}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    // Logic to add to cart or handle item selection
+                    setActiveDetailItem(null);
+                  }}
+                  style={{
+                    background: 'var(--red)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '12px 24px',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(225, 29, 46, 0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  Add item · ₹{currentPrice}
+                </button>
               </div>
             </div>
           </div>

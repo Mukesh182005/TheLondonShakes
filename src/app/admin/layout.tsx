@@ -8,6 +8,7 @@ import {
   LayoutDashboard, ShoppingBag, Calendar, UtensilsCrossed,
   MapPin, Users, Truck, ClipboardList, BarChart2, Settings,
   LogOut, ChevronRight, Menu, X, AlertCircle, Image as ImageIcon, Eye, Power, ShieldAlert,
+  Sun, Moon,
 } from 'lucide-react';
 
 const navGroups = [
@@ -51,6 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const orders   = useRestaurantStore((s) => s.orders);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const hydrated = useIsMounted();
   const [isMobile, setIsMobile] = useState(false);
   const maintenanceMode = useCMSStore((s) => s.maintenanceMode);
@@ -61,6 +63,45 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Sync dark mode state on mount + auto time-based switching
+  useEffect(() => {
+    const applyTimeBasedTheme = () => {
+      const stored = localStorage.getItem('theme');
+      if (!stored) {
+        const hour = new Date().getHours();
+        const shouldBeDark = hour >= 19 || hour < 7;
+        const html = document.documentElement;
+        if (shouldBeDark && !html.classList.contains('dark')) {
+          html.classList.add('dark');
+          setIsDark(true);
+        } else if (!shouldBeDark && html.classList.contains('dark')) {
+          html.classList.remove('dark');
+          setIsDark(false);
+        } else {
+          setIsDark(html.classList.contains('dark'));
+        }
+      } else {
+        setIsDark(document.documentElement.classList.contains('dark'));
+      }
+    };
+    applyTimeBasedTheme();
+    const interval = setInterval(applyTimeBasedTheme, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const toggleTheme = () => {
+    const html = document.documentElement;
+    const next = !isDark;
+    if (next) {
+      html.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      html.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+    setIsDark(next);
+  };
 
   const [sessionVerified, setSessionVerified] = useState(false);
   const [sessionName, setSessionName] = useState<string>('');
@@ -504,6 +545,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Eye size={12} />
               Preview Site
             </Link>
+
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '36px', height: '36px',
+                background: 'transparent',
+                border: '1px solid var(--dark-border)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--gold)';
+                (e.currentTarget as HTMLElement).style.color = 'var(--gold)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)';
+                (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+              }}
+            >
+              {isDark ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
           </div>
         </header>
 

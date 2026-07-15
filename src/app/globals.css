@@ -87,6 +87,150 @@
   --ease-expo:   cubic-bezier(0.19, 1, 0.22, 1);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   DARK THEME — Warm luxury evening mode
+   Gold accents → Red/Crimson · Parchment → Deep warm blacks
+   ═══════════════════════════════════════════════════════════════ */
+html.dark {
+  /* ── Core Backgrounds (parchment → warm blacks) ── */
+  --black:          #0E0C09;
+  --void:           #0A0806;
+  --charcoal:       #141210;
+  --dark-bg:        #0E0C09;
+  --dark-card:      #1A1714;
+  --dark-card-2:    #211E19;
+  --dark-surface:   #161410;
+
+  /* ── Borders (inverted for dark surfaces) ── */
+  --dark-border:    rgba(242, 238, 228, 0.08);
+  --dark-border-2:  rgba(225, 29, 46, 0.3);
+  --dark-border-3:  rgba(225, 29, 46, 0.5);
+
+  /* ── Dark Panels (stay dark, slightly adjusted) ── */
+  --panel-dark:     #080604;
+  --panel-navy:     #08060A;
+  --panel-crimson:  #120608;
+
+  /* ── Gold → Red/Crimson (NO gold in dark mode) ── */
+  --gold:           #E11D2E;
+  --gold-bright:    #FF2E48;
+  --gold-pale:      #F2505F;
+  --gold-dark:      #B21830;
+  --gold-deep:      #6E1622;
+  --gold-muted:     rgba(225, 29, 46, 0.08);
+  --gold-glow:      rgba(225, 29, 46, 0.15);
+  --amber-glow:     rgba(225, 29, 46, 0.06);
+
+  /* ── British Heritage Accents ── */
+  --navy:           #1A2E4D;
+  --navy-glow:      rgba(26, 46, 77, 0.15);
+  --crimson:        #C1121F;
+  --crimson-glow:   rgba(193, 18, 31, 0.12);
+
+  /* ── Paper & Texture (inverted) ── */
+  --paper:          #1A1714;
+  --paper-dark:     #141210;
+  --paper-border:   #2A2520;
+
+  /* ── Text (dark ink → warm parchment white) ── */
+  --cream:          #F2EEE4;
+  --cream-muted:    #C8C0AE;
+  --text-primary:   #F2EEE4;
+  --text-secondary: #B0A896;
+  --text-muted:     #7A7265;
+  --text-ghost:     #5C5649;
+
+  /* ── On-dark text (stays the same) ── */
+  --on-dark:        #F2EEE4;
+  --on-dark-muted:  rgba(242, 238, 228, 0.65);
+
+  /* ── Accent overrides ── */
+  --red:            #C1121F;
+  --red-bright:     #E11D2E;
+}
+
+/* ── Dark mode: Scrollbar (hidden) ── */
+
+/* ── Dark mode: Form inputs ── */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background: #141210;
+  border-color: rgba(242, 238, 228, 0.08);
+  border-bottom-color: rgba(242, 238, 228, 0.15);
+  color: #F2EEE4;
+}
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-bottom-color: #E11D2E;
+  background: #1A1714;
+  box-shadow: 0 2px 12px rgba(225, 29, 46, 0.12);
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #5C5649;
+}
+
+/* ── Dark mode: Glass panel ── */
+html.dark .glass-panel {
+  background: rgba(14, 12, 9, 0.82);
+  border-color: rgba(225, 29, 46, 0.12);
+}
+html.dark .glass-panel:hover {
+  border-color: rgba(225, 29, 46, 0.3);
+}
+
+/* ── Dark mode: Cards ── */
+html.dark .card:hover {
+  border-color: rgba(225, 29, 46, 0.25);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(225, 29, 46, 0.1);
+}
+
+/* ── Dark mode: Outline button ── */
+html.dark .btn-outline {
+  color: #F2EEE4;
+  border-color: rgba(242, 238, 228, 0.2);
+}
+html.dark .btn-outline::before {
+  background: #E11D2E;
+}
+html.dark .btn-outline:hover {
+  color: #FFFFFF;
+  border-color: #E11D2E;
+}
+html.dark .btn-outline:hover span {
+  color: #FFFFFF;
+}
+
+/* ── Dark mode: Ghost button ── */
+html.dark .btn-ghost {
+  color: #B0A896;
+}
+html.dark .btn-ghost:hover {
+  color: #F2EEE4;
+}
+
+/* ── Dark mode: Focus rings (gold → red) ── */
+html.dark a:focus-visible,
+html.dark button:focus-visible,
+html.dark input:focus-visible,
+html.dark select:focus-visible,
+html.dark textarea:focus-visible {
+  outline-color: #E11D2E;
+}
+
+/* ── Dark mode: Film grain blend mode ── */
+html.dark .lux-grain {
+  mix-blend-mode: screen;
+  opacity: 0.03;
+}
+
+/* ── Dark mode: Select dropdown arrow ── */
+html.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237A7265' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
 /* ── Tailwind Theme ── */
 @theme {
   --color-black:          var(--black);
@@ -135,15 +279,19 @@ body {
   overflow-x: hidden;
 }
 
-/* ── Scrollbar ── */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--gold-dark) var(--charcoal);
+/* ── Scrollbar (hidden) ── */
+html, body, * {
+  scrollbar-width: none !important;  /* Firefox */
+  -ms-overflow-style: none !important;  /* IE/Edge */
 }
-*::-webkit-scrollbar        { width: 4px; height: 4px; }
-*::-webkit-scrollbar-track  { background: var(--charcoal); }
-*::-webkit-scrollbar-thumb  { background: var(--gold-dark); border-radius: 2px; }
-*::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important;  /* Chrome/Safari */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
 
 /* ── Headings ── */
 h1, h2, h3, h4, h5, h6 {
@@ -1401,6 +1549,7 @@ select {
   padding: 1px;
   background: linear-gradient(130deg, rgba(158,128,67,0.05), rgba(197,168,92,0.55), rgba(158,128,67,0.05));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0;
@@ -1417,6 +1566,7 @@ select {
   padding: 1px;
   background: linear-gradient(130deg, rgba(143,29,47,0.05), rgba(225,29,46,0.65), rgba(143,29,47,0.05));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0;
