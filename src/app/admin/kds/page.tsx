@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurantStore } from '@/store/restaurantStore';
+import { useRestaurantStore, type Order } from '@/store/restaurantStore';
 import { Timer, CheckCircle, AlertTriangle, ChefHat } from 'lucide-react';
+import { pusherClient } from '@/lib/pusher-client';
 
 type KDSOrder = {
   id: string;
@@ -27,9 +28,54 @@ function getUrgency(min: number): 'normal' | 'almost' | 'urgent' {
 
 export default function KDSPage() {
   const orders = useRestaurantStore((s) => s.orders);
+  const setOrders = useRestaurantStore((s) => s.setOrders);
   const updateOrder = useRestaurantStore((s) => s.updateOrder);
   const [now, setNow] = useState(() => Date.now());
   const [filter, setFilter] = useState<'all' | 'new' | 'preparing' | 'ready'>('all');
+
+  const loadOrders = async () => {
+    try {
+      const res = await fetch('/api/orders');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setOrders(data);
+      }
+    } catch (err) {
+      console.warn('Failed to auto-poll orders in KDS:', err);
+    }
+  };
+
+  useEffect(() => {
+    // Initial fetch
+    loadOrders();
+
+    // Setup 5 seconds silent background polling
+    const interval = setInterval(() => {
+      loadOrders();
+    }, 5000);
+
+    // Subscribe to Pusher orders channel
+    const channel = pusherClient.subscribe('orders');
+
+    channel.bind('new-order', (newOrder: Order) => {
+      setOrders((prev) => {
+        if (prev.some((o) => o.id === newOrder.id)) return prev;
+        return [newOrder, ...prev];
+      });
+    });
+
+    channel.bind('order-updated', (updatedOrder: Order) => {
+      setOrders((prev) =>
+        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
+      );
+    });
+
+    return () => {
+      clearInterval(interval);
+      channel.unbind_all();
+      channel.unsubscribe();
+    };
+  }, [setOrders]);
 
   // Tick every 30s
   useEffect(() => {

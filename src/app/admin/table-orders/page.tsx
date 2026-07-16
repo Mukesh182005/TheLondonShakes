@@ -652,7 +652,64 @@ export default function TableOrdersPage() {
     setReceiptPhoto(null);
   };
 
+  const handleSendToKitchen = async (tableNumber: string) => {
+    const order = tableOrders.find((t) => t.tableNumber === tableNumber);
+    if (!order || order.items.length === 0) return;
 
+    try {
+      clearCart();
+      order.items.forEach((item) => {
+        for (let i = 0; i < item.qty; i++) {
+          addToCart({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            gradient: item.gradient || '',
+            image: item.image,
+            size: item.size
+          });
+        }
+      });
+
+      const newId = placeOrder('upi', '', {
+        type: 'dine-in',
+        tableNumber,
+        customerName: order.customerName || `Table ${tableNumber.replace('Table ', '')}`,
+        adminPlaced: true,
+        paymentStatus: 'unpaid',
+        status: 'confirmed',
+      });
+
+      if (newId) {
+        const updatedTable: TableOrder = {
+          ...order,
+          isDbOrder: true,
+          orderId: newId,
+          status: 'open' as const,
+        };
+
+        setTableOrders((prev: TableOrder[]) => {
+          const next = prev.map((t) => t.tableNumber === tableNumber ? updatedTable : t);
+          // Sync to other devices via API
+          if (typeof window !== 'undefined') {
+            fetch('/api/table-orders', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(next),
+            }).catch(() => {/* silent */});
+          }
+          return next;
+        });
+
+        // Sync additives and final total to database
+        await syncTableOrderToDb(updatedTable);
+        toast.success(`Order sent to kitchen!`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to send order to kitchen');
+    }
+  };
 
   const openTables  = tableOrders.filter((t) => t.status === 'open');
   const billedTables = tableOrders.filter((t) => t.status === 'billed');
@@ -888,7 +945,11 @@ export default function TableOrdersPage() {
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
                             {activeOrder.status === 'open' ? (
-                              <button onClick={() => billTable(activeTable!)} disabled={activeOrder.items.length === 0} style={{ padding: '16px', background: activeOrder.items.length > 0 ? 'var(--gold)' : 'var(--dark-surface)', border: 'none', color: activeOrder.items.length > 0 ? 'var(--black)' : 'var(--text-muted)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: activeOrder.items.length > 0 ? 'pointer' : 'not-allowed' }}>Generate Bill</button>
+                              !activeOrder.isDbOrder ? (
+                                <button onClick={() => handleSendToKitchen(activeTable!)} disabled={activeOrder.items.length === 0} style={{ padding: '16px', background: activeOrder.items.length > 0 ? 'var(--gold)' : 'var(--dark-surface)', border: 'none', color: activeOrder.items.length > 0 ? 'var(--black)' : 'var(--text-muted)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: activeOrder.items.length > 0 ? 'pointer' : 'not-allowed' }}>Send to Kitchen</button>
+                              ) : (
+                                <button onClick={() => billTable(activeTable!)} disabled={activeOrder.items.length === 0} style={{ padding: '16px', background: activeOrder.items.length > 0 ? 'var(--gold)' : 'var(--dark-surface)', border: 'none', color: activeOrder.items.length > 0 ? 'var(--black)' : 'var(--text-muted)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: activeOrder.items.length > 0 ? 'pointer' : 'not-allowed' }}>Generate Bill</button>
+                              )
                             ) : activeOrder.status === 'billed' ? (
                               <button onClick={() => setShowBillModal(activeTable!)} style={{ padding: '16px', background: 'var(--gold)', border: 'none', color: 'var(--black)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer' }}>Checkout / Pay</button>
                             ) : (
@@ -1798,18 +1859,33 @@ export default function TableOrdersPage() {
                 )}
 
                 {activeOrder.status === 'open' ? (
-                  <button
-                    onClick={() => billTable(activeTable!)}
-                    disabled={activeOrder.items.length === 0}
-                    style={{
-                      padding: '12px', background: activeOrder.items.length > 0 ? 'var(--gold)' : 'var(--dark-surface)',
-                      border: 'none', color: activeOrder.items.length > 0 ? 'var(--black)' : 'var(--text-muted)',
-                      fontFamily: 'var(--font-sans)', fontSize: '0.72rem', fontWeight: 700,
-                      letterSpacing: '0.12em', textTransform: 'uppercase', cursor: activeOrder.items.length > 0 ? 'pointer' : 'not-allowed',
-                    }}
-                  >
-                    Generate Bill
-                  </button>
+                  !activeOrder.isDbOrder ? (
+                    <button
+                      onClick={() => handleSendToKitchen(activeTable!)}
+                      disabled={activeOrder.items.length === 0}
+                      style={{
+                        padding: '12px', background: activeOrder.items.length > 0 ? 'var(--gold)' : 'var(--dark-surface)',
+                        border: 'none', color: activeOrder.items.length > 0 ? 'var(--black)' : 'var(--text-muted)',
+                        fontFamily: 'var(--font-sans)', fontSize: '0.72rem', fontWeight: 700,
+                        letterSpacing: '0.12em', textTransform: 'uppercase', cursor: activeOrder.items.length > 0 ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      Send to Kitchen
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => billTable(activeTable!)}
+                      disabled={activeOrder.items.length === 0}
+                      style={{
+                        padding: '12px', background: activeOrder.items.length > 0 ? 'var(--gold)' : 'var(--dark-surface)',
+                        border: 'none', color: activeOrder.items.length > 0 ? 'var(--black)' : 'var(--text-muted)',
+                        fontFamily: 'var(--font-sans)', fontSize: '0.72rem', fontWeight: 700,
+                        letterSpacing: '0.12em', textTransform: 'uppercase', cursor: activeOrder.items.length > 0 ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      Generate Bill
+                    </button>
+                  )
                 ) : activeOrder.status === 'billed' ? (
                   <button
                     onClick={() => setShowBillModal(activeTable!)}
