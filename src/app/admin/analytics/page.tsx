@@ -53,7 +53,7 @@ export default function AnalyticsPage() {
   // Fetch orders from database on mount
   useEffect(() => {
     setLoading(true);
-    fetch('/api/orders?t=' + Date.now(), { cache: 'no-store' })
+    fetch('/api/orders?all=true&t=' + Date.now(), { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -66,7 +66,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (hydrated && user) {
-      const isOwner = user.email === 'thelondonshakessilchar@gmail.com';
+      const isOwner = user.email === 'thelondonshakes.silchar@gmail.com';
       setIsSuperAdmin(isOwner);
     }
   }, [user, hydrated]);

@@ -54,22 +54,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const isOwner = cleanEmail === 'thelondonshakessilchar@gmail.com' || cleanEmail === 'admin@thelondon.co.uk';
+    const isOwner = cleanEmail === 'thelondonshakes.silchar@gmail.com';
 
     let token = '';
 
     if (isOwner) {
-      if (!ADMIN_PASSWORD) {
-        console.error('ADMIN_PASSWORD environment variable is not configured.');
-        return NextResponse.json(
-          { error: 'Internal server configuration error' },
-          { status: 500 }
-        );
+      let dbPasscode = process.env.ADMIN_PASSWORD || 'admin@thelondon.co.uk';
+      try {
+        const setting = await prisma.systemSetting.findUnique({
+          where: { key: 'adminPasscode' },
+        });
+        if (setting && setting.value) {
+          dbPasscode = setting.value;
+        }
+      } catch (dbErr) {
+        console.warn('Database error fetching passcode setting, using environment variable fallback:', dbErr);
       }
-      if (password !== ADMIN_PASSWORD) {
+
+      if (password !== dbPasscode) {
         return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
       }
-      token = await generateSessionToken(ADMIN_PASSWORD);
+
+      token = await generateStaffSessionToken(cleanEmail, 'owner');
     } else {
       // Find staff account in the database
       const staff = await prisma.staffAccount.findUnique({
@@ -122,11 +128,20 @@ export async function GET(request: NextRequest) {
   const expectedToken = ADMIN_PASSWORD ? await generateSessionToken(ADMIN_PASSWORD) : '';
   if (session === expectedToken) {
     // Super admin — fixed display name
-    return NextResponse.json({ authenticated: true, role: 'owner', name: "Maître d' London", email: 'thelondonshakessilchar@gmail.com' });
+    return NextResponse.json({ authenticated: true, role: 'owner', name: "Maître d' London", email: 'thelondonshakes.silchar@gmail.com' });
   }
 
   const staff = await verifyStaffSessionToken(session);
   if (staff) {
+    if (staff.role === 'owner') {
+      return NextResponse.json({
+        authenticated: true,
+        role: 'owner',
+        name: "Maître d' London",
+        email: staff.email
+      });
+    }
+
     // Fetch real name from DB for staff accounts
     let displayName = staff.email.split('@')[0]; // fallback
     try {

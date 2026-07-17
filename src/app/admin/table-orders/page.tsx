@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRestaurantStore, useCMSStore, type CartItem, type TableOrder, type Order } from '@/store/restaurantStore';
-import { Plus, Trash2, ShoppingBag, Check, X, ChefHat, Users, UtensilsCrossed, Receipt } from 'lucide-react';
+import { Plus, Trash2, ShoppingBag, Check, X, ChefHat, Users, UtensilsCrossed, Receipt, Mail } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher-client';
 import { useTableOrdersSync } from '@/hooks/useTableOrdersSync';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -104,6 +104,7 @@ const printThermalReceipt = (order: TableOrder) => {
         .info-table td {
           padding: 2px 0;
           vertical-align: top;
+          word-break: break-all;
         }
         .items-table th, .items-table td {
           padding: 4px 0;
@@ -341,6 +342,30 @@ export default function TableOrdersPage() {
   const [billPaymentMethod, setBillPaymentMethod] = useState<'cod' | 'upi' | null>(null);
   const [upiProvider, setUpiProvider] = useState<'gpay' | 'phonepe' | null>(null);
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
+  const [sharingOrderId, setSharingOrderId] = useState<string | null>(null);
+
+  const shareBillByGmail = async (orderId: string) => {
+    if (sharingOrderId) return;
+    setSharingOrderId(orderId);
+    try {
+      const res = await fetch('/api/orders/share-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Bill receipt sent successfully via Gmail!');
+      } else {
+        toast.error(data.error || 'Failed to send receipt email.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('An error occurred while sharing the receipt.');
+    } finally {
+      setSharingOrderId(null);
+    }
+  };
 
   const openTable = (tableNumber: string) => {
     if (!tableOrders.find((t) => t.tableNumber === tableNumber)) {
@@ -411,7 +436,7 @@ export default function TableOrdersPage() {
           orderId: order.orderId,
           items: finalItems,
           total: grandTotal,
-          adminEmail: 'admin@thelondon.co.uk',
+          adminEmail: 'thelondonshakes.silchar@gmail.com',
           discountDetails: fullDiscountDetails
         })
       });
@@ -422,6 +447,14 @@ export default function TableOrdersPage() {
 
   const addItemWithPortion = (item: typeof menuItems[0], size?: 'small' | 'medium' | 'large', price?: number) => {
     if (!activeTable) return;
+    
+    // Guard: Freeze updates if order has been sent to kitchen
+    const activeOrder = tableOrders.find((t) => t.tableNumber === activeTable);
+    if (activeOrder?.isDbOrder) {
+      toast.error("Order has already been sent to kitchen. Menu is locked.");
+      return;
+    }
+
     const finalPrice = price !== undefined ? price : item.price;
     const sizeSuffix = size ? `-${size}` : '';
     const cartItemId = `${item.id}${sizeSuffix}`;
@@ -458,6 +491,13 @@ export default function TableOrdersPage() {
   };
 
   const addItemToTable = (item: typeof menuItems[0]) => {
+    // Guard: Freeze updates if order has been sent to kitchen
+    const activeOrder = tableOrders.find((t) => t.tableNumber === activeTable);
+    if (activeOrder?.isDbOrder) {
+      toast.error("Order has already been sent to kitchen. Menu is locked.");
+      return;
+    }
+
     const portions = item.portions || {
       small: { available: false, price: 0 },
       medium: { available: true, price: item.price },
@@ -478,6 +518,13 @@ export default function TableOrdersPage() {
   };
 
   const removeItem = (tableNumber: string, itemId: string) => {
+    // Guard: Freeze updates if order has been sent to kitchen
+    const activeOrder = tableOrders.find((t) => t.tableNumber === tableNumber);
+    if (activeOrder?.isDbOrder) {
+      toast.error("Order has already been sent to kitchen. Menu is locked.");
+      return;
+    }
+
     setTableOrders((prev: TableOrder[]) => prev.map((t) => {
       if (t.tableNumber !== tableNumber) return t;
       const updatedItems = t.items.map((i) => i.id === itemId ? { ...i, qty: i.qty - 1 } : i).filter((i) => i.qty > 0);
@@ -490,6 +537,13 @@ export default function TableOrdersPage() {
   };
 
   const addItem = (tableNumber: string, itemId: string) => {
+    // Guard: Freeze updates if order has been sent to kitchen
+    const activeOrder = tableOrders.find((t) => t.tableNumber === tableNumber);
+    if (activeOrder?.isDbOrder) {
+      toast.error("Order has already been sent to kitchen. Menu is locked.");
+      return;
+    }
+
     setTableOrders((prev: TableOrder[]) => prev.map((t) => {
       if (t.tableNumber !== tableNumber) return t;
       const updatedItems = t.items.map((i) => i.id === itemId ? { ...i, qty: i.qty + 1 } : i);
@@ -507,6 +561,13 @@ export default function TableOrdersPage() {
   const [customAddValue, setCustomAddValue] = useState('');
 
   const addTableAdditive = (tableNumber: string, name: string, type: 'percentage' | 'flat', value: number) => {
+    // Guard: Freeze updates if order has been sent to kitchen
+    const activeOrder = tableOrders.find((t) => t.tableNumber === tableNumber);
+    if (activeOrder?.isDbOrder) {
+      toast.error("Order has already been sent to kitchen. Menu is locked.");
+      return;
+    }
+
     const id = generateAdditiveId();
     setTableOrders((prev: TableOrder[]) => prev.map((to) => {
       if (to.tableNumber === tableNumber) {
@@ -529,6 +590,13 @@ export default function TableOrdersPage() {
   };
 
   const removeTableAdditive = (tableNumber: string, id: string) => {
+    // Guard: Freeze updates if order has been sent to kitchen
+    const activeOrder = tableOrders.find((t) => t.tableNumber === tableNumber);
+    if (activeOrder?.isDbOrder) {
+      toast.error("Order has already been sent to kitchen. Menu is locked.");
+      return;
+    }
+
     setTableOrders((prev: TableOrder[]) => prev.map((to) => {
       if (to.tableNumber === tableNumber) {
         const current = to.additives || [];
@@ -711,6 +779,64 @@ export default function TableOrdersPage() {
     }
   };
 
+  const syncGuestDetailsToDb = async (field: 'customerName' | 'customerPhone' | 'customerEmail', value: string) => {
+    if (!activeOrder) return;
+
+    // 1. Update local tableOrders first to reflect the new state immediately
+    const updatedTableOrders = tableOrders.map(to => 
+      to.tableNumber === activeTable 
+        ? { 
+            ...to, 
+            customerName: field === 'customerName' ? value : to.customerName,
+            customerPhone: field === 'customerPhone' ? value : to.customerPhone,
+            customerEmail: field === 'customerEmail' ? value : to.customerEmail
+          } 
+        : to
+    );
+    setTableOrders(updatedTableOrders);
+
+    // Sync tableOrders to other devices via API
+    if (typeof window !== 'undefined') {
+      fetch('/api/table-orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTableOrders),
+      }).catch(() => {/* silent */});
+    }
+
+    // 2. If it is already a database order, update the main Order table as well
+    if (activeOrder.isDbOrder && activeOrder.orderId) {
+      try {
+        const body: Record<string, string> = { orderId: activeOrder.orderId };
+        if (field === 'customerName') body.customerName = value;
+        if (field === 'customerPhone') body.phone = value;
+        if (field === 'customerEmail') body.email = value;
+
+        await fetch('/api/orders', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        // Update local store orders
+        useRestaurantStore.setState((state) => ({
+          orders: state.orders.map(o => o.id === activeOrder.orderId ? {
+            ...o,
+            customerName: field === 'customerName' ? value : o.customerName,
+            address: {
+              ...o.address,
+              name: field === 'customerName' ? value : o.address.name,
+              phone: field === 'customerPhone' ? value : o.address.phone,
+              email: field === 'customerEmail' ? value : o.address.email,
+            }
+          } : o)
+        }));
+      } catch (err) {
+        console.warn('Failed to sync guest details to DB:', err);
+      }
+    }
+  };
+
   const openTables  = tableOrders.filter((t) => t.status === 'open');
   const billedTables = tableOrders.filter((t) => t.status === 'billed');
 
@@ -818,13 +944,26 @@ export default function TableOrdersPage() {
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    {activeOrder?.isDbOrder && (
+                      <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', background: 'rgba(239,68,68,0.06)', border: '1px dashed rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '0.8rem', fontWeight: 500, marginBottom: '6px' }}>
+                        <span>🔒 Order sent to kitchen. Menu editing is locked for this table.</span>
+                      </div>
+                    )}
                     {categoryItems.map((item) => (
                       <button
                         key={item.id}
-                        onClick={() => { addItemToTable(item); }}
+                        onClick={() => {
+                          if (activeOrder?.isDbOrder) {
+                            toast.error("Order is sent to kitchen. Menu is locked.");
+                            return;
+                          }
+                          addItemToTable(item);
+                        }}
                         style={{
                           padding: '16px 12px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)',
-                          textAlign: 'left', cursor: 'pointer',
+                          textAlign: 'left', cursor: activeOrder?.isDbOrder ? 'not-allowed' : 'pointer',
+                          opacity: activeOrder?.isDbOrder ? 0.45 : 1,
+                          transition: 'opacity 0.2s ease',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
@@ -871,15 +1010,15 @@ export default function TableOrdersPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                           <div>
                             <label style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Guest Name</label>
-                            <input type="text" placeholder="e.g. Jane Doe" value={activeOrder.customerName || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerName: e.target.value } : to)); }} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
+                            <input type="text" placeholder="e.g. Jane Doe" value={activeOrder.customerName || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerName: e.target.value } : to)); }} onBlur={(e) => syncGuestDetailsToDb('customerName', e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Mobile Number</label>
-                            <input type="tel" placeholder="+91 98765 43210" value={activeOrder.customerPhone || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerPhone: e.target.value } : to)); }} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
+                            <input type="tel" placeholder="+91 98765 43210" value={activeOrder.customerPhone || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerPhone: e.target.value } : to)); }} onBlur={(e) => syncGuestDetailsToDb('customerPhone', e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Email</label>
-                            <input type="email" placeholder="jane@example.com" value={activeOrder.customerEmail || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerEmail: e.target.value } : to)); }} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
+                            <input type="email" placeholder="jane@example.com" value={activeOrder.customerEmail || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerEmail: e.target.value } : to)); }} onBlur={(e) => syncGuestDetailsToDb('customerEmail', e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
                           </div>
                         </div>
                       )}
@@ -895,13 +1034,22 @@ export default function TableOrdersPage() {
                         {activeOrder.items.map((item) => (
                           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>
                             <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px' }}>{item.name}</p>
+                              <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px' }}>
+                                {item.name}
+                                {activeOrder.isDbOrder && (
+                                  <span title="Sent to kitchen (locked)" style={{ color: 'var(--text-muted)', marginLeft: '6px', fontSize: '0.8rem', verticalAlign: 'middle' }}>🔒</span>
+                                )}
+                              </p>
                               <p style={{ fontSize: '0.85rem', color: 'var(--gold)' }}>₹{item.price * item.qty}</p>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <button onClick={() => removeItem(activeTable!, item.id)} style={{ width: '32px', height: '32px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>−</button>
+                              {!activeOrder.isDbOrder && (
+                                <button onClick={() => removeItem(activeTable!, item.id)} style={{ width: '32px', height: '32px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>−</button>
+                              )}
                               <span style={{ fontFamily: 'var(--font-sans)', fontSize: '1rem', fontWeight: 700, color: 'var(--cream)', minWidth: '26px', textAlign: 'center' }}>{item.qty}</span>
-                              <button onClick={() => addItem(activeTable!, item.id)} style={{ width: '32px', height: '32px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>+</button>
+                              {!activeOrder.isDbOrder && (
+                                <button onClick={() => addItem(activeTable!, item.id)} style={{ width: '32px', height: '32px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>+</button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -923,18 +1071,22 @@ export default function TableOrdersPage() {
                           {calculatedAdditives.map((add) => (
                             <div key={add.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <button onClick={() => removeTableAdditive(activeTable!, add.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} /></button>
+                                {!activeOrder.isDbOrder && (
+                                  <button onClick={() => removeTableAdditive(activeTable!, add.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} /></button>
+                                )}
                                 <span style={{ color: 'var(--text-secondary)' }}>{add.name}</span>
                               </div>
                               <span style={{ color: add.calculatedValue < 0 ? '#ef4444' : 'var(--cream)', fontWeight: 600 }}>{add.calculatedValue < 0 ? '-' : ''}₹{Math.abs(add.calculatedValue)}</span>
                             </div>
                           ))}
-                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            {[['GST (5%)', 5], ['CGST (9%)', 9], ['SGST (9%)', 9], ['Service Tax (10%)', 10]].map(([label, val]) => (
-                              <button key={String(label)} onClick={() => addTableAdditive(activeTable!, String(label), 'percentage', Number(val))} style={{ padding: '5px 10px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.65rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}>+ {label}</button>
-                            ))}
-                            <button onClick={() => addTableAdditive(activeTable!, 'Discount (10%)', 'percentage', -10)} style={{ padding: '5px 10px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.65rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}>- Disc 10%</button>
-                          </div>
+                          {!activeOrder.isDbOrder && (
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              {[['GST (5%)', 5], ['CGST (9%)', 9], ['SGST (9%)', 9], ['Service Tax (10%)', 10]].map(([label, val]) => (
+                                <button key={String(label)} onClick={() => addTableAdditive(activeTable!, String(label), 'percentage', Number(val))} style={{ padding: '5px 10px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.65rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}>+ {label}</button>
+                              ))}
+                              <button onClick={() => addTableAdditive(activeTable!, 'Discount (10%)', 'percentage', -10)} style={{ padding: '5px 10px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.65rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}>- Disc 10%</button>
+                            </div>
+                          )}
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
                             <span style={{ color: 'var(--text-secondary)' }}>Subtotal</span>
                             <span style={{ color: 'var(--cream)' }}>₹{subtotal.toLocaleString('en-IN')}</span>
@@ -953,7 +1105,32 @@ export default function TableOrdersPage() {
                             ) : activeOrder.status === 'billed' ? (
                               <button onClick={() => setShowBillModal(activeTable!)} style={{ padding: '16px', background: 'var(--gold)', border: 'none', color: 'var(--black)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer' }}>Checkout / Pay</button>
                             ) : (
-                              <button onClick={() => handleClearTable(activeTable!)} style={{ padding: '16px', background: '#10b981', border: 'none', color: 'var(--black)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer' }}>Complete & Clear Table</button>
+                              <>
+                                <button 
+                                  onClick={() => shareBillByGmail(activeOrder.orderId!)}
+                                  disabled={sharingOrderId === activeOrder.orderId}
+                                  style={{ 
+                                    padding: '16px', 
+                                    background: 'rgba(197, 168, 92, 0.08)', 
+                                    border: '1px solid var(--gold)', 
+                                    color: 'var(--gold)', 
+                                    fontFamily: 'var(--font-sans)', 
+                                    fontSize: '0.85rem', 
+                                    fontWeight: 700, 
+                                    letterSpacing: '0.12em', 
+                                    textTransform: 'uppercase', 
+                                    cursor: sharingOrderId === activeOrder.orderId ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    opacity: sharingOrderId === activeOrder.orderId ? 0.6 : 1
+                                  }}
+                                >
+                                  <Mail size={14} /> {sharingOrderId === activeOrder.orderId ? 'Sharing...' : 'Share bill by Gmail'}
+                                </button>
+                                <button onClick={() => handleClearTable(activeTable!)} style={{ padding: '16px', background: '#10b981', border: 'none', color: 'var(--black)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer' }}>Complete & Clear Table</button>
+                              </>
                             )}
                             {activeOrder.items.length > 0 && (
                               <button onClick={() => printThermalReceipt(activeOrder)} style={{ padding: '14px', background: 'transparent', border: '1px solid var(--gold)', color: 'var(--gold)', fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -1520,13 +1697,25 @@ export default function TableOrdersPage() {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+              {activeOrder?.isDbOrder && (
+                <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', background: 'rgba(239,68,68,0.06)', border: '1px dashed rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '0.78rem', fontWeight: 500, marginBottom: '6px' }}>
+                  <span>🔒 Order sent to kitchen. Menu editing is locked.</span>
+                </div>
+              )}
               {categoryItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => addItemToTable(item)}
+                  onClick={() => {
+                    if (activeOrder?.isDbOrder) {
+                      toast.error("Order is sent to kitchen. Menu is locked.");
+                      return;
+                    }
+                    addItemToTable(item);
+                  }}
                   style={{
                     padding: '14px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)',
-                    textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s ease',
+                    textAlign: 'left', cursor: activeOrder?.isDbOrder ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease',
+                    opacity: activeOrder?.isDbOrder ? 0.45 : 1,
                   }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.4)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)'; }}
@@ -1594,6 +1783,7 @@ export default function TableOrdersPage() {
                           onChange={(e) => {
                             setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerName: e.target.value } : to));
                           }}
+                          onBlur={(e) => syncGuestDetailsToDb('customerName', e.target.value)}
                           style={{ width: '100%', padding: '6px 8px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.72rem', borderRadius: 0, outline: 'none' }}
                         />
                       </div>
@@ -1620,6 +1810,7 @@ export default function TableOrdersPage() {
                         onChange={(e) => {
                           setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerPhone: e.target.value } : to));
                         }}
+                        onBlur={(e) => syncGuestDetailsToDb('customerPhone', e.target.value)}
                         style={{ width: '100%', padding: '6px 8px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.72rem', borderRadius: 0, outline: 'none' }}
                       />
                     </div>
@@ -1632,6 +1823,7 @@ export default function TableOrdersPage() {
                         onChange={(e) => {
                           setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerEmail: e.target.value } : to));
                         }}
+                        onBlur={(e) => syncGuestDetailsToDb('customerEmail', e.target.value)}
                         style={{ width: '100%', padding: '6px 8px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.72rem', borderRadius: 0, outline: 'none' }}
                       />
                     </div>
@@ -1684,13 +1876,22 @@ export default function TableOrdersPage() {
                       padding: '10px 12px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)',
                     }}>
                       <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px' }}>{item.name}</p>
+                        <p style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px' }}>
+                          {item.name}
+                          {activeOrder.isDbOrder && (
+                            <span title="Sent to kitchen (locked)" style={{ color: 'var(--text-muted)', marginLeft: '6px', fontSize: '0.78rem', verticalAlign: 'middle' }}>🔒</span>
+                          )}
+                        </p>
                         <p style={{ fontSize: '0.8rem', color: 'var(--gold)' }}>₹{item.price * item.qty}</p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <button onClick={() => removeItem(activeTable!, item.id)} style={{ width: '24px', height: '24px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>−</button>
+                        {!activeOrder.isDbOrder && (
+                          <button onClick={() => removeItem(activeTable!, item.id)} style={{ width: '24px', height: '24px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>−</button>
+                        )}
                         <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--cream)', minWidth: '22px', textAlign: 'center' }}>{item.qty}</span>
-                        <button onClick={() => addItem(activeTable!, item.id)} style={{ width: '24px', height: '24px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>+</button>
+                        {!activeOrder.isDbOrder && (
+                          <button onClick={() => addItem(activeTable!, item.id)} style={{ width: '24px', height: '24px', background: 'var(--dark-card)', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>+</button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1724,50 +1925,54 @@ export default function TableOrdersPage() {
               <div style={{ marginBottom: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Taxes & Additives</span>
-                  <button 
-                    onClick={() => setShowAddAdditive(!showAddAdditive)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--gold)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', fontWeight: 600 }}
-                  >
-                    <Plus size={11} /> {showAddAdditive ? 'Close' : 'Add Custom'}
-                  </button>
+                  {!activeOrder.isDbOrder && (
+                    <button 
+                      onClick={() => setShowAddAdditive(!showAddAdditive)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--gold)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', fontWeight: 600 }}
+                    >
+                      <Plus size={11} /> {showAddAdditive ? 'Close' : 'Add Custom'}
+                    </button>
+                  )}
                 </div>
 
                 {/* Quick Add presets */}
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                  <button 
-                    onClick={() => addTableAdditive(activeTable!, 'GST (5%)', 'percentage', 5)}
-                    style={{ padding: '3px 6px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    + GST 5%
-                  </button>
-                  <button 
-                    onClick={() => addTableAdditive(activeTable!, 'CGST (9%)', 'percentage', 9)}
-                    style={{ padding: '3px 6px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    + CGST 9%
-                  </button>
-                  <button 
-                    onClick={() => addTableAdditive(activeTable!, 'SGST (9%)', 'percentage', 9)}
-                    style={{ padding: '3px 6px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    + SGST 9%
-                  </button>
-                  <button 
-                    onClick={() => addTableAdditive(activeTable!, 'Service Tax (10%)', 'percentage', 10)}
-                    style={{ padding: '3px 6px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    + Serv Tax 10%
-                  </button>
-                  <button 
-                    onClick={() => addTableAdditive(activeTable!, 'Discount (10%)', 'percentage', -10)}
-                    style={{ padding: '3px 6px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    - Disc 10%
-                  </button>
-                </div>
+                {!activeOrder.isDbOrder && (
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                    <button 
+                      onClick={() => addTableAdditive(activeTable!, 'GST (5%)', 'percentage', 5)}
+                      style={{ padding: '3px 6px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      + GST 5%
+                    </button>
+                    <button 
+                      onClick={() => addTableAdditive(activeTable!, 'CGST (9%)', 'percentage', 9)}
+                      style={{ padding: '3px 6px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      + CGST 9%
+                    </button>
+                    <button 
+                      onClick={() => addTableAdditive(activeTable!, 'SGST (9%)', 'percentage', 9)}
+                      style={{ padding: '3px 6px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      + SGST 9%
+                    </button>
+                    <button 
+                      onClick={() => addTableAdditive(activeTable!, 'Service Tax (10%)', 'percentage', 10)}
+                      style={{ padding: '3px 6px', background: 'var(--dark-card)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      + Serv Tax 10%
+                    </button>
+                    <button 
+                      onClick={() => addTableAdditive(activeTable!, 'Discount (10%)', 'percentage', -10)}
+                      style={{ padding: '3px 6px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.58rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      - Disc 10%
+                    </button>
+                  </div>
+                )}
 
                 {/* Inline Additive Form */}
-                {showAddAdditive && (
+                {!activeOrder.isDbOrder && showAddAdditive && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', marginBottom: '12px' }}>
                     <p style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--gold)', margin: 0, textTransform: 'uppercase' }}>Add Custom Charge / Discount</p>
                     <input 
@@ -1822,12 +2027,14 @@ export default function TableOrdersPage() {
                 {calculatedAdditives.map((add) => (
                   <div key={add.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.82rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <button 
-                        onClick={() => removeTableAdditive(activeTable!, add.id)}
-                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                      >
-                        <Trash2 size={10} />
-                      </button>
+                      {!activeOrder.isDbOrder && (
+                        <button 
+                          onClick={() => removeTableAdditive(activeTable!, add.id)}
+                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      )}
                       <span style={{ color: 'var(--text-secondary)' }}>{add.name}</span>
                     </div>
                     <span style={{ color: add.calculatedValue < 0 ? '#ef4444' : 'var(--cream)', fontWeight: 600 }}>
@@ -1851,11 +2058,30 @@ export default function TableOrdersPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {activeOrder.status === 'paid' && (
-                  <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '4px', textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em' }}>
-                      ✓ PAID & SERVING
-                    </span>
-                  </div>
+                  <button 
+                    onClick={() => shareBillByGmail(activeOrder.orderId!)}
+                    disabled={sharingOrderId === activeOrder.orderId}
+                    style={{ 
+                      padding: '12px', 
+                      background: 'rgba(197, 168, 92, 0.08)', 
+                      border: '1px solid var(--gold)', 
+                      color: 'var(--gold)', 
+                      fontFamily: 'var(--font-sans)', 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700, 
+                      letterSpacing: '0.1em', 
+                      textTransform: 'uppercase', 
+                      cursor: sharingOrderId === activeOrder.orderId ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      marginBottom: '4px',
+                      opacity: sharingOrderId === activeOrder.orderId ? 0.6 : 1
+                    }}
+                  >
+                    <Mail size={14} /> {sharingOrderId === activeOrder.orderId ? 'Sharing...' : 'Share bill by Gmail'}
+                  </button>
                 )}
 
                 {activeOrder.status === 'open' ? (

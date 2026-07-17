@@ -139,7 +139,7 @@ export default function Navbar() {
   const [navVisible,  setNavVisible]  = useState(false); // hidden until scroll
 
   const isHome    = pathname === '/';
-  const isAdmin   = user?.email === 'thelondonshakessilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk';
+  const isAdmin   = user?.email === 'thelondonshakes.silchar@gmail.com';
 
   useEffect(() => {
     if (!isHome) { setNavVisible(true); return; }

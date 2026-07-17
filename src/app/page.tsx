@@ -445,32 +445,51 @@ export default function HomePage() {
             </h2>
           </div>
 
-          <div style={{ border: '1px solid var(--dark-border)', overflow: 'hidden', boxShadow: '0 12px 40px rgba(28,25,21,0.08)' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '15px 22px', background: '#1C1915', borderBottom: '1px solid rgba(143,29,47,0.25)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <MapPin size={15} color="var(--red)" />
-                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--on-dark)' }}>
-                  The London Shakes — Silchar
-                </span>
-              </div>
-              <a href={restaurantInfo.location?.googleMapsUrl || 'https://maps.app.goo.gl/1JdFt5kDFpdefg3j9'}
-                target="_blank" rel="noopener noreferrer"
-                style={{ fontFamily: 'var(--font-sans)', fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(242,238,228,0.7)', transition: 'color 0.2s ease' }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--on-dark)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(242,238,228,0.7)')}
-              >Open in Maps ↗</a>
+          <a
+            href={restaurantInfo.location?.googleMapsUrl || 'https://maps.app.goo.gl/1JdFt5kDFpdefg3j9'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="map-banner-card"
+          >
+            {/* Background Image & Overlay */}
+            <div style={{ position: 'absolute', inset: 0 }}>
+              <img
+                src="/london-street-map-banner.png"
+                alt="Find us in Silchar"
+                className="map-bg-image"
+              />
+              <div className="map-overlay" />
             </div>
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3645.6!2d92.7972719!3d24.8227801!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x374e4bd43e738f43%3A0x49c55481d3cdbd9f!2sThe%20London%20Shakes%20Silchar!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
-              width="100%" height="420"
-              style={{ border: 0, display: 'block', filter: 'grayscale(30%) contrast(1.05) brightness(0.95) sepia(10%)' }}
-              allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
-              title="The London Shakes — Silchar location on Google Maps"
-            />
-          </div>
+
+            {/* Content centered inside banner */}
+            <div style={{
+              position: 'relative',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '24px',
+              textAlign: 'center',
+              gap: '16px'
+            }}>
+              <h3 style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(1.6rem, 4vw, 2.5rem)',
+                color: '#F2EEE4',
+                fontWeight: 300,
+                margin: 0,
+                letterSpacing: '-0.015em',
+                textShadow: '0 2px 10px rgba(0,0,0,0.4)',
+              }}>
+                Find us in Silchar
+              </h3>
+              
+              <div className="map-btn">
+                Open in Google Maps ↗
+              </div>
+            </div>
+          </a>
         </div>
       </section>
 

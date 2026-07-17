@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurantStore, useCMSStore, type Order, type CartItem, type BillAdditive } from '@/store/restaurantStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { CheckCircle, XCircle, Truck, ShoppingBag, Search, ChevronDown, Trash2, Plus, X, Edit, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Truck, ShoppingBag, Search, ChevronDown, Trash2, Plus, X, Edit, FileText, Mail } from 'lucide-react';
 import { pusherClient } from '@/lib/pusher-client';
 import toast from 'react-hot-toast';
 
@@ -105,6 +105,7 @@ const printOrderReceipt = (order: Order) => {
         .info-table td {
           padding: 2px 0;
           vertical-align: top;
+          word-break: break-all;
         }
         .items-table th, .items-table td {
           padding: 4px 0;
@@ -230,6 +231,30 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter]     = useState<string>('all');
   const isMobile = useIsMobile();
+  const [sharingOrderId, setSharingOrderId] = useState<string | null>(null);
+
+  const shareBillByGmail = async (orderId: string) => {
+    if (sharingOrderId) return;
+    setSharingOrderId(orderId);
+    try {
+      const res = await fetch('/api/orders/share-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Bill receipt sent successfully via Gmail!');
+      } else {
+        toast.error(data.error || 'Failed to send receipt email.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('An error occurred while sharing the receipt.');
+    } finally {
+      setSharingOrderId(null);
+    }
+  };
 
   // Order editing states
   const [editOrder, setEditOrder] = useState<Order | null>(null);
@@ -387,7 +412,7 @@ export default function OrdersPage() {
           orderId: editOrder.id,
           items: finalItems,
           total: grandTotal,
-          adminEmail: 'admin@thelondon.co.uk',
+          adminEmail: 'thelondonshakes.silchar@gmail.com',
           discountDetails: fullDiscountDetails,
           reason: finalReason
         })
@@ -613,6 +638,20 @@ export default function OrdersPage() {
                   }}
                 >
                   <FileText size={12} /> Print Receipt
+                </button>
+
+                <button
+                  onClick={() => shareBillByGmail(order.id)}
+                  disabled={sharingOrderId === order.id}
+                  style={{
+                    padding: '6px 14px', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.4)',
+                    color: 'var(--gold)', fontFamily: 'var(--font-sans)', fontSize: '0.62rem', fontWeight: 700,
+                    letterSpacing: '0.1em', textTransform: 'uppercase', cursor: sharingOrderId === order.id ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    opacity: sharingOrderId === order.id ? 0.6 : 1
+                  }}
+                >
+                  <Mail size={12} /> {sharingOrderId === order.id ? 'Sharing...' : 'Share by Gmail'}
                 </button>
 
                 {order.status !== 'cancelled' && order.status !== 'delivered' && (

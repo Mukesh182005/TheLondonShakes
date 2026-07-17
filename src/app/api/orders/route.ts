@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         paymentStatus: dbOrder.paymentStatus as Order['paymentStatus'],
         upiTxnId: dbOrder.upiTxnId || undefined,
         createdAt: dbOrder.createdAt.toISOString(),
-        adminPlaced: dbOrder.addressFlat === 'ADMIN_PLACED' || dbOrder.email === 'admin@thelondon.co.uk' || dbOrder.email === 'thelondonshakessilchar@gmail.com',
+        adminPlaced: dbOrder.addressFlat === 'ADMIN_PLACED' || dbOrder.email === 'thelondonshakes.silchar@gmail.com',
       };
 
       return NextResponse.json(formattedOrder);
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
         upiTxnId: o.upiTxnId || undefined,
         receiptPhoto: (o as any).receiptPhoto || undefined,
         createdAt: o.createdAt.toISOString(),
-        adminPlaced: o.addressFlat === 'ADMIN_PLACED' || o.email === 'admin@thelondon.co.uk' || o.email === 'thelondonshakessilchar@gmail.com',
+        adminPlaced: o.addressFlat === 'ADMIN_PLACED' || o.email === 'thelondonshakes.silchar@gmail.com',
         discount: (o as any).discount ?? 0,
         tax: (o as any).tax ?? 0,
         cashier: (o as any).cashier ?? 'Counter Staff',
@@ -145,7 +145,27 @@ export async function GET(req: NextRequest) {
     // Sort by date
     all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    return NextResponse.json(all);
+    // Filter by lastClearedAt if ?all=true is not set
+    const showAll = searchParams.get('all') === 'true';
+    let filteredOrders = all;
+
+    if (!showAll) {
+      try {
+        const lastClearedSetting = await prisma.systemSetting.findUnique({
+          where: { key: 'lastClearedAt' },
+        });
+        if (lastClearedSetting && lastClearedSetting.value) {
+          const clearTime = new Date(lastClearedSetting.value).getTime();
+          filteredOrders = all.filter(
+            (o) => new Date(o.createdAt).getTime() >= clearTime
+          );
+        }
+      } catch (dbErr) {
+        console.warn('Failed to retrieve lastClearedAt setting from DB:', dbErr);
+      }
+    }
+
+    return NextResponse.json(filteredOrders);
   } catch (error) {
     console.warn("Database failed to fetch orders, falling back to memory:", error);
     return NextResponse.json(memoryOrders);
@@ -288,7 +308,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orderId, status, paymentStatus, receiptPhoto } = await req.json();
+    const { orderId, status, paymentStatus, receiptPhoto, customerName, phone, email } = await req.json();
 
     let updatedOrder: Order | null = null;
     try {
@@ -296,6 +316,9 @@ export async function PUT(req: NextRequest) {
       if (status) updateData.status = status;
       if (paymentStatus) updateData.paymentStatus = paymentStatus;
       if (receiptPhoto) updateData.receiptPhoto = receiptPhoto;
+      if (customerName) updateData.customerName = customerName;
+      if (phone) updateData.phone = phone;
+      if (email) updateData.email = email;
 
       const dbOrder = await prisma.order.update({
         where: { id: orderId },

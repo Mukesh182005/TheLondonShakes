@@ -173,7 +173,7 @@ export const useRestaurantStore = create<RestaurantState>()(
     (set, get) => ({
       user: null,
       login: (email, name = 'Valued Guest', phone) => {
-        const isDefaultAdmin = email === 'thelondonshakessilchar@gmail.com' || email === 'admin@thelondon.co.uk';
+        const isDefaultAdmin = email === 'thelondonshakes.silchar@gmail.com';
         set({
           user: {
             name: isDefaultAdmin ? 'Maître d\' London' : name,
@@ -334,7 +334,7 @@ export const useRestaurantStore = create<RestaurantState>()(
         const total = subtotal;
 
         const currentAdminEmail = get().user?.email;
-        const isAdminSession = currentAdminEmail === 'thelondonshakessilchar@gmail.com' || currentAdminEmail === 'admin@thelondon.co.uk';
+        const isAdminSession = currentAdminEmail === 'thelondonshakes.silchar@gmail.com';
         const isPlacedByAdmin = !!(customSettings?.adminPlaced || isAdminSession);
 
         const newOrder: Order = {
@@ -347,7 +347,7 @@ export const useRestaurantStore = create<RestaurantState>()(
           address: {
             name: customSettings?.customerName || get().cart.address.name || 'Guest',
             phone: get().cart.address.phone || 'N/A',
-            email: isPlacedByAdmin ? (currentAdminEmail || 'admin@thelondon.co.uk') : (get().cart.address.email || 'N/A'),
+            email: isPlacedByAdmin ? (currentAdminEmail || 'thelondonshakes.silchar@gmail.com') : (get().cart.address.email || 'N/A'),
             flat: isPlacedByAdmin ? 'ADMIN_PLACED' : (get().cart.address.flat || ''),
             street: get().cart.address.street || '',
             city: get().cart.address.city || '',

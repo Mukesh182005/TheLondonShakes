@@ -40,6 +40,7 @@ const navGroups = [
       { label: 'Site Settings', href: '/admin/settings',   icon: Settings },
       { label: 'Analytics',       href: '/admin/analytics', icon: BarChart2 },
       { label: 'Transaction Bills', href: '/admin/transaction-bills', icon: ImageIcon },
+      { label: 'Security & Admins', href: '/admin/security', icon: ShieldAlert },
       { label: 'All Logs', href: '/admin/all-logs', icon: ClipboardList },
     ],
   },
@@ -107,14 +108,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sessionVerified, setSessionVerified] = useState(false);
   const [sessionName, setSessionName] = useState<string>('');
   const [role, setRole] = useState<string>(() => {
-    if (user?.email === 'thelondonshakessilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk') {
+    if (user?.email === 'thelondonshakes.silchar@gmail.com') {
       return 'owner';
     }
     return 'waiter';
   });
 
   const getFilteredNavGroups = (currentRole: string) => {
-    const isOwner = user?.email === 'thelondonshakessilchar@gmail.com' || currentRole === 'owner';
+    const isOwner = user?.email === 'thelondonshakes.silchar@gmail.com' || currentRole === 'owner';
     
     if (maintenanceMode && !isOwner) {
       return [];
@@ -136,6 +137,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               item.label !== 'Transaction Bills' && 
               item.label !== 'Analytics' && 
               item.label !== 'Site Settings' &&
+              item.label !== 'Security & Admins' &&
               item.label !== 'All Logs'
             )
           };
@@ -148,7 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const isPathAllowed = (path: string, currentRole: string): boolean => {
-    const isOwner = user?.email === 'thelondonshakessilchar@gmail.com' || currentRole === 'owner';
+    const isOwner = user?.email === 'thelondonshakes.silchar@gmail.com' || currentRole === 'owner';
     
     if (maintenanceMode && !isOwner) {
       return path === '/admin/login';
@@ -159,6 +161,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       '/admin/transaction-bills',
       '/admin/analytics',
       '/admin/settings',
+      '/admin/security',
       '/admin/all-logs'
     ];
     if (systemPaths.some(p => path.startsWith(p)) && !isOwner) {
@@ -183,8 +186,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return true;
   };
 
-  const isAdmin = user?.email === 'thelondonshakessilchar@gmail.com' || user?.email === 'admin@thelondon.co.uk';
-  const SUPER_ADMIN_EMAIL = 'thelondonshakessilchar@gmail.com';
+  const isAdmin = user?.email === 'thelondonshakes.silchar@gmail.com';
+  const SUPER_ADMIN_EMAIL = 'thelondonshakes.silchar@gmail.com';
   const isSuperAdmin = hydrated && (user?.email === SUPER_ADMIN_EMAIL || role === 'owner');
 
   useEffect(() => {
@@ -578,7 +581,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         <main style={{ flex:1, overflowY:'auto', padding: isMobile ? '16px' : '32px' }}>
-          {isMobile && (role === 'owner' || user?.email === 'thelondonshakessilchar@gmail.com') ? (
+          {isMobile && (role === 'owner' || user?.email === 'thelondonshakes.silchar@gmail.com') ? (
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -618,7 +621,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Log Out
               </button>
             </div>
-          ) : maintenanceMode && role !== 'owner' && user?.email !== 'thelondonshakessilchar@gmail.com' ? (
+          ) : maintenanceMode && role !== 'owner' && user?.email !== 'thelondonshakes.silchar@gmail.com' ? (
             <div style={{
               display: 'flex',
               flexDirection: 'column',

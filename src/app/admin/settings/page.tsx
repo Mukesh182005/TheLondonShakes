@@ -147,7 +147,7 @@ export default function SettingsPage() {
       setCategories([...menuCategories]);
 
       // Bypass for Super Admin / Owner, or check sessionStorage unlock
-      if (user?.email === 'thelondonshakessilchar@gmail.com' && !isLockedOverride) {
+      if (user?.email === 'thelondonshakes.silchar@gmail.com' && !isLockedOverride) {
         setIsUnlocked(true);
       } else if (sessionStorage.getItem('settings_unlocked') === 'true') {
         setIsUnlocked(true);
@@ -330,9 +330,9 @@ export default function SettingsPage() {
   ] as const;
 
   // ── Super-admin-only hard guard ──────────────────────────────────────────
-  // Only the owner (thelondonshakessilchar@gmail.com) may ever access this page.
+  // Only the owner (thelondonshakes.silchar@gmail.com) may ever access this page.
   // Regular admins see a permanent "Access Denied" screen — no passcode bypass.
-  const SUPER_ADMIN_EMAIL = 'thelondonshakessilchar@gmail.com';
+  const SUPER_ADMIN_EMAIL = 'thelondonshakes.silchar@gmail.com';
   const isSuperAdmin = isMounted && user?.email === SUPER_ADMIN_EMAIL;
 
   if (isMounted && !isSuperAdmin) {
@@ -1261,7 +1261,7 @@ export default function SettingsPage() {
           <div style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
               <h3 style={{ ...SECTION_TITLE, marginBottom: 0 }}><ShieldAlert size={14} style={{ display: 'inline', marginRight: '8px' }} />Bill Modification Audit Logs</h3>
-              {user?.email === 'thelondonshakessilchar@gmail.com' && (
+              {user?.email === 'thelondonshakes.silchar@gmail.com' && (
                 <button
                   onClick={async () => {
                     if (window.confirm('Are you sure you want to clear ALL bill modification logs? This action cannot be undone.')) {
@@ -1559,7 +1559,6 @@ export default function SettingsPage() {
                 <label style={LABEL}>Role</label>
                 <select style={{ ...INPUT_STYLE, appearance: 'none' }} value={newStaff.role}
                   onChange={(e) => setNewStaff(p => ({ ...p, role: e.target.value }))}>
-                  <option value="admin">Admin</option>
                   <option value="manager">Manager</option>
                   <option value="waiter">Waiter</option>
                 </select>

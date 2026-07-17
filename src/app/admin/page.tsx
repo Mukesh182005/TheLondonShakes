@@ -67,6 +67,18 @@ const quickLinks = [
 
 export default function AdminDashboard() {
   const orders      = useRestaurantStore((s) => s.orders);
+  const setOrders   = useRestaurantStore((s) => s.setOrders);
+
+  React.useEffect(() => {
+    fetch('/api/orders')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setOrders(data);
+        }
+      })
+      .catch((err) => console.error('Failed to load orders for dashboard:', err));
+  }, [setOrders]);
 
   const today       = new Date().toLocaleDateString('en-IN');
   const todayOrders = orders.filter((o) => new Date(o.createdAt).toLocaleDateString('en-IN') === today);

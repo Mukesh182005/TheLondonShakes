@@ -586,7 +586,7 @@ function AccountPageContent() {
               Welcome back, <em style={{ color: 'var(--gold)' }}>{user.name}</em>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
-              Account: {user.email} {(user.email === 'thelondonshakessilchar@gmail.com' || user.email === 'admin@thelondon.co.uk') && '· (Administrator)'}
+              Account: {user.email} {user.email === 'thelondonshakes.silchar@gmail.com' && '· (Administrator)'}
             </p>
           </div>
 

@@ -3,24 +3,19 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
-    // Only delete audit logs with action 'BILL_EDITED'
-    const result = await prisma.auditLog.deleteMany({
-      where: { action: 'BILL_EDITED' },
-    });
-
-    // Record log of clearing bill logs
+    // Record log of attempting to clear bill logs (logs are protected and retained)
     await prisma.auditLog.create({
       data: {
         action: 'CLEAR_BILL_LOGS',
-        details: `Cleared ${result.count} bill modification log(s).`,
-        adminEmail: 'Super Admin | thelondonshakessilchar@gmail.com',
+        details: 'Attempted to clear bill modification logs. System logs are protected and retained.',
+        adminEmail: 'Super Admin | thelondonshakes.silchar@gmail.com',
       },
     }).catch(() => {});
 
     return NextResponse.json({
       success: true,
-      message: `Cleared ${result.count} bill modification log(s).`,
-      count: result.count,
+      message: 'Bill logs are protected and retained in system logs.',
+      count: 0,
     });
   } catch (error) {
     console.error('Failed to clear bill logs:', error);

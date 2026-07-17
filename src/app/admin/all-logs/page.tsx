@@ -32,7 +32,7 @@ export default function AllLogsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const logsPerPage = 15;
 
-  const SUPER_ADMIN_EMAIL = 'thelondonshakessilchar@gmail.com';
+  const SUPER_ADMIN_EMAIL = 'thelondonshakes.silchar@gmail.com';
 
   useEffect(() => {
     if (hydrated && user) {

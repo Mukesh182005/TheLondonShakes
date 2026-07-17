@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurantStore, useIsMounted } from '@/store/restaurantStore';
 import {
-  Search, Trash2, Calendar, DollarSign, Users,
+  Search, Calendar, DollarSign, Users,
   CheckCircle, AlertCircle, Lock, Image as ImageIcon,
   Clock, X, Maximize2, ShieldAlert
 } from 'lucide-react';
@@ -18,14 +18,13 @@ export default function TransactionBillsPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [clearing, setClearing] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
 
   useEffect(() => {
     if (hydrated && user) {
-      const isOwner = user.email === 'thelondonshakessilchar@gmail.com';
+      const isOwner = user.email === 'thelondonshakes.silchar@gmail.com';
       setIsSuperAdmin(isOwner);
     }
   }, [user, hydrated]);
@@ -33,7 +32,7 @@ export default function TransactionBillsPage() {
   useEffect(() => {
     if (isSuperAdmin) {
       setLoading(true);
-      fetch('/api/orders')
+      fetch('/api/orders?all=true')
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data)) {
@@ -89,33 +88,6 @@ export default function TransactionBillsPage() {
     const matchesId = o.id.toLowerCase().includes(term);
     return matchesTable || matchesCustomer || matchesTotal || matchesId;
   });
-
-  const handleClearAllPhotos = async () => {
-    if (!window.confirm('Are you absolutely sure you want to delete all transaction records and proof photos from the system? This action is permanent and cannot be undone.')) {
-      return;
-    }
-
-    setClearing(true);
-    try {
-      const res = await fetch('/api/admin/clear-transaction-photos', {
-        method: 'POST',
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('All transaction records and proof photos cleared successfully.');
-        // Update local store state immediately to reflect deletion
-        setOrders([]);
-      } else {
-        toast.error(data.error || 'Failed to clear transaction records');
-      }
-    } catch (err) {
-      toast.error('An error occurred while clearing transaction records.');
-      console.error(err);
-    } finally {
-      setClearing(false);
-    }
-  };
-
   return (
     <div>
       {/* Header */}
@@ -128,40 +100,13 @@ export default function TransactionBillsPage() {
             Immutable repository of UPI transaction photos and verified bills
           </p>
         </div>
-
-        {/* Clear logs button (only super admin can click this) */}
-        {billOrders.length > 0 && (
-          <button
-            onClick={handleClearAllPhotos}
-            disabled={clearing}
-            style={{
-              padding: '12px 20px',
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              color: '#ef4444',
-              fontFamily: 'var(--font-sans)',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              cursor: clearing ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <Trash2 size={14} />
-            {clearing ? 'Clearing...' : 'Clear All Proofs'}
-          </button>
-        )}
       </div>
 
       {/* Info Warning Bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px', background: 'rgba(197, 168, 92, 0.04)', border: '1px solid rgba(197, 168, 92, 0.15)', marginBottom: '24px' }}>
         <ShieldAlert size={16} color="var(--gold)" style={{ flexShrink: 0 }} />
         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          <strong>Security Protocol:</strong> These transaction proofs are legally binding. Staff/managers cannot delete, modify, or clear these logs. Only the Super Admin possesses clearance keys to purge this archive.
+          <strong>Security Protocol:</strong> These transaction proofs are legally binding and immutable. No staff member, manager, or administrator can delete, modify, or clear these logs from the system.
         </span>
       </div>
 
