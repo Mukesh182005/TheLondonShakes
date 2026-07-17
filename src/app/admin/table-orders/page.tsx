@@ -1212,10 +1212,7 @@ export default function TableOrdersPage() {
             }
           };
 
-          const handleSimulatePhoto = () => {
-            setReceiptPhoto("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='200' viewBox='0 0 150 200'><rect width='100%' height='100%' fill='%2310b981'/><text x='15' y='40' fill='white' font-family='sans-serif' font-weight='bold' font-size='12'>TRANSACTION SLIP</text><text x='15' y='70' fill='white' font-family='sans-serif' font-size='10'>Amount: INR " + grandTotal + "</text><text x='15' y='90' fill='white' font-family='sans-serif' font-size='10'>Status: SUCCESS</text><text x='15' y='110' fill='white' font-family='sans-serif' font-size='9'>Txn ID: 987654321098</text></svg>");
-            toast.success("Simulated receipt photo loaded!");
-          };
+
 
           return (
             <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -1402,13 +1399,7 @@ export default function TableOrdersPage() {
                               >
                                 Take / Upload Photo
                               </button>
-                              <button
-                                type="button"
-                                onClick={handleSimulatePhoto}
-                                style={{ padding: '10px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', fontSize: '0.7rem', cursor: 'pointer' }}
-                              >
-                                Simulate
-                              </button>
+
                               <input 
                                 id="receipt-capture-input-mobile"
                                 type="file" 
@@ -2202,11 +2193,7 @@ export default function TableOrdersPage() {
           }
         };
 
-        const handleSimulatePhoto = () => {
-          // Generate a fake green transaction slip base64 mock
-          setReceiptPhoto("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='200' viewBox='0 0 150 200'><rect width='100%' height='100%' fill='%2310b981'/><text x='15' y='40' fill='white' font-family='sans-serif' font-weight='bold' font-size='12'>TRANSACTION SLIP</text><text x='15' y='70' fill='white' font-family='sans-serif' font-size='10'>Amount: INR ${grandTotal}</text><text x='15' y='90' fill='white' font-family='sans-serif' font-size='10'>Status: SUCCESS</text><text x='15' y='110' fill='white' font-family='sans-serif' font-size='9'>Txn ID: 987654321098</text></svg>");
-          toast.success("Simulated receipt photo loaded!");
-        };
+
 
         return (
           <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -2401,13 +2388,7 @@ export default function TableOrdersPage() {
                             >
                               Take / Upload Photo
                             </button>
-                            <button
-                              type="button"
-                              onClick={handleSimulatePhoto}
-                              style={{ padding: '10px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', fontSize: '0.7rem', cursor: 'pointer' }}
-                            >
-                              Simulate
-                            </button>
+
                             <input 
                               id="receipt-capture-input"
                               type="file" 

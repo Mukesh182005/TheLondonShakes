@@ -34,150 +34,267 @@ export async function POST(req: NextRequest) {
     const additives = items.filter((i: any) => i.isAdditive);
     const subtotal = regularItems.reduce((sum: number, i: any) => sum + (i.price * i.qty), 0);
 
-    // 5. Generate Receipt PDF in Memory (A4 format)
+    // 5. Load logo for PDF embedding
+    const fs = await import('fs');
+    const path = await import('path');
+    const logoPath = path.join(process.cwd(), 'public', 'icon.png');
+    let logoBase64: string | null = null;
+    try {
+      const logoBuffer = fs.readFileSync(logoPath);
+      logoBase64 = logoBuffer.toString('base64');
+    } catch {
+      logoBase64 = null;
+    }
+
+    // 6. Generate Receipt PDF in Memory (A4 format)
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'
     });
 
-    // Top gold brand banner
+    // ── DARK NAVY HEADER STRIP ───────────────────────────────────────────────
+    doc.setFillColor(15, 23, 42);        // dark navy
+    doc.rect(0, 0, 210, 38, 'F');
+
+    // Gold accent bar at very top
     doc.setFillColor(197, 168, 92);
-    doc.rect(20, 15, 170, 3, 'F');
+    doc.rect(0, 0, 210, 2.5, 'F');
 
-    // Title Branding
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.setTextColor(26, 26, 26);
-    doc.text('THE LONDON SHAKES', 20, 32);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(113, 128, 150);
-    doc.text('Silchar, Assam, India', 20, 38);
-    doc.text(`Phone: ${restaurantInfo.contact.phone}`, 20, 43);
-    doc.text('Email: contact@thelondonshakessilchar.com', 20, 48);
-
-    // Right-aligned Invoice Header
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(197, 168, 92);
-    doc.text('INVOICE / BILL', 190, 32, { align: 'right' });
-
-    // Divider Line
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(20, 53, 190, 53);
-
-    // Metadata Block
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(74, 85, 104);
-    doc.text('BILL TO:', 20, 61);
-    doc.text('INVOICE DETAILS:', 120, 61);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
-    doc.setTextColor(26, 26, 26);
-    doc.text(order.customerName, 20, 67);
-    doc.text(`Phone: ${order.phone}`, 20, 72);
-    doc.text(`Email: ${order.email || 'N/A'}`, 20, 77);
-
-    doc.text(`Bill ID: #${order.id.slice(-8).toUpperCase()}`, 120, 67);
-    doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString('en-IN')}`, 120, 72);
-    doc.text(`Time: ${new Date(order.createdAt).toLocaleTimeString('en-IN')}`, 120, 77);
-    doc.text(`Cashier: ${order.cashier}`, 120, 82);
-    if (order.tableNumber) {
-      doc.text(`Table Number: Dine-In (${order.tableNumber})`, 120, 87);
+    // Logo (top-left inside header)
+    if (logoBase64) {
+      doc.addImage(logoBase64, 'PNG', 12, 5, 46, 28);
     }
 
-    // Divider
-    doc.line(20, 93, 190, 93);
+    // "INVOICE / BILL" badge (top-right)
+    doc.setFillColor(197, 168, 92);
+    doc.roundedRect(143, 8, 54, 10, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text('INVOICE / BILL', 170, 14.5, { align: 'center' });
 
-    // Table Header Grid
-    doc.setFillColor(248, 245, 237);
-    doc.rect(20, 99, 170, 8, 'F');
+    // Bill ID subtitle beneath badge
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(180, 160, 100);
+    doc.text(`#${order.id.slice(-8).toUpperCase()}`, 170, 23, { align: 'center' });
+
+    // Contact info bottom-right of header
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${restaurantInfo.contact.phone}  ·  contact@thelondonshakessilchar.com`, 198, 33, { align: 'right' });
+
+    // ── GOLD DIVIDER ─────────────────────────────────────────────────────────
+    doc.setDrawColor(197, 168, 92);
+    doc.setLineWidth(0.4);
+    doc.line(12, 38, 198, 38);
+
+    // ── BILL TO / INVOICE DETAILS BLOCK ─────────────────────────────────────
+    const blockY = 44;
+
+    // Left tinted box — BILL TO
+    doc.setFillColor(248, 250, 252);
+    doc.rect(12, blockY, 86, 38, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.rect(12, blockY, 86, 38, 'S');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
+    doc.setFontSize(7.5);
     doc.setTextColor(197, 168, 92);
-    doc.text('Item Description', 24, 104.5);
-    doc.text('Qty', 110, 104.5, { align: 'center' });
-    doc.text('Unit Price', 145, 104.5, { align: 'right' });
-    doc.text('Total Price', 186, 104.5, { align: 'right' });
+    doc.text('BILL TO', 16, blockY + 6);
 
-    // Render Items
-    let y = 113;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(order.customerName, 16, blockY + 13);
+
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(26, 26, 26);
+    doc.setFontSize(8.5);
+    doc.setTextColor(74, 85, 104);
+    doc.text(`Phone: ${order.phone}`, 16, blockY + 20);
+    doc.text(`Email: ${order.email || 'N/A'}`, 16, blockY + 27);
 
+    // Right tinted box — INVOICE DETAILS
+    doc.setFillColor(248, 250, 252);
+    doc.rect(110, blockY, 88, 38, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.rect(110, blockY, 88, 38, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(197, 168, 92);
+    doc.text('INVOICE DETAILS', 114, blockY + 6);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(74, 85, 104);
+    doc.text(`Date:    ${new Date(order.createdAt).toLocaleDateString('en-IN')}`, 114, blockY + 13);
+    doc.text(`Time:    ${new Date(order.createdAt).toLocaleTimeString('en-IN')}`, 114, blockY + 20);
+    doc.text(`Cashier: ${order.cashier}`, 114, blockY + 27);
+    if (order.tableNumber) {
+      doc.text(`Table:   Dine-In (${order.tableNumber})`, 114, blockY + 34);
+    }
+
+    // Payment method pill
+    const pmText = (order.paymentMethod || 'N/A').toUpperCase();
+    const pmColors: Record<string, [number,number,number]> = {
+      CASH: [16, 185, 129],
+      GPAY: [59, 130, 246],
+      PHONEPE: [139, 92, 246],
+      CARD: [245, 158, 11],
+    };
+    const pmKey = Object.keys(pmColors).find(k => pmText.includes(k)) || '';
+    const [pr, pg, pb] = pmColors[pmKey] || [113, 128, 150];
+    doc.setFillColor(pr, pg, pb);
+    doc.roundedRect(12, blockY + 42, 50, 7, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`Paid via: ${pmText}`, 37, blockY + 47, { align: 'center' });
+
+    // ── ITEMS TABLE ──────────────────────────────────────────────────────────
+    let y = blockY + 56;
+
+    // Table header row
+    doc.setFillColor(15, 23, 42);
+    doc.rect(12, y, 186, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(197, 168, 92);
+    doc.text('ITEM', 16, y + 5.5);
+    doc.text('QTY', 112, y + 5.5, { align: 'center' });
+    doc.text('UNIT PRICE', 152, y + 5.5, { align: 'right' });
+    doc.text('TOTAL', 196, y + 5.5, { align: 'right' });
+    y += 10;
+
+    // Item rows
+    let rowAlt = false;
     regularItems.forEach((item: any) => {
-      // Check page overflow
-      if (y > 270) {
+      if (y > 265) {
         doc.addPage();
-        y = 20;
+        y = 15;
       }
-
       const itemSize = item.size || '';
       const nameStr = itemSize && !item.name.toLowerCase().includes(`(${itemSize.toLowerCase()})`)
         ? `${item.name} (${itemSize.toUpperCase()})`
         : item.name;
-      const splitName = doc.splitTextToSize(nameStr, 70);
-      
-      doc.text(splitName, 24, y);
-      doc.text(String(item.qty), 110, y, { align: 'center' });
-      doc.text(`Rs. ${item.price.toFixed(2)}`, 145, y, { align: 'right' });
-      doc.text(`Rs. ${(item.price * item.qty).toFixed(2)}`, 186, y, { align: 'right' });
+      const splitName = doc.splitTextToSize(nameStr, 82);
+      const rowH = Math.max(splitName.length * 5, 7) + 3;
 
-      // Draw subtle row divider line
-      doc.setDrawColor(241, 245, 249);
-      doc.line(20, y + 4, 190, y + 4);
+      // Alternating row tint
+      if (rowAlt) {
+        doc.setFillColor(249, 250, 251);
+        doc.rect(12, y - 1, 186, rowH, 'F');
+      }
+      rowAlt = !rowAlt;
 
-      y += Math.max(splitName.length * 5, 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(26, 26, 26);
+      doc.text(splitName, 16, y + 3);
+      doc.text(String(item.qty), 112, y + 3, { align: 'center' });
+      doc.setTextColor(74, 85, 104);
+      doc.text(`Rs. ${item.price.toFixed(2)}`, 152, y + 3, { align: 'right' });
+      doc.setTextColor(26, 26, 26);
+      doc.text(`Rs. ${(item.price * item.qty).toFixed(2)}`, 196, y + 3, { align: 'right' });
+
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.2);
+      doc.line(12, y + rowH - 1, 198, y + rowH - 1);
+      y += rowH;
     });
 
-    // Subtotal
-    doc.setDrawColor(226, 232, 240);
-    doc.line(20, y - 2, 190, y - 2);
-    y += 5;
-
+    // ── TOTALS BLOCK ─────────────────────────────────────────────────────────
+    y += 4;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
+    doc.setFontSize(9);
     doc.setTextColor(74, 85, 104);
-    doc.text('Subtotal:', 140, y, { align: 'right' });
+    doc.text('Subtotal:', 152, y, { align: 'right' });
     doc.setTextColor(26, 26, 26);
-    doc.text(`Rs. ${subtotal.toFixed(2)}`, 186, y, { align: 'right' });
+    doc.text(`Rs. ${subtotal.toFixed(2)}`, 196, y, { align: 'right' });
 
-    // Render Additives
     additives.forEach((add: any) => {
       y += 6;
-      doc.setTextColor(74, 85, 104);
-      doc.text(`${add.name}:`, 140, y, { align: 'right' });
-      
       const val = add.type === 'percentage' ? (subtotal * (add.value / 100)) : add.value;
-      const sign = val < 0 ? '-' : '';
-      doc.setTextColor(val < 0 ? 239 : 26, val < 0 ? 68 : 26, val < 0 ? 68 : 26); // red for discounts
-      doc.text(`${sign}Rs. ${Math.abs(val).toFixed(2)}`, 186, y, { align: 'right' });
+      const sign = val < 0 ? '' : '+';
+      doc.setTextColor(74, 85, 104);
+      doc.text(`${add.name}:`, 152, y, { align: 'right' });
+      doc.setTextColor(val < 0 ? 220 : 16, val < 0 ? 53 : 185, val < 0 ? 69 : 129);
+      doc.text(`${sign}Rs. ${val.toFixed(2)}`, 196, y, { align: 'right' });
     });
 
-    // Grand Total (Highlighted Gold Box)
-    y += 8;
-    doc.setFillColor(248, 245, 237);
-    doc.rect(115, y - 5, 75, 8.5, 'F');
-
+    // Grand Total — full-width gold box
+    y += 7;
+    doc.setFillColor(197, 168, 92);
+    doc.rect(12, y - 1, 186, 11, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.setTextColor(26, 26, 26);
-    doc.text('GRAND TOTAL:', 140, y, { align: 'right' });
-    doc.setTextColor(197, 168, 92);
-    doc.text(`Rs. ${order.total.toFixed(2)}`, 186, y, { align: 'right' });
+    doc.setTextColor(255, 255, 255);
+    doc.text('GRAND TOTAL', 16, y + 6.5);
+    doc.setFontSize(13);
+    doc.text(`Rs. ${order.total.toFixed(2)}`, 196, y + 6.5, { align: 'right' });
 
-    // Footer
-    y += 20;
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9.5);
+    // ── FOOTER ───────────────────────────────────────────────────────────────
+    y += 22;
+    doc.setDrawColor(197, 168, 92);
+    doc.setLineWidth(0.4);
+    doc.line(12, y, 198, y);
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text('Thank you for dining with The London Shakes!', 105, y, { align: 'center' });
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
     doc.setTextColor(113, 128, 150);
-    doc.text('Thank you for dining with us! Visit again.', 105, y, { align: 'center' });
+    doc.text('Silchar, Assam, India  ·  contact@thelondonshakessilchar.com  ·  This is a system-generated receipt.', 105, y, { align: 'center' });
+
+    // ── TRANSACTION PROOF PHOTO (IF PRESENT) ───────────────────────────────
+    if (order.receiptPhoto && order.receiptPhoto.startsWith('data:image/')) {
+      try {
+        // A4 page height is 297mm.
+        // Margin at the bottom is 15mm, so max usable Y is 282mm.
+        const maxUsableY = 282;
+        const imgW = 90;   // 90mm width
+        const imgH = 110;  // 110mm height (optimized smartphone ratio)
+        const spaceNeeded = imgH + 15; // Image height + header titles
+
+        const fitsOnCurrentPage = (maxUsableY - y) >= spaceNeeded;
+
+        if (!fitsOnCurrentPage) {
+          doc.addPage();
+          y = 15; // reset to top of page 2
+        } else {
+          y += 10; // spacing below invoice footer
+        }
+
+        // Section header
+        doc.setDrawColor(197, 168, 92);
+        doc.setLineWidth(0.35);
+        doc.line(12, y, 198, y);
+        y += 5;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(197, 168, 92);
+        doc.text('PROOF OF PAYMENT (TRANSACTION RECEIPT)', 105, y, { align: 'center' });
+        y += 4;
+
+        // Determine image format (e.g. png, jpeg) from data url
+        const formatMatch = order.receiptPhoto.match(/^data:image\/([a-zA-Z+]+);base64,/);
+        const format = formatMatch ? formatMatch[1].toUpperCase() : 'JPEG';
+        
+        // Center the image
+        const xPos = (210 - imgW) / 2;
+        doc.addImage(order.receiptPhoto, format as any, xPos, y, imgW, imgH, undefined, 'FAST');
+      } catch (imgError) {
+        console.warn('Failed to embed receiptPhoto in PDF:', imgError);
+      }
+    }
 
     // Output PDF ArrayBuffer
     const pdfArrayBuffer = doc.output('arraybuffer');
