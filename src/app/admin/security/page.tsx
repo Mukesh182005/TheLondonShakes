@@ -43,7 +43,7 @@ export default function SecurityPage() {
   const isMounted = useIsMounted();
 
   // Super Admin check
-  const SUPER_ADMIN_EMAIL = 'thelondonshakes.silchar@gmail.com';
+  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
   const isSuperAdmin = isMounted && user?.email === SUPER_ADMIN_EMAIL;
 
   // Passcode States
@@ -338,7 +338,7 @@ export default function SecurityPage() {
             </div>
             <div>
               <label style={LABEL}>Email Address</label>
-              <input style={INPUT_STYLE} type="email" placeholder="thelondonshakes.silchar@gmail.com" value={newAdmin.email}
+              <input style={INPUT_STYLE} type="email" placeholder="admin@example.com" value={newAdmin.email}
                 onChange={(e) => setNewAdmin(p => ({ ...p, email: e.target.value }))} />
             </div>
             <div>

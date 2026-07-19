@@ -22,6 +22,21 @@ const nextConfig: NextConfig = {
     '/404': ['**/*'],
   },
 
+  // Allow images from any domain (since users can paste URLs in admin, or seed data might use external URLs)
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
+    dangerouslyAllowSVG: true,
+  },
+
   // Production security headers
   async headers() {
     return [

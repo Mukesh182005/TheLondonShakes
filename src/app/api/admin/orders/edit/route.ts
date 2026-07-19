@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { pusherServer } from '@/lib/pusher-server';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
   try {
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       const billLogDetails = JSON.stringify({
         orderId,
         reason: reason || 'Not specified',
-        adminEmail: adminEmail || 'thelondonshakes.silchar@gmail.com',
+        adminEmail: adminEmail || (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
         customerName: originalOrder.customerName,
         customerPhone: originalOrder.phone,
         customerEmail: originalOrder.email,
@@ -100,40 +100,18 @@ export async function POST(req: NextRequest) {
         data: {
           action: 'BILL_EDITED',
           details: billLogDetails,
-          adminEmail: adminEmail || 'thelondonshakes.silchar@gmail.com',
+          adminEmail: adminEmail || (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
         },
       });
     } catch (auditError) {
       console.warn('Failed to write audit log:', auditError);
     }
 
-    // 5. Trigger Pusher update to sync in real-time
+    // Trigger Firebase Realtime Database Update
     try {
-      const formattedOrder = {
-        id: updatedOrder.id,
-        items: items,
-        total: updatedOrder.total,
-        type: updatedOrder.type,
-        customerName: updatedOrder.customerName,
-        tableNumber: updatedOrder.tableNumber || undefined,
-        address: {
-          name: updatedOrder.customerName,
-          phone: updatedOrder.phone,
-          email: updatedOrder.email,
-          flat: updatedOrder.addressFlat || '',
-          street: updatedOrder.addressStreet || '',
-          city: updatedOrder.addressCity || '',
-        },
-        status: updatedOrder.status,
-        paymentMethod: updatedOrder.paymentMethod,
-        paymentStatus: updatedOrder.paymentStatus,
-        upiTxnId: updatedOrder.upiTxnId || undefined,
-        createdAt: updatedOrder.createdAt.toISOString(),
-      };
-
-      await pusherServer.trigger('orders', 'order-updated', formattedOrder);
-    } catch (pusherError) {
-      console.warn('Pusher trigger failed:', pusherError);
+      if (adminDb) await adminDb.ref('orders/lastUpdate').set(Date.now());
+    } catch (fbErr) {
+      console.error("Firebase trigger failed", fbErr);
     }
 
     return NextResponse.json({ success: true, order: updatedOrder });

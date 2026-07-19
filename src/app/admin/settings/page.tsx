@@ -80,6 +80,7 @@ export default function SettingsPage() {
   const [billLogsPage, setBillLogsPage] = useState(1);
   const [billLogsTotalPages, setBillLogsTotalPages] = useState(1);
   const [billLogsSearch, setBillLogsSearch] = useState('');
+  const [billLogsSearchInput, setBillLogsSearchInput] = useState('');
   const [billLogsLoading, setBillLogsLoading] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
@@ -130,9 +131,16 @@ export default function SettingsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, billLogsPage, billLogsSearch]);
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setBillLogsSearch(billLogsSearchInput);
+      setBillLogsPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [billLogsSearchInput]);
+
   const handleSearchBillLogs = (val: string) => {
-    setBillLogsSearch(val);
-    setBillLogsPage(1);
+    setBillLogsSearchInput(val);
   };
 
   // Sync states with Zustand store data on client mount/hydration
@@ -147,7 +155,7 @@ export default function SettingsPage() {
       setCategories([...menuCategories]);
 
       // Bypass for Super Admin / Owner, or check sessionStorage unlock
-      if (user?.email === 'thelondonshakes.silchar@gmail.com' && !isLockedOverride) {
+      if (user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '') && !isLockedOverride) {
         setIsUnlocked(true);
       } else if (sessionStorage.getItem('settings_unlocked') === 'true') {
         setIsUnlocked(true);
@@ -330,9 +338,9 @@ export default function SettingsPage() {
   ] as const;
 
   // ── Super-admin-only hard guard ──────────────────────────────────────────
-  // Only the owner (thelondonshakes.silchar@gmail.com) may ever access this page.
+  // Only the owner may ever access this page.
   // Regular admins see a permanent "Access Denied" screen — no passcode bypass.
-  const SUPER_ADMIN_EMAIL = 'thelondonshakes.silchar@gmail.com';
+  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
   const isSuperAdmin = isMounted && user?.email === SUPER_ADMIN_EMAIL;
 
   if (isMounted && !isSuperAdmin) {
@@ -1261,7 +1269,7 @@ export default function SettingsPage() {
           <div style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
               <h3 style={{ ...SECTION_TITLE, marginBottom: 0 }}><ShieldAlert size={14} style={{ display: 'inline', marginRight: '8px' }} />Bill Modification Audit Logs</h3>
-              {user?.email === 'thelondonshakes.silchar@gmail.com' && (
+              {user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '') && (
                 <button
                   onClick={async () => {
                     if (window.confirm('Are you sure you want to clear ALL bill modification logs? This action cannot be undone.')) {
@@ -1306,7 +1314,7 @@ export default function SettingsPage() {
               </span>
               <input
                 type="text"
-                value={billLogsSearch}
+                value={billLogsSearchInput}
                 onChange={(e) => handleSearchBillLogs(e.target.value)}
                 placeholder="Search by Order ID, customer, reason, or admin..."
                 style={{

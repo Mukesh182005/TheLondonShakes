@@ -1,16 +1,75 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse, NextFetchEvent } from 'next/server';
 import { generateSessionToken, verifyStaffSessionToken } from '@/lib/auth-crypto';
 
-const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 const MAINTENANCE_COOKIE = 'tls_maintenance';
 
-const hasClerkKeys =
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-  !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('placeholder');
+function hasCodeInjection(str: string): boolean {
+  if (!str) return false;
+  
+  let decoded = str;
+  try {
+    decoded = decodeURIComponent(str);
+  } catch {}
+  
+  const lower = decoded.toLowerCase();
+  
+  return (
+    lower.includes('<script') ||
+    lower.includes('</script') ||
+    lower.includes('javascript:') ||
+    /onload\s*=/i.test(lower) ||
+    /onerror\s*=/i.test(lower) ||
+    /onclick\s*=/i.test(lower) ||
+    /onmouseover\s*=/i.test(lower) ||
+    /onfocus\s*=/i.test(lower) ||
+    lower.includes('<iframe') ||
+    lower.includes('<embed') ||
+    lower.includes('<object') ||
+    lower.includes('alert(') ||
+    lower.includes('eval(')
+  );
+}
 
 export default async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
+
+  // ── Code Injection Protection (WAF Shield) ─────────────────────────────────
+  if (hasCodeInjection(pathname) || hasCodeInjection(request.nextUrl.search)) {
+    return new NextResponse(
+      JSON.stringify({ error: 'Security Violation: Code injection attempt detected.' }),
+      {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+    try {
+      const contentType = request.headers.get('content-type') || '';
+      if (
+        contentType.includes('application/json') ||
+        contentType.includes('application/x-www-form-urlencoded') ||
+        contentType.includes('text/')
+      ) {
+        const clone = request.clone();
+        const bodyText = await clone.text();
+        // Remove base64 data URLs to prevent false-positive XSS hits on random binary base64 character combinations
+        const cleanBodyText = bodyText.replace(/data:image\/[^;]+;base64,[a-zA-Z0-9+/=\s]+/gi, '');
+        if (hasCodeInjection(cleanBodyText)) {
+          return new NextResponse(
+            JSON.stringify({ error: 'Security Violation: Code injection attempt detected.' }),
+            {
+              status: 403,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to parse request body for security check:', err);
+    }
+  }
 
   // ── Maintenance Mode Gate ──────────────────────────────────────────────────
   const isMaintenanceMode = request.cookies.get(MAINTENANCE_COOKIE)?.value === 'true';
@@ -19,41 +78,35 @@ export default async function middleware(request: NextRequest, event: NextFetchE
   const isStaticAsset     = pathname.startsWith('/_next') || pathname.startsWith('/favicon');
 
   const isApiAdmin = pathname.startsWith('/api/admin/') && pathname !== '/api/admin/settings/verify-passcode';
-  const isProtectedAdmin = isAdminRoute(request) || isApiAdmin;
+  const isProtectedAdmin = pathname.startsWith('/admin') || isApiAdmin;
 
   if (isMaintenanceMode && !isProtectedAdmin && !isApiRoute && !isMaintenancePage && !isStaticAsset) {
     return NextResponse.redirect(new URL('/maintenance', request.url));
   }
 
-  // ── Admin Auth Gate (Clerk / Local Dev Fallback) ───────────────────────────
+  // ── Admin Auth Gate (Cookie Validation) ────────────────────────────────────
   if (isProtectedAdmin) {
-    if (hasClerkKeys) {
-      return clerkMiddleware(async (auth) => {
-        await auth.protect();
-      })(request, event);
-    } else {
-      const ADMIN_COOKIE = 'tls_admin_session';
-      const session = request.cookies.get(ADMIN_COOKIE)?.value;
-      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-      const expectedToken = ADMIN_PASSWORD ? await generateSessionToken(ADMIN_PASSWORD) : '';
+    const ADMIN_COOKIE = 'tls_admin_session';
+    const session = request.cookies.get(ADMIN_COOKIE)?.value;
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+    const expectedToken = ADMIN_PASSWORD ? await generateSessionToken(ADMIN_PASSWORD) : '';
 
-      let isValidSession = session === expectedToken;
-      if (!isValidSession && session) {
-        const staff = await verifyStaffSessionToken(session);
-        isValidSession = !!staff;
-      }
+    let isValidSession = session === expectedToken;
+    if (!isValidSession && session) {
+      const staff = await verifyStaffSessionToken(session);
+      isValidSession = !!staff;
+    }
 
-      if (!isValidSession && pathname !== '/admin/login') {
-        if (pathname.startsWith('/api')) {
-          return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
-        const loginUrl = new URL('/admin/login', request.url);
-        loginUrl.searchParams.set('from', pathname);
-        return NextResponse.redirect(loginUrl);
+    if (!isValidSession && pathname !== '/admin/login') {
+      if (pathname.startsWith('/api')) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
+      const loginUrl = new URL('/admin/login', request.url);
+      loginUrl.searchParams.set('from', pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
@@ -107,7 +160,7 @@ export default async function middleware(request: NextRequest, event: NextFetchE
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' https://*.google.com;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' wss://*.pusher.com https://*.pusher.com; frame-src 'self' https://*.google.com;"
   );
   response.headers.set(
     'Strict-Transport-Security',

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurantStore, type Order } from '@/store/restaurantStore';
 import { Timer, CheckCircle, AlertTriangle, ChefHat } from 'lucide-react';
-import { pusherClient } from '@/lib/pusher-client';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
 type KDSOrder = {
   id: string;
@@ -49,31 +50,16 @@ export default function KDSPage() {
     // Initial fetch
     loadOrders();
 
-    // Setup 5 seconds silent background polling
-    const interval = setInterval(() => {
+    // Setup Firebase Realtime Database Listener
+    const ordersRef = ref(db, 'orders/lastUpdate');
+    const unsubscribe = onValue(ordersRef, () => {
       loadOrders();
-    }, 5000);
-
-    // Subscribe to Pusher orders channel
-    const channel = pusherClient.subscribe('orders');
-
-    channel.bind('new-order', (newOrder: Order) => {
-      setOrders((prev) => {
-        if (prev.some((o) => o.id === newOrder.id)) return prev;
-        return [newOrder, ...prev];
-      });
-    });
-
-    channel.bind('order-updated', (updatedOrder: Order) => {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
-      );
+    }, (error) => {
+      console.warn("Firebase listener error:", error);
     });
 
     return () => {
-      clearInterval(interval);
-      channel.unbind_all();
-      channel.unsubscribe();
+      unsubscribe();
     };
   }, [setOrders]);
 

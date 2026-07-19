@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { pusherServer } from '@/lib/pusher-server';
 import type { Order, CartItem } from '@/store/restaurantStore';
 import { verifyAdminRequest } from '@/lib/auth-crypto';
+import { adminDb } from '@/lib/firebase-admin';
 
 // ── Rate Limiting ────────────────────────────────────────────
 const orderAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         paymentStatus: dbOrder.paymentStatus as Order['paymentStatus'],
         upiTxnId: dbOrder.upiTxnId || undefined,
         createdAt: dbOrder.createdAt.toISOString(),
-        adminPlaced: dbOrder.addressFlat === 'ADMIN_PLACED' || dbOrder.email === 'thelondonshakes.silchar@gmail.com',
+        adminPlaced: dbOrder.addressFlat === 'ADMIN_PLACED' || dbOrder.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
       };
 
       return NextResponse.json(formattedOrder);
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
         upiTxnId: o.upiTxnId || undefined,
         receiptPhoto: (o as any).receiptPhoto || undefined,
         createdAt: o.createdAt.toISOString(),
-        adminPlaced: o.addressFlat === 'ADMIN_PLACED' || o.email === 'thelondonshakes.silchar@gmail.com',
+        adminPlaced: o.addressFlat === 'ADMIN_PLACED' || o.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
         discount: (o as any).discount ?? 0,
         tax: (o as any).tax ?? 0,
         cashier: (o as any).cashier ?? 'Counter Staff',
@@ -192,20 +192,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid payload structure' }, { status: 400 });
     }
 
-    if (!body.customerName || typeof body.customerName !== 'string' || body.customerName.length > 100) {
-      return NextResponse.json({ success: false, error: 'Invalid or too long customer name' }, { status: 400 });
+    if (!body.customerName || typeof body.customerName !== 'string' || body.customerName.trim() === '') {
+      if (body.type === 'dine-in' && body.tableNumber) {
+        body.customerName = `Guest (${body.tableNumber})`;
+        if (body.address) {
+          body.address.name = body.customerName;
+        }
+      } else {
+        return NextResponse.json({ success: false, error: 'Invalid or too long customer name' }, { status: 400 });
+      }
+    } else if (body.customerName.length > 100) {
+      return NextResponse.json({ success: false, error: 'Customer name too long' }, { status: 400 });
     }
 
     if (!body.address || typeof body.address !== 'object') {
       return NextResponse.json({ success: false, error: 'Invalid address payload' }, { status: 400 });
     }
 
-    if (!body.address.email || !isValidEmail(body.address.email)) {
-      return NextResponse.json({ success: false, error: 'Invalid email address format' }, { status: 400 });
-    }
-
-    if (!body.address.phone || !isValidPhone(body.address.phone)) {
-      return NextResponse.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
+    const isDineIn = body.type === 'dine-in';
+    if (!isDineIn) {
+      if (!body.address.email || !isValidEmail(body.address.email)) {
+        return NextResponse.json({ success: false, error: 'Invalid email address format' }, { status: 400 });
+      }
+      if (!body.address.phone || !isValidPhone(body.address.phone)) {
+        return NextResponse.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
+      }
+    } else {
+      if (body.address.email && body.address.email !== 'N/A' && !isValidEmail(body.address.email)) {
+        return NextResponse.json({ success: false, error: 'Invalid email address format' }, { status: 400 });
+      }
+      if (body.address.phone && body.address.phone !== 'N/A' && !isValidPhone(body.address.phone)) {
+        return NextResponse.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
+      }
     }
 
     if (!Array.isArray(body.items) || body.items.length === 0) {
@@ -274,23 +292,19 @@ export async function POST(req: NextRequest) {
         ...body,
         createdAt: dbOrder.createdAt.toISOString(),
       };
-    } catch (dbError) {
-      console.warn("Database failed to save order, using memory:", dbError);
-      savedOrder = {
-        ...body,
-        createdAt: new Date().toISOString(),
-      };
+    } catch (dbError: any) {
+      console.error("Database failed to save order:", dbError);
+      return NextResponse.json({ success: false, error: 'Database save failed: ' + dbError.message }, { status: 500 });
     }
 
     // Keep memory orders updated (limit to 100)
     memoryOrders = [savedOrder, ...memoryOrders].slice(0, 100);
 
-    // Trigger Pusher real-time update
+    // Trigger Firebase Realtime Database Update
     try {
-      await pusherServer.trigger('orders', 'new-order', savedOrder);
-      console.log("Pusher event triggered successfully");
-    } catch (pusherError) {
-      console.warn("Pusher failed to trigger event:", pusherError);
+      if (adminDb) await adminDb.ref('orders/lastUpdate').set(Date.now());
+    } catch (fbErr) {
+      console.error("Firebase trigger failed", fbErr);
     }
 
     return NextResponse.json({ success: true, order: savedOrder });
@@ -313,12 +327,12 @@ export async function PUT(req: NextRequest) {
     let updatedOrder: Order | null = null;
     try {
       const updateData: Record<string, unknown> = {};
-      if (status) updateData.status = status;
-      if (paymentStatus) updateData.paymentStatus = paymentStatus;
-      if (receiptPhoto) updateData.receiptPhoto = receiptPhoto;
-      if (customerName) updateData.customerName = customerName;
-      if (phone) updateData.phone = phone;
-      if (email) updateData.email = email;
+      if (status !== undefined) updateData.status = status;
+      if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
+      if (receiptPhoto !== undefined) updateData.receiptPhoto = receiptPhoto;
+      if (customerName !== undefined) updateData.customerName = customerName;
+      if (phone !== undefined) updateData.phone = phone;
+      if (email !== undefined) updateData.email = email;
 
       const dbOrder = await prisma.order.update({
         where: { id: orderId },
@@ -366,11 +380,11 @@ export async function PUT(req: NextRequest) {
     }
 
     if (updatedOrder) {
-      // Trigger Pusher event for status update
+      // Trigger Firebase Realtime Database Update
       try {
-        await pusherServer.trigger('orders', 'order-updated', updatedOrder);
-      } catch (e) {
-        console.warn("Pusher status update trigger failed:", e);
+        if (adminDb) await adminDb.ref('orders/lastUpdate').set(Date.now());
+      } catch (fbErr) {
+        console.error("Firebase trigger failed", fbErr);
       }
       return NextResponse.json({ success: true, order: updatedOrder });
     }

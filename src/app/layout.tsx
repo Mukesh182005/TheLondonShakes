@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter, EB_Garamond } from 'next/font/google';
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
-import { ClerkProvider } from "@clerk/nextjs";
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -28,8 +27,6 @@ const ebGaramond = EB_Garamond({
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export const metadata: Metadata = {
@@ -64,16 +61,12 @@ export const metadata: Metadata = {
   },
 };
 
-const hasClerkKeys =
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-  !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('placeholder');
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const content = (
+  return (
     <html lang="en" suppressHydrationWarning className={`h-full ${cormorant.variable} ${inter.variable} ${ebGaramond.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
@@ -97,10 +90,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-
-  if (hasClerkKeys) {
-    return <ClerkProvider>{content}</ClerkProvider>;
-  }
-
-  return content;
 }

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Super admin emails
-  if (email === 'thelondonshakes.silchar@gmail.com') {
+  if (email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '')) {
     return NextResponse.json({ isStaff: true });
   }
 

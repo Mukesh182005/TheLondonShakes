@@ -108,14 +108,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sessionVerified, setSessionVerified] = useState(false);
   const [sessionName, setSessionName] = useState<string>('');
   const [role, setRole] = useState<string>(() => {
-    if (user?.email === 'thelondonshakes.silchar@gmail.com') {
+    if (user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '')) {
       return 'owner';
     }
     return 'waiter';
   });
 
   const getFilteredNavGroups = (currentRole: string) => {
-    const isOwner = user?.email === 'thelondonshakes.silchar@gmail.com' || currentRole === 'owner';
+    const isOwner = user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '') || currentRole === 'owner';
     
     if (maintenanceMode && !isOwner) {
       return [];
@@ -150,7 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const isPathAllowed = (path: string, currentRole: string): boolean => {
-    const isOwner = user?.email === 'thelondonshakes.silchar@gmail.com' || currentRole === 'owner';
+    const isOwner = user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '') || currentRole === 'owner';
     
     if (maintenanceMode && !isOwner) {
       return path === '/admin/login';
@@ -186,8 +186,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return true;
   };
 
-  const isAdmin = user?.email === 'thelondonshakes.silchar@gmail.com';
-  const SUPER_ADMIN_EMAIL = 'thelondonshakes.silchar@gmail.com';
+  const isAdmin = user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '');
+  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
   const isSuperAdmin = hydrated && (user?.email === SUPER_ADMIN_EMAIL || role === 'owner');
 
   useEffect(() => {
@@ -198,6 +198,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } else if (!user.email) {
       router.push('/');
     } else {
+      if (sessionVerified) return;
       // Verify session cookie on the server
       fetch('/api/admin-auth')
         .then((res) => {
@@ -215,7 +216,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           router.push('/admin/login');
         });
     }
-  }, [user, router, pathname, hydrated, logout]);
+  }, [user, router, pathname, hydrated, logout, sessionVerified]);
 
   const activeOrders = orders.filter((o) => o.status === 'preparing' || o.status === 'out for delivery').length;
 
@@ -581,7 +582,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         <main style={{ flex:1, overflowY:'auto', padding: isMobile ? '16px' : '32px' }}>
-          {isMobile && (role === 'owner' || user?.email === 'thelondonshakes.silchar@gmail.com') ? (
+          {isMobile && (role === 'owner' || user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '')) ? (
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -621,7 +622,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Log Out
               </button>
             </div>
-          ) : maintenanceMode && role !== 'owner' && user?.email !== 'thelondonshakes.silchar@gmail.com' ? (
+          ) : maintenanceMode && role !== 'owner' && user?.email !== (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '') ? (
             <div style={{
               display: 'flex',
               flexDirection: 'column',

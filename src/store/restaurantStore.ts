@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useSyncExternalStore } from 'react';
+
+// Track the latest database sync promise to prevent race conditions in Gmail sharing
+let lastSyncPromise: Promise<any> = Promise.resolve();
+export function getLastSyncPromise() {
+  return lastSyncPromise;
+}
 import { 
   MenuItem, 
   MenuCategory,
@@ -153,7 +159,7 @@ export interface RestaurantState {
 
   orders: Order[];
   setOrders: (orders: Order[] | ((prev: Order[]) => Order[])) => void;
-  placeOrder: (paymentMethod?: Order['paymentMethod'], upiTxnId?: string, customSettings?: { type: Order['type']; tableNumber?: string; customerName?: string; adminPlaced?: boolean; receiptPhoto?: string; paymentStatus?: Order['paymentStatus']; status?: Order['status']; discount?: number; tax?: number; cashier?: string }) => string;
+  placeOrder: (paymentMethod?: Order['paymentMethod'], upiTxnId?: string, customSettings?: { type: Order['type']; tableNumber?: string; customerName?: string; customerPhone?: string; customerEmail?: string; adminPlaced?: boolean; receiptPhoto?: string; paymentStatus?: Order['paymentStatus']; status?: Order['status']; discount?: number; tax?: number; cashier?: string }) => string;
   updateOrderStatus: (id: string, status: Order['status']) => void;
   updateOrder: (id: string, status: Order['status']) => void;
   updateOrderPaymentStatus: (id: string, status: Order['paymentStatus']) => void;
@@ -173,7 +179,7 @@ export const useRestaurantStore = create<RestaurantState>()(
     (set, get) => ({
       user: null,
       login: (email, name = 'Valued Guest', phone) => {
-        const isDefaultAdmin = email === 'thelondonshakes.silchar@gmail.com';
+        const isDefaultAdmin = email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '');
         set({
           user: {
             name: isDefaultAdmin ? 'Maître d\' London' : name,
@@ -334,20 +340,40 @@ export const useRestaurantStore = create<RestaurantState>()(
         const total = subtotal;
 
         const currentAdminEmail = get().user?.email;
-        const isAdminSession = currentAdminEmail === 'thelondonshakes.silchar@gmail.com';
+        const isAdminSession = currentAdminEmail === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '');
         const isPlacedByAdmin = !!(customSettings?.adminPlaced || isAdminSession);
+
+        let customerNameVal = customSettings?.customerName !== undefined 
+          ? customSettings.customerName 
+          : (isPlacedByAdmin ? '' : (get().cart.address.name || 'Guest'));
+
+        if (!customerNameVal || customerNameVal.trim() === '') {
+          if (customSettings?.type === 'dine-in' && customSettings.tableNumber) {
+            customerNameVal = `Guest (${customSettings.tableNumber})`;
+          } else if (isPlacedByAdmin) {
+            customerNameVal = 'Walk-in Customer';
+          } else {
+            customerNameVal = 'Guest';
+          }
+        }
+        const customerPhoneVal = customSettings?.customerPhone !== undefined
+          ? customSettings.customerPhone
+          : (isPlacedByAdmin ? '' : (get().cart.address.phone || 'N/A'));
+        const customerEmailVal = customSettings?.customerEmail !== undefined
+          ? customSettings.customerEmail
+          : (isPlacedByAdmin ? '' : (get().cart.address.email || 'N/A'));
 
         const newOrder: Order = {
           id,
           items,
           total,
           type: customSettings?.type || get().cart.type,
-          customerName: customSettings?.customerName || get().cart.address.name || 'Guest',
+          customerName: customerNameVal,
           tableNumber: customSettings?.tableNumber,
           address: {
-            name: customSettings?.customerName || get().cart.address.name || 'Guest',
-            phone: get().cart.address.phone || 'N/A',
-            email: isPlacedByAdmin ? (currentAdminEmail || 'thelondonshakes.silchar@gmail.com') : (get().cart.address.email || 'N/A'),
+            name: customerNameVal,
+            phone: customerPhoneVal,
+            email: customerEmailVal,
             flat: isPlacedByAdmin ? 'ADMIN_PLACED' : (get().cart.address.flat || ''),
             street: get().cart.address.street || '',
             city: get().cart.address.city || '',
@@ -410,11 +436,22 @@ export const useRestaurantStore = create<RestaurantState>()(
         }
 
         // Background HTTP POST to sync order with backend database and trigger Pusher socket
-        fetch('/api/orders', {
+        lastSyncPromise = fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newOrder),
-        }).catch(err => console.warn('Failed to sync order via API:', err));
+        })
+          .then((res) => {
+            if (!res.ok) {
+              console.warn('Sync failed:', res.statusText);
+              throw new Error(`Server returned ${res.status} ${res.statusText}`);
+            }
+            return res;
+          })
+          .catch(err => {
+            console.warn('Failed to sync order via API:', err);
+            throw err;
+          });
 
         set((state) => ({
           orders: [newOrder, ...state.orders],

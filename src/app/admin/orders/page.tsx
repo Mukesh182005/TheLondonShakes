@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurantStore, useCMSStore, type Order, type CartItem, type BillAdditive } from '@/store/restaurantStore';
+import { useRestaurantStore, useCMSStore, getLastSyncPromise, type Order, type CartItem, type BillAdditive } from '@/store/restaurantStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { CheckCircle, XCircle, Truck, ShoppingBag, Search, ChevronDown, Trash2, Plus, X, Edit, FileText, Mail } from 'lucide-react';
-import { pusherClient } from '@/lib/pusher-client';
 import toast from 'react-hot-toast';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
 const STATUS_COLOR: Record<string, string> = {
   confirmed:          '#3b82f6',
@@ -225,6 +226,7 @@ export default function OrdersPage() {
   const setOrders         = useRestaurantStore((s) => s.setOrders);
   const updateOrderStatus = useRestaurantStore((s) => s.updateOrderStatus);
   const updateOrderPaymentStatus = useRestaurantStore((s) => s.updateOrderPaymentStatus);
+  const user              = useRestaurantStore((s) => s.user);
   const menuItems         = useCMSStore((s) => s.menuItems);
 
   const [search, setSearch] = useState('');
@@ -237,6 +239,9 @@ export default function OrdersPage() {
     if (sharingOrderId) return;
     setSharingOrderId(orderId);
     try {
+      // Wait for any background database sync to complete first
+      await getLastSyncPromise();
+
       const res = await fetch('/api/orders/share-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -286,32 +291,16 @@ export default function OrdersPage() {
     // Initial fetch
     loadOrders();
 
-    // Setup 5 seconds silent background polling
-    const interval = setInterval(() => {
+    // Setup Firebase Realtime Database Listener
+    const ordersRef = ref(db, 'orders/lastUpdate');
+    const unsubscribe = onValue(ordersRef, () => {
       loadOrders();
-    }, 5000);
-
-    // Subscribe to Pusher orders channel
-    const channel = pusherClient.subscribe('orders');
-
-    channel.bind('new-order', (newOrder: Order) => {
-      setOrders((prev) => {
-        if (prev.some((o) => o.id === newOrder.id)) return prev;
-        return [newOrder, ...prev];
-      });
-      toast.success(`New order received: ${newOrder.id}`);
-    });
-
-    channel.bind('order-updated', (updatedOrder: Order) => {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
-      );
+    }, (error) => {
+      console.warn("Firebase listener error:", error);
     });
 
     return () => {
-      clearInterval(interval);
-      channel.unbind_all();
-      channel.unsubscribe();
+      unsubscribe();
     };
   }, [setOrders]);
 
@@ -412,7 +401,7 @@ export default function OrdersPage() {
           orderId: editOrder.id,
           items: finalItems,
           total: grandTotal,
-          adminEmail: 'thelondonshakes.silchar@gmail.com',
+          adminEmail: user?.email || (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
           discountDetails: fullDiscountDetails,
           reason: finalReason
         })

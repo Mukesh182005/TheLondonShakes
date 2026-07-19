@@ -1,5 +1,16 @@
 import { NextRequest } from 'next/server';
 
+if (process.env.NODE_ENV === 'production') {
+  const adminPwd = process.env.ADMIN_PASSWORD || '';
+  if (!adminPwd || adminPwd === 'admin@thelondon.co.uk' || adminPwd.length < 8) {
+    console.warn("===============================================================");
+    console.warn("🚨 CRITICAL SECURITY WARNING 🚨");
+    console.warn("Your ADMIN_PASSWORD is missing, too weak, or using the default.");
+    console.warn("Please set a secure, unique ADMIN_PASSWORD in your environment.");
+    console.warn("===============================================================");
+  }
+}
+
 export async function generateSessionToken(secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(secret + "-tls-session-salt-2026");
@@ -32,32 +43,17 @@ export async function verifyStaffSessionToken(token: string): Promise<{ email: s
 }
 
 export async function verifyAdminRequest(request: NextRequest): Promise<boolean> {
-  const hasClerkKeys =
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-    !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('placeholder');
+  const ADMIN_COOKIE = 'tls_admin_session';
+  const session = request.cookies.get(ADMIN_COOKIE)?.value;
+  if (!session) return false;
 
-  if (hasClerkKeys) {
-    try {
-      const { auth } = await import('@clerk/nextjs/server');
-      const session = await auth();
-      return !!session.userId;
-    } catch (e) {
-      console.error('Clerk auth verification failed:', e);
-      return false;
-    }
-  } else {
-    const ADMIN_COOKIE = 'tls_admin_session';
-    const session = request.cookies.get(ADMIN_COOKIE)?.value;
-    if (!session) return false;
-
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-    const expectedToken = ADMIN_PASSWORD ? await generateSessionToken(ADMIN_PASSWORD) : '';
-    
-    if (session === expectedToken) {
-      return true;
-    }
-
-    const staff = await verifyStaffSessionToken(session);
-    return !!staff;
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  const expectedToken = ADMIN_PASSWORD ? await generateSessionToken(ADMIN_PASSWORD) : '';
+  
+  if (session === expectedToken) {
+    return true;
   }
+
+  const staff = await verifyStaffSessionToken(session);
+  return !!staff;
 }

@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
       data: {
         action: 'CLEAR_BILL_LOGS',
         details: 'Attempted to clear bill modification logs. System logs are protected and retained.',
-        adminEmail: 'Super Admin | thelondonshakes.silchar@gmail.com',
+        adminEmail: `Super Admin | ${process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''}`,
       },
     }).catch(() => {});
 

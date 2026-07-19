@@ -2,13 +2,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { useCMSStore } from '@/store/restaurantStore';
+import { useCMSStore, useRestaurantStore } from '@/store/restaurantStore';
 import { 
   menuItems as initialMenuItems,
   menuCategories as initialMenuCategories 
 } from '@/data/restaurantData';
 import { Search, Filter, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useRouter } from 'next/navigation';
 
 const DIETARY_OPTIONS = [
   { key: 'v',  label: 'Vegetarian' },
@@ -173,12 +174,23 @@ function MobileGrid({ items, renderCard }: { items: any[]; renderCard: (item: an
 export default function MenuPage() {
   const storeMenuItems      = useCMSStore((s) => s.menuItems);
   const storeMenuCategories = useCMSStore((s) => s.menuCategories);
+  const user = useRestaurantStore((s) => s.user);
+  const router = useRouter();
 
   const [isMounted, setIsMounted] = useState(false);
   const isMobile = useIsMobile();
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Customer Login Protection
+  useEffect(() => {
+    if (isMounted && !user) {
+      router.push('/account?redirect=/menu');
+    }
+  }, [isMounted, user, router]);
+
+
 
 
 
@@ -408,6 +420,7 @@ export default function MenuPage() {
       </div>
     );
   }
+
 
 
 
@@ -938,6 +951,14 @@ export default function MenuPage() {
       </div>
     );
   };
+
+  if (!user) {
+    return (
+      <div className="page-wrapper" style={{ background: 'var(--void)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: 'var(--gold)', fontFamily: 'var(--font-sans)', fontSize: '0.875rem' }}>Redirecting to secure login...</p>
+      </div>
+    );
+  }
 
   return (
     <main className="page-wrapper" style={{ position: 'relative' }}>

@@ -78,6 +78,7 @@ function NavLink({ link, active }: { link: { label: string; href: string }; acti
 export default function Navbar() {
   const pathname  = usePathname();
   const storeUser = useRestaurantStore((s) => s.user);
+  const logout    = useRestaurantStore((s) => s.logout);
 
   const isMounted = useIsMounted();
   const [isMobile, setIsMobile] = useState(false);
@@ -134,12 +135,22 @@ export default function Navbar() {
 
   const user = isMounted ? storeUser : null;
 
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/admin-auth', { method: 'DELETE' });
+    } catch (e) {
+      console.warn('Sign out request failed:', e);
+    }
+    logout();
+    window.location.href = '/';
+  };
+
   const [scrolled,    setScrolled]    = useState(false);
   const [mobileOpen,  setMobileOpen]  = useState(false);
   const [navVisible,  setNavVisible]  = useState(false); // hidden until scroll
 
   const isHome    = pathname === '/';
-  const isAdmin   = user?.email === 'thelondonshakes.silchar@gmail.com';
+  const isAdmin   = user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '');
 
   useEffect(() => {
     if (!isHome) { setNavVisible(true); return; }
@@ -254,37 +265,67 @@ export default function Navbar() {
                 <NavLink key={link.href} link={link} active={isActive(link.href)} />
               ))}
               {isAdmin && <NavLink link={{ label: 'Admin', href: '/admin' }} active={isActive('/admin')} />}
-              <Link
-                href="/account"
-                style={{
-                  marginLeft: '18px',
-                  padding: '7px 18px',
-                  background: '#E8102A',
-                  color: 'white',
-                  fontFamily: 'var(--font-sans)',
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  textDecoration: 'none',
-                  borderRadius: '2px',
-                  boxShadow: '0 4px 14px rgba(232, 16, 42, 0.25)',
-                  transition: 'all 0.25s ease',
-                  whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#ff2e48';
-                  e.currentTarget.style.boxShadow = '0 6px 18px rgba(232, 16, 42, 0.4)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#E8102A';
-                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(232, 16, 42, 0.25)';
-                  e.currentTarget.style.transform = 'none';
-                }}
-              >
-                {isMounted && user ? 'Account' : 'Sign In'}
-              </Link>
+              {isMounted && user ? (
+                <button
+                  onClick={handleSignOut}
+                  style={{
+                    marginLeft: '18px',
+                    padding: '7px 18px',
+                    background: 'transparent',
+                    border: '1px solid rgba(232, 16, 42, 0.5)',
+                    color: '#E8102A',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '0.6rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    transition: 'all 0.25s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(232, 16, 42, 0.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  Sign Out
+                </button>
+              ) : (
+                <Link
+                  href="/account"
+                  style={{
+                    marginLeft: '18px',
+                    padding: '7px 18px',
+                    background: '#E8102A',
+                    color: 'white',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '0.6rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    textDecoration: 'none',
+                    borderRadius: '2px',
+                    boxShadow: '0 4px 14px rgba(232, 16, 42, 0.25)',
+                    transition: 'all 0.25s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#ff2e48';
+                    e.currentTarget.style.boxShadow = '0 6px 18px rgba(232, 16, 42, 0.4)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#E8102A';
+                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(232, 16, 42, 0.25)';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >
+                  Sign In
+                </Link>
+              )}
 
               {/* Theme toggle */}
               <button
@@ -412,11 +453,13 @@ export default function Navbar() {
 
         <nav style={{
           flex: 1,
-          padding: '36px 32px',
+          padding: '36px 32px 100px 32px',
           display: 'flex',
           flexDirection: 'column',
           gap: '0px',
           position: 'relative',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}>
           {/* Mobile theme toggle */}
           <button
@@ -524,29 +567,55 @@ export default function Navbar() {
 
           {/* Sign In / Account CTA */}
           <div style={{ marginTop: '24px' }}>
-            <Link
-              href="/account"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '14px 24px',
-                background: '#E8102A',
-                color: 'white',
-                fontFamily: 'var(--font-sans)',
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                textDecoration: 'none',
-                borderRadius: '4px',
-                boxShadow: '0 4px 20px rgba(232, 16, 42, 0.3)',
-                transition: 'all 0.25s ease',
-              }}
-            >
-              {isMounted && user ? `My Account (${user.name.split(' ')[0]})` : 'Sign In'}
-            </Link>
+            {isMounted && user ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isDark ? 'rgba(242,238,228,0.1)' : 'rgba(28,24,16,0.1)'}`, borderRadius: '4px' }}>
+                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: drawerText }}>
+                    {user.name.split(' ')[0]}
+                  </span>
+                  <button 
+                    onClick={handleSignOut}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#E8102A',
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.1em',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link
+                href="/account"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '14px 24px',
+                  background: '#E8102A',
+                  color: 'white',
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  textDecoration: 'none',
+                  borderRadius: '4px',
+                  boxShadow: '0 4px 20px rgba(232, 16, 42, 0.3)',
+                  transition: 'all 0.25s ease',
+                }}
+              >
+                Sign In
+              </Link>
+            )}
           </div>
         </nav>
 

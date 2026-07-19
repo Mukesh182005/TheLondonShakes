@@ -24,7 +24,7 @@ export default function TransactionBillsPage() {
 
   useEffect(() => {
     if (hydrated && user) {
-      const isOwner = user.email === 'thelondonshakes.silchar@gmail.com';
+      const isOwner = user.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '');
       setIsSuperAdmin(isOwner);
     }
   }, [user, hydrated]);

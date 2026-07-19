@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurantStore, useCMSStore, type CartItem, type TableOrder, type Order } from '@/store/restaurantStore';
+import { useRestaurantStore, useCMSStore, getLastSyncPromise, type CartItem, type TableOrder, type Order } from '@/store/restaurantStore';
 import { Plus, Trash2, ShoppingBag, Check, X, ChefHat, Users, UtensilsCrossed, Receipt, Mail } from 'lucide-react';
-import { pusherClient } from '@/lib/pusher-client';
 import { useTableOrdersSync } from '@/hooks/useTableOrdersSync';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import toast from 'react-hot-toast';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
 const generateAdditiveId = () => 'add-' + Math.random().toString(36).substring(2, 8);
 
@@ -227,6 +228,7 @@ export default function TableOrdersPage() {
   const placeOrder   = useRestaurantStore((s) => s.placeOrder);
   const addToCart    = useRestaurantStore((s) => s.addToCart);
   const clearCart    = useRestaurantStore((s) => s.clearCart);
+  const user         = useRestaurantStore((s) => s.user);
 
   const tableOrders = useRestaurantStore((s) => s.tableOrders);
   const setTableOrders = useRestaurantStore((s) => s.setTableOrders);
@@ -271,7 +273,7 @@ export default function TableOrdersPage() {
                 dbTableMap.set(tableNum, {
                   tableNumber: tableNum,
                   items: order.items.filter((i: any) => !i.isAdditive && i.id !== 'discount' && i.id !== 'tax-cgst' && i.id !== 'tax-sgst'),
-                  customerName: order.customerName || `Guest (${tableNum})`,
+                  customerName: order.customerName || '',
                   covers: 2,
                   status: order.paymentStatus === 'paid' ? 'paid' : 'open',
                   openedAt: order.createdAt,
@@ -312,24 +314,16 @@ export default function TableOrdersPage() {
     // Initial load
     loadAndSync();
 
-    // 5-second background polling as fallback
-    const interval = setInterval(() => {
+    // Setup Firebase Realtime Database Listener
+    const ordersRef = ref(db, 'orders/lastUpdate');
+    const unsubscribe = onValue(ordersRef, () => {
       loadAndSync();
-    }, 5000);
-
-    // Pusher subscription kept for backward compat (mock mode — no-op)
-    const channel = pusherClient.subscribe('orders');
-    channel.bind('new-order', (newOrder: Order) => {
-      if (newOrder.type === 'dine-in') { loadAndSync(); }
-    });
-    channel.bind('order-updated', (updatedOrder: Order) => {
-      if (updatedOrder.type === 'dine-in') { loadAndSync(); }
+    }, (error) => {
+      console.warn("Firebase listener error:", error);
     });
 
     return () => {
-      clearInterval(interval);
-      channel.unbind_all();
-      channel.unsubscribe();
+      unsubscribe();
     };
   }, [setTableOrders, storeTables]);
   const [menuCat, setMenuCat]         = useState<string>('shakes');
@@ -348,6 +342,9 @@ export default function TableOrdersPage() {
     if (sharingOrderId) return;
     setSharingOrderId(orderId);
     try {
+      // Wait for any background database sync to complete first
+      await getLastSyncPromise();
+
       const res = await fetch('/api/orders/share-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -436,7 +433,7 @@ export default function TableOrdersPage() {
           orderId: order.orderId,
           items: finalItems,
           total: grandTotal,
-          adminEmail: 'thelondonshakes.silchar@gmail.com',
+          adminEmail: user?.email || (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
           discountDetails: fullDiscountDetails
         })
       });
@@ -499,9 +496,9 @@ export default function TableOrdersPage() {
     }
 
     const portions = item.portions || {
-      small: { available: false, price: 0 },
+      small: { available: true, price: Math.round(item.price * 0.8) },
       medium: { available: true, price: item.price },
-      large: { available: false, price: 0 }
+      large: { available: true, price: Math.round(item.price * 1.3) }
     };
     
     const availableSizes = (['small', 'medium', 'large'] as const).filter(s => portions[s]?.available);
@@ -650,80 +647,97 @@ export default function TableOrdersPage() {
     setShowBillModal(tableNumber);
   };
 
-  const markPaid = (tableNumber: string, finalPaymentMethod: 'cod' | 'upi' = 'cod') => {
+  const markPaid = async (tableNumber: string, finalPaymentMethod: 'cod' | 'upi' = 'cod') => {
     const order = tableOrders.find((t) => t.tableNumber === tableNumber);
     if (order) {
       let targetOrderId = order.orderId;
-      if (order.isDbOrder && order.orderId) {
-        fetch('/api/orders', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            orderId: order.orderId, 
-            paymentStatus: 'paid', 
-            status: 'confirmed', 
-            receiptPhoto: receiptPhoto || undefined 
-          }),
-        }).catch(err => console.warn('Failed to upload receipt photo:', err));
-
-        useRestaurantStore.setState((state) => ({
-          orders: state.orders.map(o => o.id === order.orderId ? { 
-            ...o, 
-            paymentStatus: 'paid' as const, 
-            status: 'confirmed' as const, 
-            receiptPhoto: receiptPhoto || undefined 
-          } : o)
-        }));
-        toast.success(`Order ${order.orderId} marked as paid.`);
-      } else {
-        if (order.items.length > 0) {
-          clearCart();
-          order.items.forEach((item) => {
-            for (let i = 0; i < item.qty; i++) {
-              addToCart({ id: item.id, name: item.name, price: item.price, gradient: item.gradient, image: item.image });
-            }
-          });
-          const newId = placeOrder(finalPaymentMethod, '', {
-            type: 'dine-in',
-            tableNumber,
-            customerName: order.customerName || `Table ${tableNumber.replace('Table ', '')}`,
-            adminPlaced: true,
-            receiptPhoto: receiptPhoto || undefined,
-            paymentStatus: 'paid',
-            status: 'confirmed',
-          });
-          targetOrderId = newId;
-          if (newId) {
-            toast.success(`Order placed and marked as paid.`);
-          }
-        }
-      }
-
-      // Update local state tableOrders to retain the table as active but paid!
-      setTableOrders((prev: TableOrder[]) => {
-        const next = prev.map((t) => t.tableNumber === tableNumber ? { ...t, status: 'paid' as const, isDbOrder: true, orderId: targetOrderId } : t);
-        // Sync to other devices via API
-        if (typeof window !== 'undefined') {
-          fetch('/api/table-orders', {
+      const toastId = toast.loading("Updating payment status...");
+      
+      try {
+        if (order.isDbOrder && order.orderId) {
+          const res = await fetch('/api/orders', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(next),
-          }).catch(() => {/* silent */});
+            body: JSON.stringify({ 
+              orderId: order.orderId, 
+              paymentStatus: 'paid', 
+              status: 'confirmed', 
+              receiptPhoto: receiptPhoto || undefined 
+            }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to update payment status');
+          }
+
+          useRestaurantStore.setState((state) => ({
+            orders: state.orders.map(o => o.id === order.orderId ? { 
+              ...o, 
+              paymentStatus: 'paid' as const, 
+              status: 'confirmed' as const, 
+              receiptPhoto: receiptPhoto || undefined 
+            } : o)
+          }));
+          toast.success(`Order ${order.orderId} marked as paid.`, { id: toastId });
+        } else {
+          if (order.items.length > 0) {
+            clearCart();
+            order.items.forEach((item) => {
+              for (let i = 0; i < item.qty; i++) {
+                addToCart({ id: item.id, name: item.name, price: item.price, gradient: item.gradient, image: item.image });
+              }
+            });
+            const newId = placeOrder(finalPaymentMethod, '', {
+              type: 'dine-in',
+              tableNumber,
+              customerName: order.customerName || '',
+              customerPhone: order.customerPhone || '',
+              customerEmail: order.customerEmail || '',
+              adminPlaced: true,
+              receiptPhoto: receiptPhoto || undefined,
+              paymentStatus: 'paid',
+              status: 'confirmed',
+            });
+            targetOrderId = newId;
+
+            // Wait for DB creation to complete
+            await getLastSyncPromise();
+            toast.success(`Order placed and marked as paid.`, { id: toastId });
+          }
         }
-        return next;
-      });
+
+        // Update local state tableOrders to retain the table as active but paid!
+        setTableOrders((prev: TableOrder[]) => {
+          const next = prev.map((t) => t.tableNumber === tableNumber ? { ...t, status: 'paid' as const, isDbOrder: true, orderId: targetOrderId } : t);
+          // Sync to other devices via API
+          if (typeof window !== 'undefined') {
+            fetch('/api/table-orders', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(next),
+            }).catch(() => {/* silent */});
+          }
+          return next;
+        });
+
+        setShowBillModal(null);
+        // Reset payment flow states
+        setBillPaymentMethod(null);
+        setUpiProvider(null);
+        setReceiptPhoto(null);
+
+      } catch (err: any) {
+        console.error(err);
+        toast.error(err.message || 'Payment update failed. Please check connection.', { id: toastId });
+      }
     }
-    setShowBillModal(null);
-    // Reset payment flow states
-    setBillPaymentMethod(null);
-    setUpiProvider(null);
-    setReceiptPhoto(null);
   };
 
   const handleSendToKitchen = async (tableNumber: string) => {
     const order = tableOrders.find((t) => t.tableNumber === tableNumber);
     if (!order || order.items.length === 0) return;
 
+    const toastId = toast.loading("Sending order to kitchen...");
     try {
       clearCart();
       order.items.forEach((item) => {
@@ -742,11 +756,17 @@ export default function TableOrdersPage() {
       const newId = placeOrder('upi', '', {
         type: 'dine-in',
         tableNumber,
-        customerName: order.customerName || `Table ${tableNumber.replace('Table ', '')}`,
+        customerName: order.customerName || '',
+        customerPhone: order.customerPhone || '',
+        customerEmail: order.customerEmail || '',
         adminPlaced: true,
         paymentStatus: 'unpaid',
         status: 'confirmed',
       });
+
+      // Await database insertion
+      await getLastSyncPromise();
+      toast.success("Order sent to kitchen!", { id: toastId });
 
       if (newId) {
         const updatedTable: TableOrder = {
@@ -771,11 +791,10 @@ export default function TableOrdersPage() {
 
         // Sync additives and final total to database
         await syncTableOrderToDb(updatedTable);
-        toast.success(`Order sent to kitchen!`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Failed to send order to kitchen');
+      toast.error(err.message || 'Failed to send order to kitchen.', { id: toastId });
     }
   };
 
@@ -856,6 +875,11 @@ export default function TableOrdersPage() {
     const itemCount = activeOrder?.items.reduce((s, i) => s + i.qty, 0) || 0;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)', overflow: 'hidden', background: 'var(--void)' }}>
+        <style>{`
+          .lbl-gname::after { content: 'Guest Name'; }
+          .lbl-gphone::after { content: 'Mobile Number'; }
+          .lbl-gemail::after { content: 'Email'; }
+        `}</style>
 
         {/* ── MOBILE PANEL CONTENT ── */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -1009,16 +1033,61 @@ export default function TableOrdersPage() {
                       {showGuestDetails && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Guest Name</label>
-                            <input type="text" placeholder="e.g. Jane Doe" value={activeOrder.customerName || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerName: e.target.value } : to)); }} onBlur={(e) => syncGuestDetailsToDb('customerName', e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
+                            <label className="lbl-gname" style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}></label>
+                            <input 
+                              autoComplete="new-password" 
+                              type="text" 
+                              name="gname"
+                              id="gname"
+                              placeholder="e.g. J. D." 
+                              value={activeOrder.customerName || ''} 
+                              onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerName: e.target.value } : to)); }} 
+                              onFocus={(e) => { e.target.readOnly = false; }}
+                              onBlur={(e) => {
+                                e.target.readOnly = true;
+                                syncGuestDetailsToDb('customerName', e.target.value);
+                              }}
+                              readOnly
+                              style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} 
+                            />
                           </div>
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Mobile Number</label>
-                            <input type="tel" placeholder="+91 98765 43210" value={activeOrder.customerPhone || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerPhone: e.target.value } : to)); }} onBlur={(e) => syncGuestDetailsToDb('customerPhone', e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
+                            <label className="lbl-gphone" style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}></label>
+                            <input 
+                              autoComplete="new-password" 
+                              type="text" 
+                              name="gphone"
+                              id="gphone"
+                              placeholder="e.g. +91..." 
+                              value={activeOrder.customerPhone || ''} 
+                              onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerPhone: e.target.value } : to)); }} 
+                              onFocus={(e) => { e.target.readOnly = false; }}
+                              onBlur={(e) => {
+                                e.target.readOnly = true;
+                                syncGuestDetailsToDb('customerPhone', e.target.value);
+                              }}
+                              readOnly
+                              style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} 
+                            />
                           </div>
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Email</label>
-                            <input type="email" placeholder="jane@example.com" value={activeOrder.customerEmail || ''} onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerEmail: e.target.value } : to)); }} onBlur={(e) => syncGuestDetailsToDb('customerEmail', e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} />
+                            <label className="lbl-gemail" style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}></label>
+                            <input 
+                              autoComplete="new-password" 
+                              type="text" 
+                              name="gemail"
+                              id="gemail"
+                              placeholder="e.g. j@e.c" 
+                              value={activeOrder.customerEmail || ''} 
+                              onChange={(e) => { setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerEmail: e.target.value } : to)); }} 
+                              onFocus={(e) => { e.target.readOnly = false; }}
+                              onBlur={(e) => {
+                                e.target.readOnly = true;
+                                syncGuestDetailsToDb('customerEmail', e.target.value);
+                              }}
+                              readOnly
+                              style={{ width: '100%', padding: '10px 12px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.88rem', borderRadius: 0, outline: 'none', boxSizing: 'border-box' }} 
+                            />
                           </div>
                         </div>
                       )}
@@ -1034,10 +1103,24 @@ export default function TableOrdersPage() {
                         {activeOrder.items.map((item) => (
                           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>
                             <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px' }}>
-                                {item.name}
+                              <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                                <span>{item.name.replace(/\s*\((SMALL|MEDIUM|LARGE)\)/i, '')}</span>
+                                {item.size && (
+                                  <span style={{
+                                    fontSize: '0.58rem',
+                                    background: item.size === 'large' ? 'rgba(239,68,68,0.15)' : item.size === 'medium' ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)',
+                                    color: item.size === 'large' ? '#f87171' : item.size === 'medium' ? '#34d399' : '#60a5fa',
+                                    padding: '1px 6px',
+                                    borderRadius: '3px',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                  }}>
+                                    {item.size}
+                                  </span>
+                                )}
                                 {activeOrder.isDbOrder && (
-                                  <span title="Sent to kitchen (locked)" style={{ color: 'var(--text-muted)', marginLeft: '6px', fontSize: '0.8rem', verticalAlign: 'middle' }}>🔒</span>
+                                  <span title="Sent to kitchen (locked)" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>🔒</span>
                                 )}
                               </p>
                               <p style={{ fontSize: '0.85rem', color: 'var(--gold)' }}>₹{item.price * item.qty}</p>
@@ -1204,9 +1287,41 @@ export default function TableOrdersPage() {
             const file = e.target.files?.[0];
             if (file) {
               const reader = new FileReader();
-              reader.onloadend = () => {
-                setReceiptPhoto(reader.result as string);
-                toast.success("Transaction receipt photo captured!");
+              reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  let width = img.width;
+                  let height = img.height;
+                  
+                  const MAX_SIZE = 800;
+                  if (width > height) {
+                    if (width > MAX_SIZE) {
+                      height *= MAX_SIZE / width;
+                      width = MAX_SIZE;
+                    }
+                  } else {
+                    if (height > MAX_SIZE) {
+                      width *= MAX_SIZE / height;
+                      height = MAX_SIZE;
+                    }
+                  }
+                  
+                  canvas.width = width;
+                  canvas.height = height;
+                  
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    setReceiptPhoto(compressedBase64);
+                    toast.success("Transaction receipt photo compressed and captured!");
+                  } else {
+                    setReceiptPhoto(event.target?.result as string);
+                    toast.success("Transaction receipt photo captured!");
+                  }
+                };
+                img.src = event.target?.result as string;
               };
               reader.readAsDataURL(file);
             }
@@ -1600,6 +1715,11 @@ export default function TableOrdersPage() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 320px', gap: '0', height: 'calc(100vh - 124px)', overflow: 'hidden' }}>
+      <style>{`
+        .lbl-gname::after { content: 'Guest Name'; }
+        .lbl-gphone::after { content: 'Mobile Number'; }
+        .lbl-gemail::after { content: 'Email Address'; }
+      `}</style>
 
       {/* ── LEFT: Table Grid ─────────────────────────────────────────── */}
       <div style={{ borderRight: '1px solid var(--dark-border)', overflowY: 'auto', padding: '20px 16px' }}>
@@ -1766,15 +1886,23 @@ export default function TableOrdersPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <div style={{ flex: 1 }}>
-                        <label style={{ display: 'block', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Guest Name</label>
+                        <label className="lbl-gname" style={{ display: 'block', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}></label>
                         <input 
+                          autoComplete="new-password"
                           type="text" 
-                          placeholder="e.g. Jane Doe"
+                          name="gname"
+                          id="gname"
+                          placeholder="e.g. J. D."
                           value={activeOrder.customerName || ''}
                           onChange={(e) => {
                             setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerName: e.target.value } : to));
                           }}
-                          onBlur={(e) => syncGuestDetailsToDb('customerName', e.target.value)}
+                          onFocus={(e) => { e.target.readOnly = false; }}
+                          onBlur={(e) => {
+                            e.target.readOnly = true;
+                            syncGuestDetailsToDb('customerName', e.target.value);
+                          }}
+                          readOnly
                           style={{ width: '100%', padding: '6px 8px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.72rem', borderRadius: 0, outline: 'none' }}
                         />
                       </div>
@@ -1793,28 +1921,44 @@ export default function TableOrdersPage() {
                       </div>
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Mobile Number</label>
+                      <label className="lbl-gphone" style={{ display: 'block', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}></label>
                       <input 
+                        autoComplete="new-password"
                         type="text" 
-                        placeholder="e.g. +91 98765 43210"
+                        name="gphone"
+                        id="gphone"
+                        placeholder="e.g. +91..."
                         value={activeOrder.customerPhone || ''}
                         onChange={(e) => {
                           setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerPhone: e.target.value } : to));
                         }}
-                        onBlur={(e) => syncGuestDetailsToDb('customerPhone', e.target.value)}
+                        onFocus={(e) => { e.target.readOnly = false; }}
+                        onBlur={(e) => {
+                          e.target.readOnly = true;
+                          syncGuestDetailsToDb('customerPhone', e.target.value);
+                        }}
+                        readOnly
                         style={{ width: '100%', padding: '6px 8px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.72rem', borderRadius: 0, outline: 'none' }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Email Address</label>
+                      <label className="lbl-gemail" style={{ display: 'block', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}></label>
                       <input 
-                        type="email" 
-                        placeholder="e.g. jane@example.com"
+                        autoComplete="new-password"
+                        type="text" 
+                        name="gemail"
+                        id="gemail"
+                        placeholder="e.g. j@e.c"
                         value={activeOrder.customerEmail || ''}
                         onChange={(e) => {
                           setTableOrders((prev: TableOrder[]) => prev.map(to => to.tableNumber === activeTable ? { ...to, customerEmail: e.target.value } : to));
                         }}
-                        onBlur={(e) => syncGuestDetailsToDb('customerEmail', e.target.value)}
+                        onFocus={(e) => { e.target.readOnly = false; }}
+                        onBlur={(e) => {
+                          e.target.readOnly = true;
+                          syncGuestDetailsToDb('customerEmail', e.target.value);
+                        }}
+                        readOnly
                         style={{ width: '100%', padding: '6px 8px', background: 'var(--black)', border: '1px solid var(--dark-border-2)', color: 'var(--cream)', fontSize: '0.72rem', borderRadius: 0, outline: 'none' }}
                       />
                     </div>
@@ -1867,10 +2011,24 @@ export default function TableOrdersPage() {
                       padding: '10px 12px', background: 'var(--dark-surface)', border: '1px solid var(--dark-border)',
                     }}>
                       <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px' }}>
-                          {item.name}
+                        <p style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--cream)', marginBottom: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                          <span>{item.name.replace(/\s*\((SMALL|MEDIUM|LARGE)\)/i, '')}</span>
+                          {item.size && (
+                            <span style={{
+                              fontSize: '0.58rem',
+                              background: item.size === 'large' ? 'rgba(239,68,68,0.15)' : item.size === 'medium' ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)',
+                              color: item.size === 'large' ? '#f87171' : item.size === 'medium' ? '#34d399' : '#60a5fa',
+                              padding: '1px 6px',
+                              borderRadius: '3px',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em'
+                            }}>
+                              {item.size}
+                            </span>
+                          )}
                           {activeOrder.isDbOrder && (
-                            <span title="Sent to kitchen (locked)" style={{ color: 'var(--text-muted)', marginLeft: '6px', fontSize: '0.78rem', verticalAlign: 'middle' }}>🔒</span>
+                            <span title="Sent to kitchen (locked)" style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>🔒</span>
                           )}
                         </p>
                         <p style={{ fontSize: '0.8rem', color: 'var(--gold)' }}>₹{item.price * item.qty}</p>
@@ -2185,9 +2343,41 @@ export default function TableOrdersPage() {
           const file = e.target.files?.[0];
           if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-              setReceiptPhoto(reader.result as string);
-              toast.success("Transaction receipt photo captured!");
+            reader.onload = (event) => {
+              const img = new Image();
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                const MAX_SIZE = 800;
+                if (width > height) {
+                  if (width > MAX_SIZE) {
+                    height *= MAX_SIZE / width;
+                    width = MAX_SIZE;
+                  }
+                } else {
+                  if (height > MAX_SIZE) {
+                    width *= MAX_SIZE / height;
+                    height = MAX_SIZE;
+                  }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  ctx.drawImage(img, 0, 0, width, height);
+                  const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                  setReceiptPhoto(compressedBase64);
+                  toast.success("Transaction receipt photo compressed and captured!");
+                } else {
+                  setReceiptPhoto(event.target?.result as string);
+                  toast.success("Transaction receipt photo captured!");
+                }
+              };
+              img.src = event.target?.result as string;
             };
             reader.readAsDataURL(file);
           }

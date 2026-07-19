@@ -1,31 +1,33 @@
-import { redis } from './redis';
+const memoryLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 export async function rateLimit(
   ip: string,
   limit = 5,
   duration = 60
 ): Promise<{ success: boolean; limit: number; remaining: number }> {
-  try {
-    const key = `ratelimit:${ip}`;
-    const current = await redis.incr(key);
+  // In-memory rate limiting (completely free, zero database dependency)
+  const now = Date.now();
+  const key = `ratelimit:${ip}`;
+  const record = memoryLimitStore.get(key);
 
-    if (current === 1) {
-      await redis.expire(key, duration);
-    }
-
-    const remaining = Math.max(0, limit - current);
-    return {
-      success: current <= limit,
-      limit,
-      remaining,
-    };
-  } catch (error) {
-    // If Redis is not running or down in development, fall back gracefully to allow the request
-    console.error("Redis rate limiter error:", error);
+  if (!record || now > record.resetAt) {
+    memoryLimitStore.set(key, {
+      count: 1,
+      resetAt: now + duration * 1000,
+    });
     return {
       success: true,
       limit,
-      remaining: limit,
+      remaining: limit - 1,
     };
   }
+
+  record.count++;
+  const remaining = Math.max(0, limit - record.count);
+  return {
+    success: record.count <= limit,
+    limit,
+    remaining,
+  };
 }
+

@@ -18,35 +18,45 @@ async function getSetting(key: string, defaultValue: string): Promise<string> {
   return setting ? setting.value : defaultValue;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const isFull = searchParams.get('full') === 'true';
+
     const maintenanceModeVal = await getSetting('maintenanceMode', 'false');
     const acceptingOrdersVal = await getSetting('acceptingOrders', 'true');
     const requireReceiptPhotoVal = await getSetting('requireReceiptPhoto', 'true');
     const newArrivalsDaysThresholdVal = await getSetting('newArrivalsDaysThreshold', '10');
     const defaultPasscode = process.env.ADMIN_PASSCODE || 'LondonOwner@2026';
     const adminPasscodeVal = await getSetting('adminPasscode', defaultPasscode);
-    const restaurantInfoVal = await getSetting('restaurantInfo', '');
-
+    
     let parsedRestaurantInfo = null;
-    if (restaurantInfoVal) {
-      try {
-        parsedRestaurantInfo = JSON.parse(restaurantInfoVal);
-      } catch (e) {
-        console.warn('Failed to parse restaurantInfo from DB:', e);
+    if (isFull) {
+      const restaurantInfoVal = await getSetting('restaurantInfo', '');
+      if (restaurantInfoVal) {
+        try {
+          parsedRestaurantInfo = JSON.parse(restaurantInfoVal);
+        } catch (e) {
+          console.warn('Failed to parse restaurantInfo from DB:', e);
+        }
       }
+    }
+
+    const settings: any = {
+      maintenanceMode: maintenanceModeVal === 'true',
+      acceptingOrders: acceptingOrdersVal === 'true',
+      requireReceiptPhoto: requireReceiptPhotoVal === 'true',
+      newArrivalsDaysThreshold: newArrivalsDaysThresholdVal,
+      hasPasscodeSet: adminPasscodeVal !== defaultPasscode,
+    };
+
+    if (isFull) {
+      settings.restaurantInfo = parsedRestaurantInfo;
     }
 
     return NextResponse.json({
       success: true,
-      settings: {
-        maintenanceMode: maintenanceModeVal === 'true',
-        acceptingOrders: acceptingOrdersVal === 'true',
-        requireReceiptPhoto: requireReceiptPhotoVal === 'true',
-        newArrivalsDaysThreshold: newArrivalsDaysThresholdVal,
-        hasPasscodeSet: adminPasscodeVal !== defaultPasscode,
-        restaurantInfo: parsedRestaurantInfo,
-      },
+      settings,
     });
   } catch (error: unknown) {
     console.error('Settings API GET error:', error);

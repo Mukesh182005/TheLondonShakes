@@ -153,7 +153,8 @@ export const menuItems: MenuItem[] = [
     description: "A rich and creamy strawberry shake loaded with bold, fruity flavor.",
     price: 200, badge: "Bestseller",
     dietary: ["v"], allergens: ["Dairy"],
-    gradient: "food-photo-cocktail"
+    gradient: "food-photo-cocktail",
+    createdAt: "2026-07-15T12:00:00.000Z"
   },
   {
     id: "s2", category: "shakes", course: "Thick Shakes",
@@ -161,7 +162,8 @@ export const menuItems: MenuItem[] = [
     description: "Creamy milkshake blended with Oreo cookies and chocolate syrup, topped with cookie crumbs.",
     price: 180, badge: "Popular",
     dietary: ["v"], allergens: ["Dairy", "Gluten"],
-    gradient: "food-photo-cocktail"
+    gradient: "food-photo-cocktail",
+    createdAt: "2026-07-16T12:00:00.000Z"
   },
   {
     id: "s3", category: "shakes", course: "Thick Shakes",
@@ -229,7 +231,8 @@ export const menuItems: MenuItem[] = [
     description: "Creamy white sauce pasta tossed with herbs, veggies, and perfectly cooked pasta.",
     price: 100, badge: "Bestseller",
     dietary: ["v"], allergens: ["Gluten", "Dairy"],
-    gradient: "food-photo-dinner"
+    gradient: "food-photo-dinner",
+    createdAt: "2026-07-17T12:00:00.000Z"
   },
   {
     id: "p2", category: "pastas", course: "Pasta",

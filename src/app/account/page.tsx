@@ -43,7 +43,7 @@ function AccountPageContent() {
     e.preventDefault();
     if (!email) return;
     const cleanEmail = email.trim().toLowerCase();
-    
+
     try {
       const checkRes = await fetch(`/api/auth/check-staff?email=${encodeURIComponent(cleanEmail)}`);
       if (checkRes.ok) {
@@ -586,7 +586,7 @@ function AccountPageContent() {
               Welcome back, <em style={{ color: 'var(--gold)' }}>{user.name}</em>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
-              Account: {user.email} {user.email === 'thelondonshakes.silchar@gmail.com' && '· (Administrator)'}
+              Account: {user.email} {user.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '') && '· (Administrator)'}
             </p>
           </div>
 

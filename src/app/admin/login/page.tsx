@@ -15,7 +15,14 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const errorParam = searchParams.get('error');
+  const [error, setError] = useState<string | null>(
+    errorParam === 'unauthorized_email' 
+      ? 'Access Denied: This Google email is not authorized as staff.' 
+      : errorParam === 'auth_error'
+      ? 'Authentication failed: An error occurred with Google Sign-In.'
+      : null
+  );
 
   // Get the redirect path if present (e.g. from middleware)
   const fromPath = searchParams.get('from') || '/admin';

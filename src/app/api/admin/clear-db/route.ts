@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       data: {
         action: 'CLEAR_DATABASE',
         details: 'Active operations and dashboard statistics were cleared. Historical transaction bills, analytics, and audit logs are retained.',
-        adminEmail: 'Super Admin | thelondonshakes.silchar@gmail.com',
+        adminEmail: `Super Admin | ${process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''}`,
       },
     });
 
