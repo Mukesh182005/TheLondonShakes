@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       const billLogDetails = JSON.stringify({
         orderId,
         reason: reason || 'Not specified',
-        adminEmail: adminEmail || (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
+        adminEmail: adminEmail || (process.env.SUPER_ADMIN_EMAIL || ''),
         customerName: originalOrder.customerName,
         customerPhone: originalOrder.phone,
         customerEmail: originalOrder.email,
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
         data: {
           action: 'BILL_EDITED',
           details: billLogDetails,
-          adminEmail: adminEmail || (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
+          adminEmail: adminEmail || (process.env.SUPER_ADMIN_EMAIL || ''),
         },
       });
     } catch (auditError) {

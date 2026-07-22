@@ -401,7 +401,7 @@ export default function OrdersPage() {
           orderId: editOrder.id,
           items: finalItems,
           total: grandTotal,
-          adminEmail: user?.email || (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
+          adminEmail: user?.email || 'admin',
           discountDetails: fullDiscountDetails,
           reason: finalReason
         })

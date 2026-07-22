@@ -217,7 +217,7 @@ export default function OrderPage() {
     }
     setDeliveryAddress({ name: addressForm.name, phone: addressForm.phone, email: addressForm.email, flat: addressForm.flat, street: addressForm.street, city: addressForm.city });
     const orderEmail = addressForm.email.trim().toLowerCase();
-    if (!user && orderEmail !== (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '')) {
+    if (!user) {
       login(orderEmail, addressForm.name.trim(), addressForm.phone.trim());
     }
     const orderId = placeOrder(paymentMethod, paymentMethod === 'upi' ? upiTxnId.trim() : '', { type: cart.type, tableNumber: cart.type === 'dine-in' ? selectedTable : undefined, customerName: addressForm.name });

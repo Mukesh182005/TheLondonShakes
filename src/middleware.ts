@@ -45,6 +45,19 @@ export default async function middleware(request: NextRequest, event: NextFetchE
   }
 
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+    // ── Request Body Size Limit (10 MB) ───────────────────────────────────
+    const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
+    const MAX_BODY_BYTES = 10 * 1024 * 1024; // 10 MB
+    if (contentLength > MAX_BODY_BYTES) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Request body too large. Maximum allowed size is 10MB.' }),
+        {
+          status: 413,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     try {
       const contentType = request.headers.get('content-type') || '';
       if (
@@ -54,6 +67,18 @@ export default async function middleware(request: NextRequest, event: NextFetchE
       ) {
         const clone = request.clone();
         const bodyText = await clone.text();
+
+        // Secondary size check on actual body length
+        if (bodyText.length > MAX_BODY_BYTES) {
+          return new NextResponse(
+            JSON.stringify({ error: 'Request body too large. Maximum allowed size is 10MB.' }),
+            {
+              status: 413,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        }
+
         // Remove base64 data URLs to prevent false-positive XSS hits on random binary base64 character combinations
         const cleanBodyText = bodyText.replace(/data:image\/[^;]+;base64,[a-zA-Z0-9+/=\s]+/gi, '');
         if (hasCodeInjection(cleanBodyText)) {
@@ -78,7 +103,7 @@ export default async function middleware(request: NextRequest, event: NextFetchE
   const isStaticAsset     = pathname.startsWith('/_next') || pathname.startsWith('/favicon');
 
   const isApiAdmin = pathname.startsWith('/api/admin/') && pathname !== '/api/admin/settings/verify-passcode';
-  const isProtectedAdmin = pathname.startsWith('/admin') || isApiAdmin;
+  const isProtectedAdmin = pathname.startsWith('/admin') || isApiAdmin || pathname.startsWith('/api/table-orders');
 
   if (isMaintenanceMode && !isProtectedAdmin && !isApiRoute && !isMaintenancePage && !isStaticAsset) {
     return NextResponse.redirect(new URL('/maintenance', request.url));

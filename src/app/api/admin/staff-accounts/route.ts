@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || '';
 
 /** Validate that the request comes from the super admin (basic email header check).
  *  For a production app you'd validate a signed session token; here we rely on

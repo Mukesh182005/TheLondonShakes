@@ -66,8 +66,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (hydrated && user) {
-      const isOwner = user.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '');
-      setIsSuperAdmin(isOwner);
+      setIsSuperAdmin(!!user.isAdmin);
     }
   }, [user, hydrated]);
 

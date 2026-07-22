@@ -11,9 +11,7 @@ export default function NewArrivalsToast() {
   const newArrivalsDaysThreshold = useCMSStore((s) => s.newArrivalsDaysThreshold) || 10;
   
   const user = useRestaurantStore((s) => s.user);
-  const targetUrl = user 
-    ? '/menu?tab=new' 
-    : `/account?redirect=${encodeURIComponent('/menu?tab=new')}`;
+  const targetUrl = '/menu?tab=new';
 
   const [hasNew, setHasNew] = useState(false);
   const [newDishes, setNewDishes] = useState<typeof menuItems>([]);

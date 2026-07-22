@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const isOwner = cleanEmail === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '').toLowerCase();
+    const isOwner = cleanEmail === (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
 
     let token = '';
 
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set(ADMIN_COOKIE, token, {
       httpOnly: true,
       secure:   isSecure,
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge:   COOKIE_MAX_AGE,
       path:     '/',
     });
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
   const expectedToken = ADMIN_PASSWORD ? await generateSessionToken(ADMIN_PASSWORD) : '';
   if (session === expectedToken) {
     // Super admin — fixed display name
-    return NextResponse.json({ authenticated: true, role: 'owner', name: "Maître d' London", email: process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '' });
+    return NextResponse.json({ authenticated: true, role: 'owner', name: "Maître d' London", email: process.env.SUPER_ADMIN_EMAIL || '' });
   }
 
   const staff = await verifyStaffSessionToken(session);

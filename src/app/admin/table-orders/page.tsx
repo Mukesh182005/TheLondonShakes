@@ -433,7 +433,7 @@ export default function TableOrdersPage() {
           orderId: order.orderId,
           items: finalItems,
           total: grandTotal,
-          adminEmail: user?.email || (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
+          adminEmail: user?.email || 'admin',
           discountDetails: fullDiscountDetails
         })
       });

@@ -586,7 +586,7 @@ function AccountPageContent() {
               Welcome back, <em style={{ color: 'var(--gold)' }}>{user.name}</em>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
-              Account: {user.email} {user.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '') && '· (Administrator)'}
+              Account: {user.email} {user.isAdmin && '· (Administrator)'}
             </p>
           </div>
 

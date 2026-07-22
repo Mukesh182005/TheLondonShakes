@@ -62,6 +62,7 @@ export interface User {
   phone?: string;
   membershipStatus: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
   tierPoints: number;
+  isAdmin?: boolean;
 }
 
 export interface Reservation {
@@ -131,7 +132,7 @@ export interface TableOrder {
 // ── Store 1: Dynamic Customer/Transaction Store ──
 export interface RestaurantState {
   user: User | null;
-  login: (email: string, name?: string, phone?: string) => void;
+  login: (email: string, name?: string, phone?: string, isAdmin?: boolean) => void;
   logout: () => void;
 
   cart: {
@@ -178,15 +179,15 @@ export const useRestaurantStore = create<RestaurantState>()(
   persist(
     (set, get) => ({
       user: null,
-      login: (email, name = 'Valued Guest', phone) => {
-        const isDefaultAdmin = email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '');
+      login: (email, name = 'Valued Guest', phone, isAdmin = false) => {
         set({
           user: {
-            name: isDefaultAdmin ? 'Maître d\' London' : name,
+            name: isAdmin ? 'Maître d\' London' : name,
             email,
             phone,
-            membershipStatus: isDefaultAdmin ? 'Platinum' : 'Gold',
-            tierPoints: isDefaultAdmin ? 9999 : 320,
+            membershipStatus: isAdmin ? 'Platinum' : 'Gold',
+            tierPoints: isAdmin ? 9999 : 320,
+            isAdmin,
           },
         });
       },
@@ -340,7 +341,7 @@ export const useRestaurantStore = create<RestaurantState>()(
         const total = subtotal;
 
         const currentAdminEmail = get().user?.email;
-        const isAdminSession = currentAdminEmail === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '');
+        const isAdminSession = !!(get().user?.isAdmin);
         const isPlacedByAdmin = !!(customSettings?.adminPlaced || isAdminSession);
 
         let customerNameVal = customSettings?.customerName !== undefined 

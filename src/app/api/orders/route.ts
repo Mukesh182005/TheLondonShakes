@@ -3,6 +3,40 @@ import { prisma } from '@/lib/prisma';
 import type { Order, CartItem } from '@/store/restaurantStore';
 import { verifyAdminRequest } from '@/lib/auth-crypto';
 import { adminDb } from '@/lib/firebase-admin';
+import { z } from 'zod';
+
+const OrderPostSchema = z.object({
+  id: z.string().min(1).optional(),
+  type: z.enum(['dine-in', 'takeaway', 'delivery', 'pickup']),
+  tableNumber: z.string().optional(),
+  customerName: z.string().max(100).optional(),
+  address: z.object({
+    name: z.string().max(100).optional(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+    flat: z.string().optional(),
+    street: z.string().optional(),
+    city: z.string().optional(),
+  }).optional(),
+  items: z.array(z.any()).min(1),
+  total: z.number().positive(),
+  status: z.enum(['confirmed', 'preparing', 'out for delivery', 'delivered', 'cancelled', 'pending', 'out-for-delivery']).optional(),
+  paymentMethod: z.enum(['cash', 'card', 'upi', 'cod', 'card_on_delivery', 'pay_later']).optional(),
+  paymentStatus: z.enum(['unpaid', 'pending_verification', 'paid', 'pending', 'failed']).optional(),
+  upiTxnId: z.string().nullable().optional(),
+  receiptPhoto: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+});
+
+const OrderPutSchema = z.object({
+  orderId: z.string().min(1),
+  status: z.enum(['confirmed', 'preparing', 'out for delivery', 'delivered', 'cancelled', 'pending', 'out-for-delivery']).optional(),
+  paymentStatus: z.enum(['unpaid', 'pending_verification', 'paid', 'pending', 'failed']).optional(),
+  receiptPhoto: z.string().nullable().optional(),
+  customerName: z.string().max(100).optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+});
 
 // ── Rate Limiting ────────────────────────────────────────────
 const orderAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -53,6 +87,13 @@ export async function GET(req: NextRequest) {
     }
 
     if (orderId) {
+      const isAdmin = await verifyAdminRequest(req);
+      if (!isAdmin) {
+        const myOrders = req.cookies.get('tls_my_orders')?.value?.split(',') || [];
+        if (!myOrders.includes(orderId)) {
+          return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+        }
+      }
       // Light query: Fetch only one specific order
       const dbOrder = await prisma.order.findUnique({
         where: { id: orderId },
@@ -88,7 +129,7 @@ export async function GET(req: NextRequest) {
         paymentStatus: dbOrder.paymentStatus as Order['paymentStatus'],
         upiTxnId: dbOrder.upiTxnId || undefined,
         createdAt: dbOrder.createdAt.toISOString(),
-        adminPlaced: dbOrder.addressFlat === 'ADMIN_PLACED' || dbOrder.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
+        adminPlaced: dbOrder.addressFlat === 'ADMIN_PLACED' || dbOrder.email === (process.env.SUPER_ADMIN_EMAIL || ''),
       };
 
       return NextResponse.json(formattedOrder);
@@ -127,7 +168,7 @@ export async function GET(req: NextRequest) {
         upiTxnId: o.upiTxnId || undefined,
         receiptPhoto: (o as any).receiptPhoto || undefined,
         createdAt: o.createdAt.toISOString(),
-        adminPlaced: o.addressFlat === 'ADMIN_PLACED' || o.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || ''),
+        adminPlaced: o.addressFlat === 'ADMIN_PLACED' || o.email === (process.env.SUPER_ADMIN_EMAIL || ''),
         discount: (o as any).discount ?? 0,
         tax: (o as any).tax ?? 0,
         cashier: (o as any).cashier ?? 'Counter Staff',
@@ -185,7 +226,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body: Order = await req.json();
+    const rawBody = await req.json();
+    const parsed = OrderPostSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: 'Invalid payload structure', details: parsed.error.format() }, { status: 400 });
+    }
+    const body: Order = rawBody as Order;
 
     // Input Validation
     if (!body || typeof body !== 'object') {
@@ -232,6 +278,47 @@ export async function POST(req: NextRequest) {
 
     if (typeof body.total !== 'number' || body.total <= 0) {
       return NextResponse.json({ success: false, error: 'Invalid order total value' }, { status: 400 });
+    }
+
+    // ── Server-side price recalculation ──────────────────────────────────
+    try {
+      const itemIds = body.items.map((i: any) => i.id).filter(Boolean);
+      const dbMenuItems = await prisma.menuItem.findMany({
+        where: { id: { in: itemIds } },
+        select: { id: true, price: true, name: true },
+      });
+      const priceMap = new Map(dbMenuItems.map(m => [m.id, m.price]));
+
+      if (priceMap.size > 0) {
+        // Recalculate total from DB prices
+        let serverTotal = 0;
+        for (const item of body.items) {
+          const dbPrice = priceMap.get(item.id);
+          if (dbPrice !== undefined) {
+            serverTotal += dbPrice * (item.qty || 1);
+          } else {
+            // Item not in DB (could be an additive/custom item) — use client price but cap it
+            serverTotal += Math.min(item.price || 0, 10000) * (item.qty || 1);
+          }
+        }
+        // Allow small rounding tolerance (₹1) but reject manipulated totals
+        if (Math.abs(serverTotal - body.total) > Math.max(1, serverTotal * 0.01)) {
+          console.warn(`Price mismatch: client=${body.total}, server=${serverTotal}`);
+          body.total = serverTotal; // Override with server-calculated total
+        }
+      } else {
+        // No DB items found — sanity-check the client total against item prices
+        const clientCalcTotal = body.items.reduce((sum: number, i: any) => sum + (i.price || 0) * (i.qty || 1), 0);
+        if (body.total > clientCalcTotal * 1.5 || body.total < clientCalcTotal * 0.5) {
+          return NextResponse.json({ success: false, error: 'Order total does not match item prices' }, { status: 400 });
+        }
+      }
+    } catch (priceErr) {
+      // DB unavailable for price check — fall back to sanity check
+      const clientCalcTotal = body.items.reduce((sum: number, i: any) => sum + (i.price || 0) * (i.qty || 1), 0);
+      if (body.total > clientCalcTotal * 1.5 || body.total < clientCalcTotal * 0.5) {
+        return NextResponse.json({ success: false, error: 'Order total does not match item prices' }, { status: 400 });
+      }
     }
 
     if (body.receiptPhoto && typeof body.receiptPhoto === 'string') {
@@ -294,7 +381,7 @@ export async function POST(req: NextRequest) {
       };
     } catch (dbError: any) {
       console.error("Database failed to save order:", dbError);
-      return NextResponse.json({ success: false, error: 'Database save failed: ' + dbError.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to save order. Please try again.' }, { status: 500 });
     }
 
     // Keep memory orders updated (limit to 100)
@@ -307,7 +394,24 @@ export async function POST(req: NextRequest) {
       console.error("Firebase trigger failed", fbErr);
     }
 
-    return NextResponse.json({ success: true, order: savedOrder });
+    const res = NextResponse.json({ success: true, order: savedOrder });
+
+    // Store order ID in cookie for IDOR protection on GET
+    const existingCookie = req.cookies.get('tls_my_orders')?.value || '';
+    const myOrders = existingCookie ? existingCookie.split(',') : [];
+    if (!myOrders.includes(body.id)) {
+      myOrders.push(body.id);
+      if (myOrders.length > 10) myOrders.shift();
+      res.cookies.set('tls_my_orders', myOrders.join(','), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+
+    return res;
   } catch (error: unknown) {
     console.error("Order API error:", error);
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
@@ -322,7 +426,12 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orderId, status, paymentStatus, receiptPhoto, customerName, phone, email } = await req.json();
+    const rawBody = await req.json();
+    const parsed = OrderPutSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: 'Invalid payload structure', details: parsed.error.format() }, { status: 400 });
+    }
+    const { orderId, status, paymentStatus, receiptPhoto, customerName, phone, email } = parsed.data;
 
     let updatedOrder: Order | null = null;
     try {
@@ -373,8 +482,8 @@ export async function PUT(req: NextRequest) {
       // Database failed, update memory
       const existingIdx = memoryOrders.findIndex(o => o.id === orderId);
       if (existingIdx !== -1) {
-        if (status) memoryOrders[existingIdx].status = status;
-        if (paymentStatus) memoryOrders[existingIdx].paymentStatus = paymentStatus;
+        if (status) memoryOrders[existingIdx].status = status as Order['status'];
+        if (paymentStatus) memoryOrders[existingIdx].paymentStatus = paymentStatus as Order['paymentStatus'];
         updatedOrder = memoryOrders[existingIdx];
       }
     }

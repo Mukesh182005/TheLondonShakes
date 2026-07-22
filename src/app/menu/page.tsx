@@ -158,8 +158,8 @@ function MobileGrid({ items, renderCard }: { items: any[]; renderCard: (item: an
           display: none;
         }
         .mobile-dish-card-wrapper {
-          flex: 0 0 130px;
-          width: 130px;
+          flex: 0 0 165px;
+          width: 165px;
         }
       `}</style>
       {items.map((item) => (
@@ -183,12 +183,7 @@ export default function MenuPage() {
     setIsMounted(true);
   }, []);
 
-  // Customer Login Protection
-  useEffect(() => {
-    if (isMounted && !user) {
-      router.push('/account?redirect=/menu');
-    }
-  }, [isMounted, user, router]);
+  // Removed Customer Login Protection per user request
 
 
 
@@ -809,7 +804,7 @@ export default function MenuPage() {
           {!item.image ? (
             <div className={`food-photo ${item.gradient}`} style={{
               width: '100%', height: '100%', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem',
+              alignItems: 'center', justifyContent: 'center', fontSize: '2rem',
             }}>
               {item.category === 'shakes' ? '🥤' : item.category === 'burgers' ? '🍔' : item.category === 'pastas' ? '🍝' : item.category === 'snacks' ? '🍟' : item.category === 'waffles' ? '🧇' : '☕'}
             </div>
@@ -842,7 +837,7 @@ export default function MenuPage() {
               position: 'absolute',
               top: '4px',
               left: '4px',
-              fontSize: '0.42rem',
+              fontSize: '0.6rem',
               fontWeight: 800,
               textTransform: 'uppercase',
               padding: '1px 4px',
@@ -862,7 +857,7 @@ export default function MenuPage() {
             left: '4px',
             background: '#1F543C',
             color: '#FFFFFF',
-            fontSize: '0.45rem',
+            fontSize: '0.6rem',
             fontWeight: 800,
             padding: '1px 4px',
             borderRadius: '3px',
@@ -877,11 +872,11 @@ export default function MenuPage() {
         </div>
 
         {/* Bottom details */}
-        <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1 }}>
           {/* Name (2-line limit) */}
           <h4 style={{
             fontFamily: 'var(--font-sans)',
-            fontSize: '0.62rem',
+            fontSize: '0.92rem',
             fontWeight: 600,
             color: 'var(--cream)',
             margin: 0,
@@ -899,7 +894,7 @@ export default function MenuPage() {
           {/* Price */}
           <span style={{
             fontFamily: 'var(--font-sans)',
-            fontSize: '0.62rem',
+            fontSize: '0.88rem',
             fontWeight: 700,
             color: 'var(--cream)',
             marginTop: '2px',
@@ -915,7 +910,7 @@ export default function MenuPage() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '2px',
+                gap: '4px',
                 marginTop: 'auto',
                 paddingTop: '4px',
               }}
@@ -928,12 +923,12 @@ export default function MenuPage() {
                     key={size}
                     onClick={() => setSelectedSizes((prev) => ({ ...prev, [item.id]: size }))}
                     style={{
-                      padding: '1px 3px',
+                      padding: '3px 6px',
                       background: active ? 'rgba(225,29,46,0.1)' : 'transparent',
                       border: `1px solid ${active ? 'var(--red)' : 'var(--dark-border)'}`,
                       color: active ? 'var(--red)' : 'var(--text-secondary)',
                       fontFamily: 'var(--font-sans)',
-                      fontSize: '0.42rem',
+                      fontSize: '0.65rem',
                       fontWeight: 700,
                       cursor: 'pointer',
                       borderRadius: '3px',
@@ -952,13 +947,7 @@ export default function MenuPage() {
     );
   };
 
-  if (!user) {
-    return (
-      <div className="page-wrapper" style={{ background: 'var(--void)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: 'var(--gold)', fontFamily: 'var(--font-sans)', fontSize: '0.875rem' }}>Redirecting to secure login...</p>
-      </div>
-    );
-  }
+
 
   return (
     <main className="page-wrapper" style={{ position: 'relative' }}>
@@ -1823,21 +1812,7 @@ export default function MenuPage() {
                   </h2>
                 </div>
 
-                {/* Popularity Badge (Zomato-style Pill) */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: 'rgba(31,84,60,0.06)',
-                  border: '1px solid rgba(31,84,60,0.12)',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  alignSelf: 'flex-start',
-                  marginBottom: '14px',
-                }}>
-                  <div style={{ width: '24px', height: '5px', background: '#1F543C', borderRadius: '3px' }} />
-                  <span style={{ fontSize: '0.65rem', color: '#88cca7', fontWeight: 700, letterSpacing: '0.02em' }}>Highly reordered</span>
-                </div>
+
 
                 {/* Description */}
                 <p style={{

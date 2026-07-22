@@ -43,7 +43,7 @@ export default function SecurityPage() {
   const isMounted = useIsMounted();
 
   // Super Admin check
-  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
+  const SUPER_ADMIN_EMAIL = '';
   const isSuperAdmin = isMounted && user?.email === SUPER_ADMIN_EMAIL;
 
   // Passcode States
