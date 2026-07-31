@@ -17,17 +17,19 @@ async function main() {
 
   // Seed Menu Categories
   const categories = [
-    { name: "Shakes & Coolers", slug: "shakes" },
-    { name: "Burgers & Sandwiches", slug: "burgers" },
-    { name: "Pasta & Noodles", slug: "pastas" },
-    { name: "Snacks & Sides", slug: "snacks" },
-    { name: "Waffles & Desserts", slug: "waffles" },
-    { name: "Hot & Cold Drinks", slug: "drinks" }
+    { id: "shakes", label: "Shakes & Coolers", name: "Shakes & Coolers", slug: "shakes", icon: "✦", desc: "Premium thick shakes and cooling mocktails", bannerImage: "/event-shake.png", sortOrder: 1 },
+    { id: "burgers", label: "Burgers & Sandwiches", name: "Burgers & Sandwiches", slug: "burgers", icon: "◈", desc: "Toasted buns with juicy patties", bannerImage: "/menu-burger.png", sortOrder: 2 },
+    { id: "pastas", label: "Pasta & Noodles", name: "Pasta & Noodles", slug: "pastas", icon: "◉", desc: "Creamy white sauce and Italian herbs", bannerImage: "/menu-pasta.png", sortOrder: 3 },
+    { id: "snacks", label: "Snacks & Sides", name: "Snacks & Sides", slug: "snacks", icon: "▣", desc: "Crispy chicken delights and golden fries", bannerImage: "/menu-fries.png", sortOrder: 4 },
+    { id: "waffles", label: "Waffles & Desserts", name: "Waffles & Desserts", slug: "waffles", icon: "◇", desc: "Fresh bubble waffles and sweet treats", bannerImage: "/event-waffle.png", sortOrder: 5 },
+    { id: "drinks", label: "Hot & Cold Drinks", name: "Hot & Cold Drinks", slug: "drinks", icon: "○", desc: "Classic masala tea and daily brews", bannerImage: "/menu-coffee.png", sortOrder: 6 }
   ];
 
   for (const cat of categories) {
-    await prisma.menuCategory.create({
-      data: cat,
+    await prisma.menuCategory.upsert({
+      where: { id: cat.id },
+      update: cat,
+      create: cat,
     });
   }
 

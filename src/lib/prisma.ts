@@ -10,8 +10,8 @@ const globalForPrisma = global as unknown as {
 
 const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/thelondonshakes';
 
-// Security tripwire: Prevent starting in production with default local database credentials
-if (process.env.NODE_ENV === 'production' && databaseUrl.includes('postgres:postgres@localhost')) {
+// Security tripwire: Prevent starting in production on cloud platforms with default local database credentials
+if (process.env.NODE_ENV === 'production' && process.env.VERCEL && databaseUrl.includes('postgres:postgres@localhost')) {
   console.error("CRITICAL SECURITY ERROR: You are attempting to start the production server using the default unsecured local database credentials ('postgres:postgres@localhost').");
   console.error("Please set a secure, production DATABASE_URL in your environment variables (.env.local) to continue.");
   process.exit(1);

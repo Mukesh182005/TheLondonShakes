@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useCMSStore, useRestaurantStore } from '@/store/restaurantStore';
 import ImageUploader from '@/components/ImageUploader';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { Plus, Pencil, Trash2, X, Check, ChevronDown } from 'lucide-react';
-import type { MenuItem, MenuItemPortions } from '@/data/restaurantData';
+import { Plus, Pencil, Trash2, X, Check, ChevronDown, Settings2, ArrowUp, ArrowDown } from 'lucide-react';
+import type { MenuItem, MenuItemPortions, MenuCategory } from '@/data/restaurantData';
 
 const INPUT_STYLE: React.CSSProperties = {
   width: '100%', padding: '10px 14px',
@@ -168,6 +168,339 @@ function CategoryBannerEditor({
   );
 }
 
+/* ─── Category Manager Modal ─── */
+function CategoryManagerModal({
+  categories,
+  menuItems,
+  onAdd,
+  onUpdate,
+  onDelete,
+  onReorder,
+  onReassignItems,
+  onClose,
+}: {
+  categories: MenuCategory[];
+  menuItems: MenuItem[];
+  onAdd: (cat: MenuCategory) => void;
+  onUpdate: (id: string, updated: Partial<MenuCategory>) => void;
+  onDelete: (id: string) => void;
+  onReassignItems: (itemIds: string[], newCategoryId: string) => void;
+  onReorder: (cats: MenuCategory[]) => void;
+  onClose: () => void;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editIcon, setEditIcon] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [newId, setNewId] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [newIcon, setNewIcon] = useState('◆');
+  const [newDesc, setNewDesc] = useState('');
+
+  const [confirmDelId, setConfirmDelId] = useState<string | null>(null);
+  const [reassignTo, setReassignTo] = useState<string>('');
+
+  const startEdit = (cat: MenuCategory) => {
+    setEditingId(cat.id);
+    setEditLabel(cat.label);
+    setEditIcon(cat.icon);
+    setEditDesc(cat.desc);
+  };
+
+  const saveEdit = () => {
+    if (!editingId || !editLabel.trim()) return;
+    onUpdate(editingId, { label: editLabel.trim(), icon: editIcon.trim(), desc: editDesc.trim() });
+    setEditingId(null);
+  };
+
+  const handleAdd = () => {
+    if (!newLabel.trim()) { alert('Enter a category name.'); return; }
+    const id = newId.trim() || newLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    if (categories.some((c) => c.id === id)) { alert('A category with this ID already exists.'); return; }
+    onAdd({ id, label: newLabel.trim(), icon: newIcon.trim() || '◆', desc: newDesc.trim(), bannerImage: null });
+    setNewId(''); setNewLabel(''); setNewIcon('◆'); setNewDesc('');
+    setShowAdd(false);
+  };
+
+  const handleDelete = () => {
+    if (!confirmDelId) return;
+    const itemsInCat = menuItems.filter((i) => i.category === confirmDelId);
+    if (itemsInCat.length > 0 && !reassignTo) {
+      alert('Please select a category to move existing items to.');
+      return;
+    }
+    if (itemsInCat.length > 0 && reassignTo) {
+      onReassignItems(itemsInCat.map((i) => i.id), reassignTo);
+    }
+    onDelete(confirmDelId);
+    setConfirmDelId(null);
+    setReassignTo('');
+  };
+
+  const moveCategory = (index: number, direction: 'up' | 'down') => {
+    const newCats = [...categories];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newCats.length) return;
+    [newCats[index], newCats[targetIndex]] = [newCats[targetIndex], newCats[index]];
+    onReorder(newCats);
+  };
+
+  const ICON_OPTIONS = ['✦', '◈', '◉', '▣', '◇', '○', '◆', '★', '♦', '●', '■', '▲', '♥', '⬡', '⬢'];
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.8)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: '24px',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{
+        background: 'var(--dark-card)', border: '1px solid var(--dark-border)',
+        width: '100%', maxWidth: '640px', maxHeight: '85vh', overflowY: 'auto',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--dark-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: 'var(--cream)', margin: 0 }}>
+              Manage Categories
+            </h2>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              Add, edit, reorder, or remove menu categories
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Category List */}
+        <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {categories.map((cat, idx) => {
+            const itemCount = menuItems.filter((i) => i.category === cat.id).length;
+            const isEditing = editingId === cat.id;
+            const isDeleting = confirmDelId === cat.id;
+
+            return (
+              <div key={cat.id} style={{
+                background: isEditing ? 'rgba(197,168,92,0.06)' : 'var(--dark-surface)',
+                border: `1px solid ${isEditing ? 'rgba(197,168,92,0.3)' : isDeleting ? 'rgba(239,68,68,0.4)' : 'var(--dark-border)'}`,
+                padding: '14px 16px',
+                transition: 'all 0.2s ease',
+              }}>
+                {isDeleting ? (
+                  /* Delete Confirmation */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <p style={{ fontSize: '0.82rem', color: '#ef4444', fontWeight: 600, fontFamily: 'var(--font-sans)' }}>
+                      Delete "{cat.label}"?
+                    </p>
+                    {itemCount > 0 && (
+                      <div>
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                          This category has {itemCount} item{itemCount > 1 ? 's' : ''}. Move them to:
+                        </p>
+                        <div style={{ position: 'relative' }}>
+                          <select
+                            style={{ ...INPUT_STYLE, appearance: 'none', paddingRight: '36px', fontSize: '0.8rem' }}
+                            value={reassignTo}
+                            onChange={(e) => setReassignTo(e.target.value)}
+                          >
+                            <option value="">Select a category...</option>
+                            {categories.filter((c) => c.id !== cat.id).map((c) => (
+                              <option key={c.id} value={c.id}>{c.label}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => { setConfirmDelId(null); setReassignTo(''); }}
+                        style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
+                      >Cancel</button>
+                      <button
+                        onClick={handleDelete}
+                        style={{ padding: '7px 16px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', fontSize: '0.7rem', fontFamily: 'var(--font-sans)', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                      >Delete{itemCount > 0 ? ' & Move Items' : ''}</button>
+                    </div>
+                  </div>
+                ) : isEditing ? (
+                  /* Edit Mode */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={LABEL}>Icon</label>
+                        <div style={{ position: 'relative' }}>
+                          <select
+                            style={{ ...INPUT_STYLE, appearance: 'none', paddingRight: '24px', textAlign: 'center', fontSize: '1rem' }}
+                            value={editIcon}
+                            onChange={(e) => setEditIcon(e.target.value)}
+                          >
+                            {ICON_OPTIONS.map((ic) => <option key={ic} value={ic}>{ic}</option>)}
+                          </select>
+                          <ChevronDown size={12} style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                        </div>
+                      </div>
+                      <div>
+                        <label style={LABEL}>Name</label>
+                        <input style={INPUT_STYLE} value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={LABEL}>Description</label>
+                      <input style={INPUT_STYLE} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Short category description" />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
+                      >Cancel</button>
+                      <button
+                        onClick={saveEdit}
+                        style={{ padding: '7px 16px', background: 'var(--gold)', border: 'none', color: 'var(--black)', fontSize: '0.7rem', fontFamily: 'var(--font-sans)', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                      >Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  /* View Mode */
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '1.1rem', width: '28px', textAlign: 'center', flexShrink: 0 }}>{cat.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--cream)', margin: 0 }}>
+                        {cat.label}
+                      </p>
+                      <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                        {itemCount} item{itemCount !== 1 ? 's' : ''}{cat.desc ? ` · ${cat.desc}` : ''}
+                      </p>
+                    </div>
+                    {/* Reorder */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => moveCategory(idx, 'up')}
+                        disabled={idx === 0}
+                        style={{ width: '24px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--dark-border)', color: idx === 0 ? 'var(--dark-border)' : 'var(--text-secondary)', cursor: idx === 0 ? 'default' : 'pointer', padding: 0 }}
+                      ><ArrowUp size={11} /></button>
+                      <button
+                        onClick={() => moveCategory(idx, 'down')}
+                        disabled={idx === categories.length - 1}
+                        style={{ width: '24px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--dark-border)', color: idx === categories.length - 1 ? 'var(--dark-border)' : 'var(--text-secondary)', cursor: idx === categories.length - 1 ? 'default' : 'pointer', padding: 0 }}
+                      ><ArrowDown size={11} /></button>
+                    </div>
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => startEdit(cat)}
+                        title="Edit"
+                        style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--gold)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.4)'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)'; }}
+                      ><Pencil size={13} /></button>
+                      <button
+                        onClick={() => setConfirmDelId(cat.id)}
+                        title="Delete"
+                        style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.4)'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)'; }}
+                      ><Trash2 size={13} /></button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Add New Category */}
+        <div style={{ padding: '0 24px 20px' }}>
+          {showAdd ? (
+            <div style={{
+              background: 'var(--dark-surface)',
+              border: '1px solid rgba(197,168,92,0.3)',
+              padding: '16px',
+              display: 'flex', flexDirection: 'column', gap: '12px',
+            }}>
+              <h4 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>
+                New Category
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={LABEL}>Icon</label>
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      style={{ ...INPUT_STYLE, appearance: 'none', paddingRight: '24px', textAlign: 'center', fontSize: '1rem' }}
+                      value={newIcon}
+                      onChange={(e) => setNewIcon(e.target.value)}
+                    >
+                      {ICON_OPTIONS.map((ic) => <option key={ic} value={ic}>{ic}</option>)}
+                    </select>
+                    <ChevronDown size={12} style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={LABEL}>Name *</label>
+                  <input style={INPUT_STYLE} value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="e.g. Biryanis" />
+                </div>
+                <div>
+                  <label style={LABEL}>Slug ID</label>
+                  <input
+                    style={{ ...INPUT_STYLE, fontSize: '0.78rem', color: 'var(--text-muted)' }}
+                    value={newId}
+                    onChange={(e) => setNewId(e.target.value)}
+                    placeholder={newLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'auto'}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={LABEL}>Description</label>
+                <input style={INPUT_STYLE} value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Short description for this category" />
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => { setShowAdd(false); setNewId(''); setNewLabel(''); setNewIcon('◆'); setNewDesc(''); }}
+                  style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--dark-border)', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-sans)', fontWeight: 600, cursor: 'pointer' }}
+                >Cancel</button>
+                <button
+                  onClick={handleAdd}
+                  disabled={!newLabel.trim()}
+                  style={{
+                    padding: '8px 20px', background: 'var(--gold)', border: 'none',
+                    color: 'var(--black)', fontSize: '0.7rem', fontFamily: 'var(--font-sans)',
+                    fontWeight: 700, cursor: newLabel.trim() ? 'pointer' : 'not-allowed',
+                    textTransform: 'uppercase', letterSpacing: '0.08em',
+                    opacity: newLabel.trim() ? 1 : 0.5,
+                  }}
+                >Add Category</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAdd(true)}
+              style={{
+                width: '100%', padding: '12px',
+                background: 'transparent', border: '1px dashed rgba(197,168,92,0.3)',
+                color: 'var(--gold)', fontSize: '0.72rem',
+                fontFamily: 'var(--font-sans)', fontWeight: 600,
+                cursor: 'pointer', textTransform: 'uppercase',
+                letterSpacing: '0.1em', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', gap: '8px',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--gold)'; (e.currentTarget as HTMLElement).style.background = 'rgba(197,168,92,0.04)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.3)'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              <Plus size={14} /> Add New Category
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MenuEditorPage() {
   const menuItems       = useCMSStore((s) => s.menuItems);
   const menuCategories  = useCMSStore((s) => s.menuCategories);
@@ -175,6 +508,8 @@ export default function MenuEditorPage() {
   const updateMenuItem  = useCMSStore((s) => s.updateMenuItem);
   const deleteMenuItem  = useCMSStore((s) => s.deleteMenuItem);
   const updateMenuCategory = useCMSStore((s) => s.updateMenuCategory);
+  const addMenuCategory    = useCMSStore((s) => s.addMenuCategory);
+  const deleteMenuCategory = useCMSStore((s) => s.deleteMenuCategory);
   const user            = useRestaurantStore((s) => s.user);
 
   const newArrivalsDaysThreshold = useCMSStore((s) => s.newArrivalsDaysThreshold) || 10;
@@ -184,6 +519,7 @@ export default function MenuEditorPage() {
   const [editingId, setEditingId]   = useState<string | null>(null);
   const [form, setForm]             = useState<EditForm>(EMPTY_FORM);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const filteredItems = activeTab === 'new-arrivals'
     ? menuItems.filter((i) => {
@@ -302,17 +638,40 @@ export default function MenuEditorPage() {
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--cream)', marginBottom: '4px' }}>Menu Editor</h1>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{menuItems.length} items across {menuCategories.length} categories</p>
         </div>
-        <button
-          onClick={openAdd}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '10px 20px', background: 'var(--gold)', border: 'none',
-            color: 'var(--black)', fontFamily: 'var(--font-sans)', fontSize: '0.72rem',
-            fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer',
-          }}
-        >
-          <Plus size={14} /> Add Item
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowCategoryManager(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '10px 18px', background: 'transparent',
+              border: '1px solid var(--dark-border)',
+              color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', fontSize: '0.72rem',
+              fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(197,168,92,0.4)';
+              (e.currentTarget as HTMLElement).style.color = 'var(--cream)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--dark-border)';
+              (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+            }}
+          >
+            <Settings2 size={14} /> Manage Categories
+          </button>
+          <button
+            onClick={openAdd}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '10px 20px', background: 'var(--gold)', border: 'none',
+              color: 'var(--black)', fontFamily: 'var(--font-sans)', fontSize: '0.72rem',
+              fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer',
+            }}
+          >
+            <Plus size={14} /> Add Item
+          </button>
+        </div>
       </div>
 
       {/* Category Tabs */}
@@ -869,6 +1228,51 @@ export default function MenuEditorPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Category Manager Modal */}
+      {showCategoryManager && (
+        <CategoryManagerModal
+          categories={menuCategories}
+          menuItems={menuItems}
+          onAdd={(cat) => {
+            addMenuCategory(cat);
+            fetch('/api/admin/logs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'ADD_CATEGORY',
+                details: `Added new category "${cat.label}" (${cat.id}).`,
+                adminEmail: user?.email || 'unknown@thelondon.co.uk',
+              }),
+            }).catch((err) => console.warn('Failed to log category add:', err));
+          }}
+          onUpdate={(id, updated) => updateMenuCategory(id, updated)}
+          onReassignItems={(itemIds, newCatId) => {
+            itemIds.forEach((itemId) => updateMenuItem(itemId, { category: newCatId }));
+          }}
+          onDelete={(id) => {
+            const cat = menuCategories.find((c) => c.id === id);
+            deleteMenuCategory(id);
+            fetch('/api/admin/logs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'DELETE_CATEGORY',
+                details: `Deleted category "${cat?.label || id}".`,
+                adminEmail: user?.email || 'unknown@thelondon.co.uk',
+              }),
+            }).catch((err) => console.warn('Failed to log category delete:', err));
+            if (activeTab === id) {
+              const remaining = menuCategories.filter((c) => c.id !== id);
+              setActiveTab(remaining.length > 0 ? remaining[0].id : 'new-arrivals');
+            }
+          }}
+          onReorder={(newCats) => {
+            useCMSStore.setState({ menuCategories: newCats });
+          }}
+          onClose={() => setShowCategoryManager(false)}
+        />
       )}
     </div>
   );

@@ -38,10 +38,19 @@ model MenuItem {
 }
 
 model MenuCategory {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  slug      String   @unique
-  createdAt DateTime @default(now())
+  id                     String   @id @default(uuid())
+  label                  String   @default("")
+  name                   String?
+  slug                   String?
+  icon                   String   @default("◆")
+  desc                   String   @default("")
+  bannerImage            String?
+  gutterImageLeftTop     String?
+  gutterImageLeftBottom  String?
+  gutterImageRightTop    String?
+  gutterImageRightBottom String?
+  sortOrder              Int      @default(0)
+  createdAt              DateTime @default(now())
 }
 
 model Order {

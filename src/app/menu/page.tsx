@@ -1385,12 +1385,26 @@ export default function MenuPage() {
               if (activeCategory !== 'all' && activeCategory !== cat.id) return null;
               
               const catItems = itemsByCategory[cat.id] || [];
-              if (catItems.length === 0) return null;
+              if (activeCategory === 'all' && catItems.length === 0) return null;
               
               return (
                 <div key={cat.id} style={{ marginBottom: '56px' }}>
                   {renderCategoryBanner(cat.id, cat.label, cat.desc, catItems.length)}
-                  {isMobile ? (
+                  {catItems.length === 0 ? (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '48px 20px',
+                      color: 'var(--text-secondary)',
+                      background: 'var(--dark-card)',
+                      border: '1px dashed var(--dark-border-2)',
+                      borderRadius: '16px',
+                    }}>
+                      <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: 'var(--cream)', marginBottom: '6px' }}>
+                        No items in {cat.label} yet
+                      </p>
+                      <p style={{ fontSize: '0.825rem' }}>Items added to this category in the Admin Panel will appear here.</p>
+                    </div>
+                  ) : isMobile ? (
                     <MobileGrid items={catItems} renderCard={renderMobileCard} />
                   ) : (
                     <div style={{

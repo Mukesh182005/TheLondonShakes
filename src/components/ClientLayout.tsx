@@ -15,19 +15,25 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const isAdmin  = pathname.startsWith('/admin');
   const loadSystemSettings = useCMSStore((state) => state.loadSystemSettings);
+  const loadCategories     = useCMSStore((state) => state.loadCategories);
+  const loadMenuItems      = useCMSStore((state) => state.loadMenuItems);
   const acceptingOrders = useCMSStore((state) => state.acceptingOrders);
   const isMounted = useIsMounted();
 
   useEffect(() => {
     loadSystemSettings();
+    loadCategories();
+    loadMenuItems();
 
-    // Poll settings every 8 seconds to update order taking & maintenance status in real-time
+    // Poll settings, categories, and menu items to keep database sync in real-time
     const interval = setInterval(() => {
       loadSystemSettings();
+      loadCategories();
+      loadMenuItems();
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [loadSystemSettings]);
+  }, [loadSystemSettings, loadCategories, loadMenuItems]);
 
 
   return (

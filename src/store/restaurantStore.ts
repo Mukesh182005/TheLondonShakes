@@ -745,6 +745,8 @@ export interface CMSState {
   newArrivalsDaysThreshold: number;
   setNewArrivalsDaysThreshold: (val: number) => void;
   loadSystemSettings: () => Promise<void>;
+  loadCategories: () => Promise<void>;
+  loadMenuItems: () => Promise<void>;
 
   homepageData: HomepageData;
   updateHomepageData: (data: Partial<HomepageData>) => void;
@@ -773,11 +775,27 @@ export const useCMSStore = create<CMSState>()(
         set((state) => ({
           menuItems: [...state.menuItems, newItem],
         }));
+        fetch('/api/menu-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: newItem.id,
+            name: newItem.name,
+            description: newItem.description,
+            price: newItem.price,
+            category: newItem.category,
+            image: newItem.image,
+            active: newItem.active,
+          }),
+        }).catch((err) => console.warn('Failed to save menu item to DB:', err));
       },
       deleteMenuItem: (id) => {
         set((state) => ({
           menuItems: state.menuItems.filter((i) => i.id !== id),
         }));
+        fetch(`/api/menu-items/${id}`, {
+          method: 'DELETE',
+        }).catch((err) => console.warn('Failed to delete menu item from DB:', err));
       },
       updateMenuItem: (id, updated) => {
         set((state) => ({
@@ -785,6 +803,11 @@ export const useCMSStore = create<CMSState>()(
             item.id === id ? { ...item, ...updated } : item
           ),
         }));
+        fetch(`/api/menu-items/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated),
+        }).catch((err) => console.warn('Failed to update menu item in DB:', err));
       },
 
       menuCategories: initialMenuCategories,
@@ -792,11 +815,19 @@ export const useCMSStore = create<CMSState>()(
         set((state) => ({
           menuCategories: [...state.menuCategories, category],
         }));
+        fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(category),
+        }).catch((err) => console.warn('Failed to save category to DB:', err));
       },
       deleteMenuCategory: (id) => {
         set((state) => ({
           menuCategories: state.menuCategories.filter((c) => c.id !== id),
         }));
+        fetch(`/api/categories/${id}`, {
+          method: 'DELETE',
+        }).catch((err) => console.warn('Failed to delete category from DB:', err));
       },
       updateMenuCategory: (id, updated) => {
         set((state) => ({
@@ -804,6 +835,11 @@ export const useCMSStore = create<CMSState>()(
             c.id === id ? { ...c, ...updated } : c
           ),
         }));
+        fetch(`/api/categories/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated),
+        }).catch((err) => console.warn('Failed to update category in DB:', err));
       },
 
       upcomingEvents: initialUpcomingEvents,
@@ -947,6 +983,80 @@ export const useCMSStore = create<CMSState>()(
           }
         } catch (e) {
           console.warn('Failed to load system settings:', e);
+        }
+      },
+
+      loadCategories: async () => {
+        try {
+          const res = await fetch(`/api/categories?t=${Date.now()}`, { cache: 'no-store' });
+          const data = await res.json();
+          if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
+            set({
+              menuCategories: data.categories.map((c: any) => ({
+                id: c.id,
+                label: c.label || c.name || c.id,
+                icon: c.icon || '◆',
+                desc: c.desc || '',
+                bannerImage: c.bannerImage || null,
+                gutterImageLeftTop: c.gutterImageLeftTop || null,
+                gutterImageLeftBottom: c.gutterImageLeftBottom || null,
+                gutterImageRightTop: c.gutterImageRightTop || null,
+                gutterImageRightBottom: c.gutterImageRightBottom || null,
+              })),
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to load menu categories from DB:', e);
+        }
+      },
+
+      loadMenuItems: async () => {
+        try {
+          const res = await fetch(`/api/menu-items?t=${Date.now()}`, { cache: 'no-store' });
+          const data = await res.json();
+          if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+            set((state) => {
+              const dbMap = new Map<string, any>(data.items.map((i: any) => [i.id, i]));
+              const merged = state.menuItems.map((item) => {
+                const dbItem = dbMap.get(item.id);
+                if (dbItem) {
+                  dbMap.delete(item.id);
+                  return {
+                    ...item,
+                    name: dbItem.name,
+                    description: dbItem.description,
+                    price: dbItem.price,
+                    category: dbItem.category,
+                    image: dbItem.imageUrl || item.image || null,
+                    active: dbItem.active !== undefined ? dbItem.active : item.active,
+                  };
+                }
+                return item;
+              });
+
+              dbMap.forEach((dbItem: any) => {
+                merged.push({
+                  id: dbItem.id,
+                  category: dbItem.category,
+                  course: dbItem.category,
+                  name: dbItem.name,
+                  description: dbItem.description,
+                  price: dbItem.price,
+                  dietary: ['v'],
+                  allergens: [],
+                  gradient: 'food-photo-dinner',
+                  image: dbItem.imageUrl || null,
+                  active: dbItem.active,
+                  createdAt: dbItem.createdAt,
+                  updatedAt: dbItem.updatedAt,
+                });
+              });
+
+              return { menuItems: merged };
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to load menu items from DB:', e);
         }
       },
 
