@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useRestaurantStore, useIsMounted } from '@/store/restaurantStore';
+import { useRestaurantStore } from '@/store/restaurantStore';
 import { Menu, X, Sun, Moon } from 'lucide-react';
 
 const leftLinks = [
@@ -80,9 +80,12 @@ export default function Navbar() {
   const storeUser = useRestaurantStore((s) => s.user);
   const logout    = useRestaurantStore((s) => s.logout);
 
-  const isMounted = useIsMounted();
+
+  const [isMounted, setIsMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => { setIsMounted(true); }, []);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);

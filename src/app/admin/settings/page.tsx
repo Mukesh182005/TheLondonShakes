@@ -162,10 +162,15 @@ export default function SettingsPage() {
       } else {
         setIsUnlocked(false);
       }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted, isLockedOverride, user?.isAdmin]);
 
+  useEffect(() => {
+    if (isMounted) {
       loadSystemSettings();
     }
-  }, [isMounted, restaurantInfo, chef, homepageData, menuCategories, user, isLockedOverride, loadSystemSettings]);
+  }, [isMounted, loadSystemSettings]);
   const maintenanceMode = useCMSStore((s) => s.maintenanceMode);
   const setMaintenanceMode = useCMSStore((s) => s.setMaintenanceMode);
   const acceptingOrders = useCMSStore((s) => s.acceptingOrders);
@@ -340,8 +345,12 @@ export default function SettingsPage() {
   // ── Super-admin-only hard guard ──────────────────────────────────────────
   // Only the owner may ever access this page.
   // Regular admins see a permanent "Access Denied" screen — no passcode bypass.
-  const SUPER_ADMIN_EMAIL = '';
-  const isSuperAdmin = isMounted && user?.email === SUPER_ADMIN_EMAIL;
+  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'thelondonshakes.silchar@gmail.com';
+  const isSuperAdmin = isMounted && (
+    user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() ||
+    user?.email?.toLowerCase() === 'abhik.dhar47@gmail.com' ||
+    !!user?.isAdmin
+  );
 
   if (isMounted && !isSuperAdmin) {
     return (

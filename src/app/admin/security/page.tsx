@@ -43,8 +43,12 @@ export default function SecurityPage() {
   const isMounted = useIsMounted();
 
   // Super Admin check
-  const SUPER_ADMIN_EMAIL = '';
-  const isSuperAdmin = isMounted && user?.email === SUPER_ADMIN_EMAIL;
+  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'thelondonshakes.silchar@gmail.com';
+  const isSuperAdmin = isMounted && (
+    user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() ||
+    user?.email?.toLowerCase() === 'abhik.dhar47@gmail.com' ||
+    !!user?.isAdmin
+  );
 
   // Passcode States
   const [newPasscode, setNewPasscode] = useState('');

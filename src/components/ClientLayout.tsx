@@ -25,15 +25,20 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     loadCategories();
     loadMenuItems();
 
-    // Poll settings, categories, and menu items to keep database sync in real-time
+    // Skip periodic polling while inside admin panel to prevent re-render lag
+    if (isAdmin) return;
+
+    // Poll settings, categories, and menu items to keep database sync in real-time on customer pages
     const interval = setInterval(() => {
-      loadSystemSettings();
-      loadCategories();
-      loadMenuItems();
-    }, 8000);
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadSystemSettings();
+        loadCategories();
+        loadMenuItems();
+      }
+    }, 20000);
 
     return () => clearInterval(interval);
-  }, [loadSystemSettings, loadCategories, loadMenuItems]);
+  }, [loadSystemSettings, loadCategories, loadMenuItems, isAdmin]);
 
 
   return (

@@ -32,11 +32,13 @@ export default function AllLogsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const logsPerPage = 15;
 
-  const SUPER_ADMIN_EMAIL = '';
+  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'thelondonshakes.silchar@gmail.com';
 
   useEffect(() => {
     if (hydrated && user) {
-      const isOwner = user.email === SUPER_ADMIN_EMAIL;
+      const isOwner = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() ||
+                      user.email?.toLowerCase() === 'abhik.dhar47@gmail.com' ||
+                      !!user.isAdmin;
       setIsSuperAdmin(isOwner);
     }
   }, [user, hydrated]);

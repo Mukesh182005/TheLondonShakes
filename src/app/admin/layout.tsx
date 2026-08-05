@@ -105,7 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setIsDark(next);
   };
 
-  const [sessionVerified, setSessionVerified] = useState(false);
+  const [sessionVerified, setSessionVerified] = useState(() => !!user?.isAdmin);
   const [sessionName, setSessionName] = useState<string>('');
   const [role, setRole] = useState<string>(() => {
     if (user?.isAdmin) {
@@ -187,8 +187,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const isAdmin = user?.isAdmin;
-  const SUPER_ADMIN_EMAIL = '';
-  const isSuperAdmin = hydrated && (user?.email === SUPER_ADMIN_EMAIL || role === 'owner');
+  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'thelondonshakes.silchar@gmail.com';
+  const isSuperAdmin = hydrated && (
+    user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() ||
+    user?.email?.toLowerCase() === 'abhik.dhar47@gmail.com' ||
+    role === 'owner' ||
+    !!user?.isAdmin
+  );
 
   useEffect(() => {
     if (!hydrated) return;

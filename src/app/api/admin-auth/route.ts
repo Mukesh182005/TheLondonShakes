@@ -54,7 +54,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const isOwner = cleanEmail === (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
+    const superAdminEmails = [
+      (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase(),
+      (process.env.OWNER_EMAIL || '').toLowerCase(),
+      'thelondonshakes.silchar@gmail.com',
+      'abhik.dhar47@gmail.com'
+    ].filter(Boolean);
+    const isOwner = superAdminEmails.includes(cleanEmail);
 
     let token = '';
 

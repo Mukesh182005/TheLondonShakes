@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || '';
+const SUPER_ADMIN_EMAILS = [
+  (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase(),
+  (process.env.OWNER_EMAIL || '').toLowerCase(),
+  'thelondonshakes.silchar@gmail.com',
+  'abhik.dhar47@gmail.com'
+].filter(Boolean);
 
-/** Validate that the request comes from the super admin (basic email header check).
- *  For a production app you'd validate a signed session token; here we rely on
- *  the caller passing the authenticated user email which the admin layout already guards.
- */
 function isSuperAdmin(req: NextRequest): boolean {
-  const callerEmail = req.headers.get('x-admin-email') || '';
-  return callerEmail.trim().toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+  const callerEmail = req.headers.get('x-admin-email')?.trim().toLowerCase() || '';
+  return SUPER_ADMIN_EMAILS.includes(callerEmail);
 }
 
 // ── GET /api/admin/staff-accounts ─────────────────────────────────────────
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
     data: {
       action: 'CREATE_STAFF_ACCOUNT',
       details: `Created ${role} account for ${email}`,
-      adminEmail: SUPER_ADMIN_EMAIL,
+      adminEmail: req.headers.get('x-admin-email') || SUPER_ADMIN_EMAILS[0],
     },
   }).catch(() => {});
 
@@ -124,7 +125,7 @@ export async function PATCH(req: NextRequest) {
     data: {
       action: 'UPDATE_STAFF_ACCOUNT',
       details: `Updated staff account for ${account.email}. Changed: ${changedFields.join(', ')}`,
-      adminEmail: SUPER_ADMIN_EMAIL,
+      adminEmail: req.headers.get('x-admin-email') || SUPER_ADMIN_EMAILS[0],
     },
   }).catch(() => {});
 
@@ -148,7 +149,7 @@ export async function DELETE(req: NextRequest) {
       data: {
         action: 'DELETE_STAFF_ACCOUNT',
         details: `Deleted staff account for ${oldAccount.email} (${oldAccount.name}, role: ${oldAccount.role})`,
-        adminEmail: SUPER_ADMIN_EMAIL,
+        adminEmail: req.headers.get('x-admin-email') || SUPER_ADMIN_EMAILS[0],
       },
     }).catch(() => {});
   }

@@ -48,7 +48,7 @@ function LoginForm() {
       }
 
       // Sync user state in Zustand store
-      login(email);
+      login(email, data.name || "Maître d' London", undefined, true);
 
       // Redirect to target path
       router.push(fromPath);

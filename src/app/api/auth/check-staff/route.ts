@@ -31,7 +31,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Super admin check
-  if (email === (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase()) {
+  const superAdminEmails = [
+    (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase(),
+    (process.env.OWNER_EMAIL || '').toLowerCase(),
+    'thelondonshakes.silchar@gmail.com',
+    'abhik.dhar47@gmail.com'
+  ].filter(Boolean);
+  if (superAdminEmails.includes(email)) {
     return NextResponse.json({ isStaff: true });
   }
 

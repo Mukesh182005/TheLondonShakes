@@ -23,16 +23,20 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const isFull = searchParams.get('full') === 'true';
 
-    const maintenanceModeVal = await getSetting('maintenanceMode', 'false');
-    const acceptingOrdersVal = await getSetting('acceptingOrders', 'true');
-    const requireReceiptPhotoVal = await getSetting('requireReceiptPhoto', 'true');
-    const newArrivalsDaysThresholdVal = await getSetting('newArrivalsDaysThreshold', '10');
+    // Fetch all system settings in 1 single DB query instead of 5-6 sequential queries
+    const allSettings = await prisma.systemSetting.findMany();
+    const settingsMap = new Map(allSettings.map((s) => [s.key, s.value]));
+
+    const maintenanceModeVal = settingsMap.get('maintenanceMode') ?? 'false';
+    const acceptingOrdersVal = settingsMap.get('acceptingOrders') ?? 'true';
+    const requireReceiptPhotoVal = settingsMap.get('requireReceiptPhoto') ?? 'true';
+    const newArrivalsDaysThresholdVal = settingsMap.get('newArrivalsDaysThreshold') ?? '10';
     const defaultPasscode = process.env.ADMIN_PASSCODE || 'LondonOwner@2026';
-    const adminPasscodeVal = await getSetting('adminPasscode', defaultPasscode);
+    const adminPasscodeVal = settingsMap.get('adminPasscode') ?? defaultPasscode;
     
     let parsedRestaurantInfo = null;
     if (isFull) {
-      const restaurantInfoVal = await getSetting('restaurantInfo', '');
+      const restaurantInfoVal = settingsMap.get('restaurantInfo') ?? '';
       if (restaurantInfoVal) {
         try {
           parsedRestaurantInfo = JSON.parse(restaurantInfoVal);

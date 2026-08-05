@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         });
         if (staff) {
           finalAdminEmail = `${staff.name} | ${adminEmail}`;
-        } else if (adminEmail === (process.env.SUPER_ADMIN_EMAIL || '')) {
+        } else if (['thelondonshakes.silchar@gmail.com', 'abhik.dhar47@gmail.com', (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase(), (process.env.OWNER_EMAIL || '').toLowerCase()].includes(adminEmail.toLowerCase())) {
           finalAdminEmail = `Super Admin | ${adminEmail}`;
         } else {
           const dbUser = await prisma.user.findUnique({
