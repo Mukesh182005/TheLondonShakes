@@ -268,72 +268,74 @@ export default function Navbar() {
                 <NavLink key={link.href} link={link} active={isActive(link.href)} />
               ))}
               {isAdmin && <NavLink link={{ label: 'Admin', href: '/admin' }} active={isActive('/admin')} />}
-              {isMounted ? (
-                user ? (
-                  <button
-                    onClick={handleSignOut}
-                    style={{
-                      marginLeft: '18px',
-                      padding: '7px 18px',
-                      background: 'transparent',
-                      border: '1px solid rgba(232, 16, 42, 0.5)',
-                      color: '#E8102A',
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: '0.6rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.12em',
-                      textTransform: 'uppercase',
-                      borderRadius: '2px',
-                      cursor: 'pointer',
-                      transition: 'all 0.25s ease',
-                      whiteSpace: 'nowrap',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(232, 16, 42, 0.05)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    Sign Out
-                  </button>
-                ) : (
-                  <a
-                    href="/account"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginLeft: '18px',
-                      padding: '7px 18px',
-                      background: '#E8102A',
-                      color: 'white',
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: '0.6rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.12em',
-                      textTransform: 'uppercase',
-                      textDecoration: 'none',
-                      borderRadius: '2px',
-                      boxShadow: '0 4px 14px rgba(232, 16, 42, 0.25)',
-                      transition: 'all 0.25s ease',
-                      whiteSpace: 'nowrap',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#ff2e48';
-                      e.currentTarget.style.boxShadow = '0 6px 18px rgba(232, 16, 42, 0.4)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#E8102A';
-                      e.currentTarget.style.boxShadow = '0 4px 14px rgba(232, 16, 42, 0.25)';
-                      e.currentTarget.style.transform = 'none';
-                    }}
-                  >
-                    Sign In
-                  </a>
-                )
-              ) : null}
+              <span suppressHydrationWarning style={{ display: 'inline-flex', alignItems: 'center' }}>
+                {isMounted ? (
+                  user ? (
+                    <button
+                      onClick={handleSignOut}
+                      style={{
+                        marginLeft: '18px',
+                        padding: '7px 18px',
+                        background: 'transparent',
+                        border: '1px solid rgba(232, 16, 42, 0.5)',
+                        color: '#E8102A',
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        transition: 'all 0.25s ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(232, 16, 42, 0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      Sign Out
+                    </button>
+                  ) : (
+                    <a
+                      href="/account"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginLeft: '18px',
+                        padding: '7px 18px',
+                        background: '#E8102A',
+                        color: 'white',
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        textDecoration: 'none',
+                        borderRadius: '2px',
+                        boxShadow: '0 4px 14px rgba(232, 16, 42, 0.25)',
+                        transition: 'all 0.25s ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#ff2e48';
+                        e.currentTarget.style.boxShadow = '0 6px 18px rgba(232, 16, 42, 0.4)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#E8102A';
+                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(232, 16, 42, 0.25)';
+                        e.currentTarget.style.transform = 'none';
+                      }}
+                    >
+                      Sign In
+                    </a>
+                  )
+                ) : null}
+              </span>
 
               {/* Theme toggle */}
               <button
@@ -575,7 +577,7 @@ export default function Navbar() {
           )}
 
           {/* Sign In / Account CTA */}
-          <div style={{ marginTop: '24px' }}>
+          <div suppressHydrationWarning style={{ marginTop: '24px' }}>
             {isMounted ? (
               user ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

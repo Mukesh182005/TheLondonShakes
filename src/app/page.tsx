@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import MagneticButton from '@/components/MagneticButton';
+import ScrollFrameCanvas from '@/components/ScrollFrameCanvas';
 import { useCMSStore, useRestaurantStore, useIsMounted } from '@/store/restaurantStore';
 import {
   restaurantInfo as initialRestaurantInfo,
@@ -279,92 +280,91 @@ export default function HomePage() {
       {/* ══════════════ DESCRIPTOR STAR-BAND (Gucci signature) ══════════════ */}
       <DescriptorBand />
 
-      {/* ══════════════ INTRO — editorial, whitespace-forward ══════════════ */}
-      <section style={{ background: 'var(--black)', padding: 'clamp(90px, 12vw, 160px) 0' }}>
-        <div className="container" ref={introRef.ref}>
-          <div style={{ maxWidth: '820px', margin: '0 auto', textAlign: 'center' }}>
-            <p style={{
-              fontFamily: 'var(--font-sans)', fontSize: '0.58rem', fontWeight: 600,
-              letterSpacing: '0.42em', textTransform: 'uppercase', color: 'var(--red)',
-              marginBottom: '32px',
-              opacity: introRef.visible ? 1 : 0,
-              transition: 'opacity 1s var(--ease-expo)',
-            }}>
-              The London Shakes
-            </p>
-            <p style={{
-              fontFamily: 'var(--font-display)',
-              fontSize:   'clamp(1.7rem, 3.4vw, 2.9rem)',
-              fontWeight: 300,
-              lineHeight: 1.35,
-              letterSpacing: '-0.015em',
-              color:      'var(--cream)',
-              marginBottom: '40px',
-              opacity:    introRef.visible ? 1 : 0,
-              transform:  introRef.visible ? 'none' : 'translateY(24px)',
-              transition: 'all 1.1s var(--ease-expo) 0.1s',
-            }}>
-              Nestled in the heart of Silchar, a contemporary café inspired by the grandeur of
-              1950s Britain — where every sip tells a story.
-            </p>
-            <Link href="/about" className="link-underline" style={{
-              display: 'inline-flex', alignItems: 'center', gap: '10px',
-              opacity: introRef.visible ? 1 : 0, transition: 'opacity 1s var(--ease-expo) 0.3s',
-            }}>
-              Our Story <ArrowRight size={11} />
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* ══════════════ SCROLL-FRAME BACKGROUND (wraps Intro + Quote) ══════════════ */}
+      <ScrollFrameCanvas>
 
-      {/* ══════════════ FOUNDER QUOTE — dark, restrained ══════════════ */}
-      <section ref={quoteRef.ref} style={{
-        background: 'var(--panel-dark)',
-        padding:    'clamp(90px, 12vw, 160px) 0',
-        position:   'relative',
-        overflow:   'hidden',
-      }}>
-        <div style={{ position: 'absolute', inset: 0 }}>
-          <Image src="/cafe-interior-1.jpg" alt="" aria-hidden fill sizes="100vw"
-            style={{ objectFit: 'cover', opacity: 0.6, filter: 'grayscale(0.35)' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(14,12,9,0.55) 0%, rgba(14,12,9,0.75) 55%, rgba(14,12,9,0.55) 100%)' }} />
-        </div>
-        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{
-            maxWidth: '860px', margin: '0 auto', textAlign: 'center',
-            opacity: quoteRef.visible ? 1 : 0,
-            transform: quoteRef.visible ? 'none' : 'translateY(28px)',
-            transition: 'all 1.1s var(--ease-expo)',
-          }}>
-            <span aria-hidden style={{
-              fontFamily: 'var(--font-display)', fontSize: '5rem', lineHeight: 0.5,
-              color: 'var(--red)', opacity: 0.55, display: 'block', marginBottom: '8px',
-            }}>&ldquo;</span>
-            <blockquote style={{
-              fontFamily: 'var(--font-display)',
-              fontSize:   'clamp(1.8rem, 3.6vw, 3.1rem)',
-              fontWeight: 300,
-              color:      'var(--on-dark)',
-              lineHeight: 1.3,
-              letterSpacing: '-0.015em',
-              marginBottom: '40px',
-            }}>
-              We built a café that honours British heritage while celebrating the bold spirit
-              of Silchar&rsquo;s food culture.
-            </blockquote>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '16px' }}>
-              <span style={{ width: '40px', height: '1px', background: 'var(--red)', opacity: 0.6 }} />
-              <span style={{
-                fontFamily: 'var(--font-sans)', fontSize: '0.62rem', fontWeight: 600,
-                letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--on-dark-muted)',
+        {/* ── INTRO — editorial, whitespace-forward ── */}
+        <section style={{ padding: 'clamp(90px, 12vw, 160px) 0' }}>
+          <div className="container" ref={introRef.ref}>
+            <div style={{ maxWidth: '820px', margin: '0 auto', textAlign: 'center' }}>
+              <p style={{
+                fontFamily: 'var(--font-sans)', fontSize: '0.58rem', fontWeight: 600,
+                letterSpacing: '0.42em', textTransform: 'uppercase', color: 'var(--red)',
+                marginBottom: '32px',
+                opacity: introRef.visible ? 1 : 0,
+                transition: 'opacity 1s var(--ease-expo)',
               }}>
-                {chef.name}, Founder
-              </span>
-              <span style={{ width: '40px', height: '1px', background: 'var(--red)', opacity: 0.6 }} />
+                The London Shakes
+              </p>
+              <p style={{
+                fontFamily: 'var(--font-display)',
+                fontSize:   'clamp(1.7rem, 3.4vw, 2.9rem)',
+                fontWeight: 300,
+                lineHeight: 1.35,
+                letterSpacing: '-0.015em',
+                color:      'var(--cream)',
+                marginBottom: '40px',
+                opacity:    introRef.visible ? 1 : 0,
+                transform:  introRef.visible ? 'none' : 'translateY(24px)',
+                transition: 'all 1.1s var(--ease-expo) 0.1s',
+              }}>
+                Nestled in the heart of Silchar, a contemporary café inspired by the grandeur of
+                1950s Britain — where every sip tells a story.
+              </p>
+              <Link href="/about" className="link-underline" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '10px',
+                opacity: introRef.visible ? 1 : 0, transition: 'opacity 1s var(--ease-expo) 0.3s',
+              }}>
+                Our Story <ArrowRight size={11} />
+              </Link>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* ── FOUNDER QUOTE — editorial, restrained ── */}
+        <section ref={quoteRef.ref} style={{
+          padding:    'clamp(90px, 12vw, 160px) 0',
+          position:   'relative',
+          overflow:   'hidden',
+        }}>
+          <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{
+              maxWidth: '860px', margin: '0 auto', textAlign: 'center',
+              opacity: quoteRef.visible ? 1 : 0,
+              transform: quoteRef.visible ? 'none' : 'translateY(28px)',
+              transition: 'all 1.1s var(--ease-expo)',
+            }}>
+              <span aria-hidden style={{
+                fontFamily: 'var(--font-display)', fontSize: '5rem', lineHeight: 0.5,
+                color: 'var(--red)', opacity: 0.55, display: 'block', marginBottom: '8px',
+              }}>&ldquo;</span>
+              <blockquote style={{
+                fontFamily: 'var(--font-display)',
+                fontSize:   'clamp(1.8rem, 3.6vw, 3.1rem)',
+                fontWeight: 300,
+                color:      'var(--cream)',
+                lineHeight: 1.3,
+                letterSpacing: '-0.015em',
+                marginBottom: '40px',
+              }}>
+                We built a café that honours British heritage while celebrating the bold spirit
+                of Silchar&rsquo;s food culture.
+              </blockquote>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '16px' }}>
+                <span style={{ width: '40px', height: '1px', background: 'var(--red)', opacity: 0.6 }} />
+                <span style={{
+                  fontFamily: 'var(--font-sans)', fontSize: '0.62rem', fontWeight: 600,
+                  letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--text-secondary)',
+                }}>
+                  {chef.name}, Founder
+                </span>
+                <span style={{ width: '40px', height: '1px', background: 'var(--red)', opacity: 0.6 }} />
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </ScrollFrameCanvas>
 
       {/* ══════════════ EVENTS — quiet editorial list ══════════════ */}
       {upcomingEvents.length > 0 && (

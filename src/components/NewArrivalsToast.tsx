@@ -97,20 +97,20 @@ export default function NewArrivalsToast() {
           bottom: 0;
           width: 380px;
           max-width: 100vw;
-          background: rgba(14, 10, 4, 0.98);
-          border-left: 1px solid rgba(197, 168, 92, 0.2);
-          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8);
+          background: var(--dark-bg);
+          border-left: 1px solid var(--dark-border-2);
+          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.3);
           z-index: 150;
           display: flex;
           flex-direction: column;
           transform: translateX(${isOpen ? '0' : '100%'});
-          transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease;
           backdrop-filter: blur(12px);
         }
         .new-sidebar-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.6);
+          background: rgba(0, 0, 0, 0.5);
           backdrop-filter: blur(4px);
           z-index: 140;
           opacity: ${isOpen ? 1 : 0};
@@ -118,7 +118,7 @@ export default function NewArrivalsToast() {
           transition: opacity 0.4s ease;
         }
         .new-item-card {
-          border-bottom: 1px solid rgba(197, 168, 92, 0.12);
+          border-bottom: 1px solid var(--dark-border);
           padding: 20px 0;
           display: flex;
           gap: 16px;
@@ -127,8 +127,8 @@ export default function NewArrivalsToast() {
           width: 80px;
           height: 80px;
           object-fit: cover;
-          border: 1px solid rgba(197, 168, 92, 0.15);
-          background: #18140E;
+          border: 1px solid var(--dark-border);
+          background: var(--dark-card-2);
           flex-shrink: 0;
         }
 
@@ -170,14 +170,14 @@ export default function NewArrivalsToast() {
         {/* Header */}
         <div style={{
           padding: '24px 28px',
-          borderBottom: '1px solid rgba(197, 168, 92, 0.15)',
+          borderBottom: '1px solid var(--dark-border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
           <div>
             <span style={{
-              background: 'var(--red, #E8102A)',
+              background: '#E8102A',
               color: 'white',
               fontSize: '0.52rem',
               fontFamily: 'var(--font-sans)',
@@ -295,8 +295,8 @@ export default function NewArrivalsToast() {
         {/* Footer CTA */}
         <div style={{
           padding: '24px 28px',
-          borderTop: '1px solid rgba(197, 168, 92, 0.15)',
-          background: '#090703',
+          borderTop: '1px solid var(--dark-border)',
+          background: 'var(--dark-card)',
         }}>
           <Link
             href={targetUrl}
@@ -306,8 +306,8 @@ export default function NewArrivalsToast() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              background: 'var(--gold)',
-              color: '#0E0A04',
+              background: '#E8102A',
+              color: '#ffffff',
               padding: '14px',
               fontFamily: 'var(--font-sans)',
               fontSize: '0.75rem',
@@ -315,6 +315,8 @@ export default function NewArrivalsToast() {
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
               textDecoration: 'none',
+              borderRadius: '2px',
+              boxShadow: '0 4px 14px rgba(232, 16, 42, 0.25)',
               transition: 'all 0.2s',
             }}
           >
