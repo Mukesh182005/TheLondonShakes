@@ -704,6 +704,8 @@ export interface FloorTable {
 
 // ── Store 2: Administrative/CMS Store ──
 export interface CMSState {
+  deletedMenuItemIds?: string[];
+  deletedCategoryIds?: string[];
   menuItems: MenuItem[];
   addMenuItem: (item: Omit<MenuItem, 'id' | 'gradient'> & { gradient?: string; image?: string | null }) => void;
   deleteMenuItem: (id: string) => void;
@@ -762,6 +764,8 @@ export interface CMSState {
 export const useCMSStore = create<CMSState>()(
   persist(
     (set) => ({
+      deletedMenuItemIds: ['s4', 's5', 's6'],
+      deletedCategoryIds: [],
       menuItems: initialMenuItems,
       addMenuItem: (item) => {
         const id = 'custom-' + Math.random().toString(36).substring(2, 8);
@@ -792,6 +796,7 @@ export const useCMSStore = create<CMSState>()(
       deleteMenuItem: (id) => {
         set((state) => ({
           menuItems: state.menuItems.filter((i) => i.id !== id),
+          deletedMenuItemIds: Array.from(new Set([...(state.deletedMenuItemIds || []), id])),
         }));
         fetch(`/api/menu-items/${id}`, {
           method: 'DELETE',
@@ -824,6 +829,7 @@ export const useCMSStore = create<CMSState>()(
       deleteMenuCategory: (id) => {
         set((state) => ({
           menuCategories: state.menuCategories.filter((c) => c.id !== id),
+          deletedCategoryIds: Array.from(new Set([...(state.deletedCategoryIds || []), id])),
         }));
         fetch(`/api/categories/${id}`, {
           method: 'DELETE',
@@ -990,19 +996,27 @@ export const useCMSStore = create<CMSState>()(
         try {
           const res = await fetch(`/api/categories?t=${Date.now()}`, { cache: 'no-store' });
           const data = await res.json();
-          if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
-            set({
-              menuCategories: data.categories.map((c: any) => ({
-                id: c.id,
-                label: c.label || c.name || c.id,
-                icon: c.icon || '◆',
-                desc: c.desc || '',
-                bannerImage: c.bannerImage || null,
-                gutterImageLeftTop: c.gutterImageLeftTop || null,
-                gutterImageLeftBottom: c.gutterImageLeftBottom || null,
-                gutterImageRightTop: c.gutterImageRightTop || null,
-                gutterImageRightBottom: c.gutterImageRightBottom || null,
-              })),
+          if (data.success && Array.isArray(data.categories)) {
+            set((state) => {
+              const deletedSet = new Set(state.deletedCategoryIds || []);
+              if (data.categories.length === 0) {
+                return { menuCategories: state.menuCategories.filter((c) => !deletedSet.has(c.id)) };
+              }
+              const filteredCategories = data.categories
+                .filter((c: any) => !deletedSet.has(c.id))
+                .map((c: any) => ({
+                  id: c.id,
+                  label: c.label || c.name || c.id,
+                  icon: c.icon || '◆',
+                  desc: c.desc || '',
+                  bannerImage: c.bannerImage || null,
+                  gutterImageLeftTop: c.gutterImageLeftTop || null,
+                  gutterImageLeftBottom: c.gutterImageLeftBottom || null,
+                  gutterImageRightTop: c.gutterImageRightTop || null,
+                  gutterImageRightBottom: c.gutterImageRightBottom || null,
+                }));
+              const currentCategories = state.menuCategories.filter((c) => !deletedSet.has(c.id));
+              return { menuCategories: filteredCategories.length > 0 ? filteredCategories : currentCategories };
             });
           }
         } catch (e) {
@@ -1014,10 +1028,46 @@ export const useCMSStore = create<CMSState>()(
         try {
           const res = await fetch(`/api/menu-items?t=${Date.now()}`, { cache: 'no-store' });
           const data = await res.json();
-          if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          if (data.success && Array.isArray(data.items)) {
             set((state) => {
-              const dbMap = new Map<string, any>(data.items.map((i: any) => [i.id, i]));
-              const merged = state.menuItems.map((item) => {
+              const deletedSet = new Set(state.deletedMenuItemIds || []);
+              const autoDishNames = [
+                'mango mania shake',
+                'red melon mojito',
+                'green apple mojito',
+                'fresh watermelon blast',
+                'pineapple passion crusher',
+                'strawberry fruit crush',
+              ];
+              const isAutoDish = (name?: string, id?: string) => {
+                if (['s4', 's5', 's6'].includes(id || '')) return true;
+                if (!name) return false;
+                const lower = name.toLowerCase();
+                return autoDishNames.some((d) => lower.includes(d));
+              };
+
+              const currentItems = state.menuItems.filter(
+                (i) => !deletedSet.has(i.id) && !isAutoDish(i.name, i.id)
+              );
+
+              if (data.items.length === 0) {
+                return { menuItems: currentItems };
+              }
+
+              const dbMap = new Map<string, any>(
+                data.items
+                  .filter((i: any) => {
+                    if (isAutoDish(i.name, i.id)) {
+                      // Silently delete auto dish from backend DB
+                      fetch(`/api/menu-items/${i.id}`, { method: 'DELETE' }).catch(() => {});
+                      return false;
+                    }
+                    return !deletedSet.has(i.id);
+                  })
+                  .map((i: any) => [i.id, i])
+              );
+
+              const merged = currentItems.map((item) => {
                 const dbItem = dbMap.get(item.id);
                 if (dbItem) {
                   dbMap.delete(item.id);
@@ -1035,21 +1085,23 @@ export const useCMSStore = create<CMSState>()(
               });
 
               dbMap.forEach((dbItem: any) => {
-                merged.push({
-                  id: dbItem.id,
-                  category: dbItem.category,
-                  course: dbItem.category,
-                  name: dbItem.name,
-                  description: dbItem.description,
-                  price: dbItem.price,
-                  dietary: ['v'],
-                  allergens: [],
-                  gradient: 'food-photo-dinner',
-                  image: dbItem.imageUrl || null,
-                  active: dbItem.active,
-                  createdAt: dbItem.createdAt,
-                  updatedAt: dbItem.updatedAt,
-                });
+                if (!deletedSet.has(dbItem.id) && !isAutoDish(dbItem.name, dbItem.id)) {
+                  merged.push({
+                    id: dbItem.id,
+                    category: dbItem.category,
+                    course: dbItem.category,
+                    name: dbItem.name,
+                    description: dbItem.description,
+                    price: dbItem.price,
+                    dietary: ['v'],
+                    allergens: [],
+                    gradient: 'food-photo-dinner',
+                    image: dbItem.imageUrl || null,
+                    active: dbItem.active,
+                    createdAt: dbItem.createdAt,
+                    updatedAt: dbItem.updatedAt,
+                  });
+                }
               });
 
               return { menuItems: merged };

@@ -364,70 +364,70 @@ export default function HomePage() {
           </div>
         </section>
 
-      </ScrollFrameCanvas>
-
-      {/* ══════════════ EVENTS — quiet editorial list ══════════════ */}
-      {upcomingEvents.length > 0 && (
-        <section style={{ background: 'var(--black)', padding: 'clamp(90px, 12vw, 150px) 0' }}>
-          <div className="container" ref={eventsRef.ref}>
-            <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-              <p style={{
-                fontFamily: 'var(--font-sans)', fontSize: '0.58rem', fontWeight: 600,
-                letterSpacing: '0.42em', textTransform: 'uppercase', color: 'var(--red)',
-                marginBottom: '16px',
-              }}>Upcoming</p>
-              <h2 style={{
-                fontFamily: 'var(--font-display)', fontSize: 'clamp(2.2rem, 4.5vw, 3.8rem)',
-                fontWeight: 300, color: 'var(--cream)', lineHeight: 1, letterSpacing: '-0.02em',
-              }}>
-                Events &amp; <em style={{ fontStyle: 'italic', color: 'var(--red)' }}>Experiences</em>
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3" style={{
-              gap: '1px', background: 'var(--dark-border)', border: '1px solid var(--dark-border)',
-            }}>
-              {upcomingEvents.slice(0, 3).map((ev, i) => (
-                <div key={ev.id} style={{
-                  background: 'var(--dark-card)', padding: '44px 34px',
-                  display: 'flex', flexDirection: 'column', gap: '14px',
-                  opacity: eventsRef.visible ? 1 : 0,
-                  transform: eventsRef.visible ? 'none' : 'translateY(20px)',
-                  transition: `all 0.9s var(--ease-expo) ${i * 0.1}s`,
+        {/* ══════════════ EVENTS — quiet editorial list ══════════════ */}
+        {upcomingEvents.length > 0 && (
+          <section style={{ padding: 'clamp(90px, 12vw, 150px) 0' }}>
+            <div className="container" ref={eventsRef.ref}>
+              <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+                <p style={{
+                  fontFamily: 'var(--font-sans)', fontSize: '0.58rem', fontWeight: 600,
+                  letterSpacing: '0.42em', textTransform: 'uppercase', color: 'var(--red)',
+                  marginBottom: '16px',
+                }}>Upcoming</p>
+                <h2 style={{
+                  fontFamily: 'var(--font-display)', fontSize: 'clamp(2.2rem, 4.5vw, 3.8rem)',
+                  fontWeight: 300, color: 'var(--cream)', lineHeight: 1, letterSpacing: '-0.02em',
                 }}>
-                  <p style={{
-                    fontFamily: 'var(--font-sans)', fontSize: '0.55rem', fontWeight: 600,
-                    letterSpacing: '0.28em', textTransform: 'uppercase', color: 'var(--red)',
+                  Events &amp; <em style={{ fontStyle: 'italic', color: 'var(--red)' }}>Experiences</em>
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3" style={{
+                gap: '1px', background: 'var(--dark-border)', border: '1px solid var(--dark-border)',
+              }}>
+                {upcomingEvents.slice(0, 3).map((ev, i) => (
+                  <div key={ev.id} style={{
+                    background: 'var(--dark-card)', padding: '44px 34px',
+                    display: 'flex', flexDirection: 'column', gap: '14px',
+                    opacity: eventsRef.visible ? 1 : 0,
+                    transform: eventsRef.visible ? 'none' : 'translateY(20px)',
+                    transition: `all 0.9s var(--ease-expo) ${i * 0.1}s`,
                   }}>
-                    {(() => {
-                      const parsed = new Date(ev.date);
-                      return isNaN(parsed.getTime())
-                        ? ev.date
-                        : parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-                    })()}
-                  </p>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.55rem', fontWeight: 400, color: 'var(--cream)', lineHeight: 1.15 }}>
-                    {ev.title}
-                  </h3>
-                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.65, flex: 1 }}>
-                    {ev.description}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '18px', borderTop: '1px solid var(--dark-border)', marginTop: '8px' }}>
-                    <Clock size={11} color="var(--text-ghost)" />
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6rem', color: 'var(--text-ghost)', letterSpacing: '0.1em' }}>{ev.time}</span>
-                    {ev.price !== undefined && (
-                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6rem', color: 'var(--red)', letterSpacing: '0.1em', marginLeft: 'auto' }}>{ev.price}</span>
-                    )}
+                    <p style={{
+                      fontFamily: 'var(--font-sans)', fontSize: '0.55rem', fontWeight: 600,
+                      letterSpacing: '0.28em', textTransform: 'uppercase', color: 'var(--red)',
+                    }}>
+                      {(() => {
+                        const parsed = new Date(ev.date);
+                        return isNaN(parsed.getTime())
+                          ? ev.date
+                          : parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+                      })()}
+                    </p>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.55rem', fontWeight: 400, color: 'var(--cream)', lineHeight: 1.15 }}>
+                      {ev.title}
+                    </h3>
+                    <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.65, flex: 1 }}>
+                      {ev.description}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '18px', borderTop: '1px solid var(--dark-border)', marginTop: '8px' }}>
+                      <Clock size={11} color="var(--text-ghost)" />
+                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6rem', color: 'var(--text-ghost)', letterSpacing: '0.1em' }}>{ev.time}</span>
+                      {ev.price !== undefined && (
+                        <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6rem', color: 'var(--red)', letterSpacing: '0.1em', marginLeft: 'auto' }}>{ev.price}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div style={{ textAlign: 'center', marginTop: '48px' }}>
+                <Link href="/events" className="link-underline">All events <ArrowRight size={11} style={{ display: 'inline', marginLeft: '6px' }} /></Link>
+              </div>
             </div>
-            <div style={{ textAlign: 'center', marginTop: '48px' }}>
-              <Link href="/events" className="link-underline">All events <ArrowRight size={11} style={{ display: 'inline', marginLeft: '6px' }} /></Link>
-            </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
+
+      </ScrollFrameCanvas>
 
       {/* ══════════════ LOCATION ══════════════ */}
       <section style={{ background: 'var(--void)', padding: 'clamp(70px, 9vw, 110px) 24px' }}>

@@ -109,7 +109,7 @@ function CategoryBannerEditor({
         }}>
           {/* Banner Image */}
           <ImageUploader
-            label="Category Banner Background Image"
+            label="Category Icon & Banner Image (shown on menu circular tabs & banner)"
             value={bannerImage || ''}
             aspectRatio="21/9"
             onChange={(val) => setBannerImage(val)}
@@ -536,9 +536,9 @@ export default function MenuEditorPage() {
       ...EMPTY_FORM,
       category: activeTab,
       portions: {
-        small: { available: true, price: 0 },
+        small: { available: false, price: 0 },
         medium: { available: true, price: 0 },
-        large: { available: true, price: 0 },
+        large: { available: false, price: 0 },
       }
     });
     setEditingId(null);
@@ -546,10 +546,10 @@ export default function MenuEditorPage() {
   };
 
   const openEdit = (item: MenuItem) => {
-    const defaultPortions = {
-      small: { available: true, price: Math.round(item.price * 0.8) },
+    const defaultPortions: MenuItemPortions = {
+      small: { available: false, price: 0 },
       medium: { available: true, price: item.price },
-      large: { available: true, price: Math.round(item.price * 1.3) },
+      large: { available: false, price: 0 },
     };
     setForm({
       ...item,
@@ -900,11 +900,14 @@ export default function MenuEditorPage() {
                     onChange={(e) => {
                       const newPrice = Number(e.target.value);
                       setForm((f) => {
-                        const p = f.portions || { small: { available: true, price: 0 }, medium: { available: true, price: 0 }, large: { available: true, price: 0 } };
+                        const p = f.portions || {
+                          small: { available: false, price: 0 },
+                          medium: { available: true, price: 0 },
+                          large: { available: false, price: 0 },
+                        };
                         const updatedPortions = {
-                          small: { available: p.small.available, price: p.small.price || Math.round(newPrice * 0.8) },
-                          medium: { available: p.medium.available, price: p.medium.price || newPrice },
-                          large: { available: p.large.available, price: p.large.price || Math.round(newPrice * 1.3) },
+                          ...p,
+                          medium: { ...p.medium, price: newPrice },
                         };
                         return { ...f, price: newPrice, portions: updatedPortions };
                       });

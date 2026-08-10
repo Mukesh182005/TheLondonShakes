@@ -30,9 +30,15 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
   try {
     const { id } = await context.params;
 
-    await prisma.menuItem.delete({
-      where: { id },
-    });
+    try {
+      await prisma.menuItem.delete({
+        where: { id },
+      });
+    } catch (err: any) {
+      if (err?.code !== 'P2025') {
+        console.warn(`Prisma delete info for ${id}:`, err?.message || err);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

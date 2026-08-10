@@ -7,7 +7,7 @@ import {
   menuItems as initialMenuItems,
   menuCategories as initialMenuCategories 
 } from '@/data/restaurantData';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, Filter, X, Maximize2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useRouter } from 'next/navigation';
 
@@ -200,6 +200,7 @@ export default function MenuPage() {
   const [filterOpen,     setFilterOpen]     = useState(false);
   const [selectedSizes,  setSelectedSizes]  = useState<Record<string, 'small' | 'medium' | 'large'>>({});
   const [activeDetailItem, setActiveDetailItem] = useState<typeof menuItems[0] | null>(null);
+  const [fullImageOpen, setFullImageOpen] = useState(false);
 
   const handleNextDish = () => {
     if (!activeDetailItem || filtered.length <= 1) return;
@@ -452,12 +453,7 @@ export default function MenuPage() {
   };
 
   const getPortionsConfig = (item: typeof menuItems[0]) => {
-    const defaultPortions = {
-      small: { available: true, price: Math.round(item.price * 0.8) },
-      medium: { available: true, price: item.price },
-      large: { available: true, price: Math.round(item.price * 1.3) },
-    };
-    return item.portions || defaultPortions;
+    return item.portions || null;
   };
 
   const toggleDietary = (key: string) =>
@@ -565,12 +561,15 @@ export default function MenuPage() {
 
   const renderMenuItemCard = (item: typeof menuItems[0]) => {
     const portions = getPortionsConfig(item);
-    const availableSizes = (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available);
+    const availableSizes = portions
+      ? (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available)
+      : [];
     const selectedSize = selectedSizes[item.id];
-    const currentSize = (selectedSize && portions[selectedSize]?.available)
+    const defaultSize = availableSizes.includes('medium') ? 'medium' : (availableSizes[0] || 'medium');
+    const currentSize = (selectedSize && portions?.[selectedSize]?.available)
       ? selectedSize
-      : (availableSizes[0] || 'medium');
-    const currentPrice = portions[currentSize]?.price || item.price;
+      : defaultSize;
+    const currentPrice = (portions && availableSizes.length > 0) ? (portions[currentSize]?.price || item.price) : item.price;
     const isVeg = item.dietary.includes('v') || item.dietary.includes('vg');
 
     return (
@@ -765,12 +764,15 @@ export default function MenuPage() {
   /* ── Compact Mobile Card (Swiggy / Zomato style) ── */
   const renderMobileCard = (item: typeof menuItems[0]) => {
     const portions = getPortionsConfig(item);
-    const availableSizes = (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available);
+    const availableSizes = portions
+      ? (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available)
+      : [];
     const selectedSize = selectedSizes[item.id];
-    const currentSize = (selectedSize && portions[selectedSize]?.available)
+    const defaultSize = availableSizes.includes('medium') ? 'medium' : (availableSizes[0] || 'medium');
+    const currentSize = (selectedSize && portions?.[selectedSize]?.available)
       ? selectedSize
-      : (availableSizes[0] || 'medium');
-    const currentPrice = portions[currentSize]?.price || item.price;
+      : defaultSize;
+    const currentPrice = (portions && availableSizes.length > 0) ? (portions[currentSize]?.price || item.price) : item.price;
     const isVeg = item.dietary.includes('v') || item.dietary.includes('vg');
 
     // Create a stable mock rating based on item id
@@ -1151,14 +1153,38 @@ export default function MenuPage() {
             {/* Regular categories */}
             {menuCategories.map((cat) => {
               const active = activeCategory === cat.id;
-              // Dynamically map category ID to representative image
-              let imgPath = '/menu-burger.png';
-              if (cat.id === 'shakes') imgPath = '/event-shake.png';
-              else if (cat.id === 'burgers') imgPath = '/menu-burger.png';
-              else if (cat.id === 'pastas') imgPath = '/menu-pasta.png';
-              else if (cat.id === 'snacks') imgPath = '/menu-fries.png';
-              else if (cat.id === 'waffles') imgPath = '/event-waffle.png';
-              else if (cat.id === 'drinks') imgPath = '/menu-coffee.png';
+
+              // Smart resolution for category image:
+              // 1. Explicit banner/icon image set by Admin
+              // 2. Image of the first dish in this category
+              // 3. Keyword matching based on category name
+              let imgPath = cat.bannerImage || null;
+              if (!imgPath) {
+                const dishWithImage = menuItems.find((i) => i.category === cat.id && i.image);
+                if (dishWithImage?.image) {
+                  imgPath = dishWithImage.image;
+                }
+              }
+              if (!imgPath) {
+                const text = (cat.label + ' ' + cat.id).toLowerCase();
+                if (text.includes('shake') || text.includes('smoothie') || text.includes('vintage') || text.includes('thick')) {
+                  imgPath = '/event-shake.png';
+                } else if (text.includes('fruit') || text.includes('clock') || text.includes('cooler') || text.includes('mojito') || text.includes('juice')) {
+                  imgPath = '/event-shake.png';
+                } else if (text.includes('drink') || text.includes('coffee') || text.includes('tea') || text.includes('cold') || text.includes('brew')) {
+                  imgPath = '/menu-coffee.png';
+                } else if (text.includes('burger') || text.includes('sandwich')) {
+                  imgPath = '/menu-burger.png';
+                } else if (text.includes('pasta') || text.includes('noodle') || text.includes('spaghetti')) {
+                  imgPath = '/menu-pasta.png';
+                } else if (text.includes('snack') || text.includes('fry') || text.includes('fries') || text.includes('finger')) {
+                  imgPath = '/menu-fries.png';
+                } else if (text.includes('waffle') || text.includes('dessert') || text.includes('sweet') || text.includes('ice cream')) {
+                  imgPath = '/event-waffle.png';
+                } else {
+                  imgPath = '/menu-burger.png';
+                }
+              }
 
               return (
                 <div 
@@ -1619,12 +1645,15 @@ export default function MenuPage() {
       {activeDetailItem && (() => {
         const item = activeDetailItem;
         const portions = getPortionsConfig(item);
-        const availableSizes = (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available);
+        const availableSizes = portions
+          ? (['small', 'medium', 'large'] as const).filter((s) => portions[s]?.available)
+          : [];
         const selectedSize = selectedSizes[item.id];
-        const currentSize = (selectedSize && portions[selectedSize]?.available)
+        const defaultSize = availableSizes.includes('medium') ? 'medium' : (availableSizes[0] || 'medium');
+        const currentSize = (selectedSize && portions?.[selectedSize]?.available)
           ? selectedSize
-          : (availableSizes[0] || 'medium');
-        const currentPrice = portions[currentSize]?.price || item.price;
+          : defaultSize;
+        const currentPrice = (portions && availableSizes.length > 0) ? (portions[currentSize]?.price || item.price) : item.price;
         const isVeg = item.dietary.includes('v') || item.dietary.includes('vg');
         const mockRating = ((item.name.charCodeAt(0) + item.name.charCodeAt(1 || 0)) % 6) / 10 + 4.0;
 
@@ -1749,42 +1778,101 @@ export default function MenuPage() {
                 overflow: 'hidden',
               }}>
 
-              {/* Top - Image Section */}
-              <div style={{
-                position: 'relative',
-                width: '100%',
-                height: isMobile ? '220px' : '260px',
-                background: item.image ? '#000' : undefined,
-                flexShrink: 0,
-                padding: isMobile ? '16px 16px 0 16px' : '0',
-                boxSizing: 'border-box',
-              }}
+              {/* Top - Image Section (Natural aspect ratio, zero trimming/cutting) */}
+              <div
+                onClick={() => item.image && setFullImageOpen(true)}
+                title={item.image ? "Click to view full image" : undefined}
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  backgroundColor: '#09090d',
+                  flexShrink: 0,
+                  cursor: item.image ? 'zoom-in' : 'default',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: isMobile ? '8px 8px 0 8px' : '0',
+                  boxSizing: 'border-box',
+                }}
               >
                 <div style={{
                   position: 'relative',
                   width: '100%',
-                  height: '100%',
                   borderRadius: isMobile ? '16px' : '0',
                   overflow: 'hidden',
-                }}
-                className={!item.image ? `food-photo ${item.gradient}` : 'food-photo'}
-                >
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#09090d',
+                  minHeight: isMobile ? '200px' : '240px',
+                  maxHeight: isMobile ? '45vh' : '52vh',
+                }}>
                   {item.image ? (
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 40vw"
-                      style={{ objectFit: 'cover' }}
-                      unoptimized={item.image.startsWith('data:') || item.image.startsWith('blob:')}
-                    />
+                    <>
+                      {/* Atmospheric Blurred Background matching food image colors */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.image}
+                        alt=""
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          filter: 'blur(24px) brightness(0.4)',
+                          transform: 'scale(1.2)',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                      {/* Main Food Photo - Standard <img> to fit natural aspect ratio cleanly without any trimming or clipping */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: isMobile ? '45vh' : '52vh',
+                          width: 'auto',
+                          height: 'auto',
+                          objectFit: 'contain',
+                          position: 'relative',
+                          zIndex: 1,
+                          display: 'block',
+                          margin: '0 auto',
+                        }}
+                      />
+                      {/* Click to expand badge */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '10px',
+                        right: '10px',
+                        zIndex: 3,
+                        background: 'rgba(0, 0, 0, 0.72)',
+                        backdropFilter: 'blur(6px)',
+                        color: '#fff',
+                        fontSize: '0.62rem',
+                        fontWeight: 600,
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                      }}>
+                        <Maximize2 size={12} /> View Full
+                      </div>
+                    </>
                   ) : (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
+                    <div style={{ padding: '40px 0', fontSize: '3rem' }}>
                       🥤
                     </div>
                   )}
+
                   {item.badge && (
-                    <span className="badge-red" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.6rem' }}>
+                    <span className="badge-red" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.6rem', zIndex: 2 }}>
                       {item.badge}
                     </span>
                   )}
@@ -1910,6 +1998,87 @@ export default function MenuPage() {
         </div>
       );
     })()}
-  </main>
-);
+
+      {/* ── FULL SCREEN IMAGE LIGHTBOX (Tap / Click to view complete untrimmed photo) ── */}
+      {fullImageOpen && activeDetailItem?.image && (
+        <div
+          onClick={() => setFullImageOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(0, 0, 0, 0.94)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: isMobile ? '16px' : '32px',
+          }}
+        >
+          {/* Close Lightbox Button */}
+          <button
+            onClick={() => setFullImageOpen(false)}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'rgba(255, 255, 255, 0.15)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              color: '#fff',
+              cursor: 'pointer',
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 100000,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            }}
+          >
+            <X size={22} />
+          </button>
+
+          {/* Full Resolution Photo Container */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '95vw',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activeDetailItem.image}
+              alt={activeDetailItem.name}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '82vh',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                borderRadius: '12px',
+                boxShadow: '0 25px 60px rgba(0,0,0,0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            />
+            <p style={{
+              color: 'var(--cream, #fff)',
+              marginTop: '14px',
+              fontFamily: 'var(--font-display)',
+              fontSize: isMobile ? '1.1rem' : '1.3rem',
+              textAlign: 'center',
+              letterSpacing: '0.02em',
+            }}>
+              {activeDetailItem.name}
+            </p>
+          </div>
+        </div>
+      )}
+    </main>
+  );
 }

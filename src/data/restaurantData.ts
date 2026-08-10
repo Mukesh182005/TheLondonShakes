@@ -173,30 +173,6 @@ export const menuItems: MenuItem[] = [
     dietary: ["v"], allergens: ["Dairy", "Gluten"],
     gradient: "food-photo-cocktail"
   },
-  {
-    id: "s4", category: "shakes", course: "Thick Shakes",
-    name: "Mango Mania Shake",
-    description: "Rich and fruity shake made with fresh Alphonso mango pulp.",
-    price: 190, badge: "Seasonal",
-    dietary: ["v"], allergens: ["Dairy"],
-    gradient: "food-photo-cocktail"
-  },
-  {
-    id: "s5", category: "shakes", course: "Mojitos & Coolers",
-    name: "Red Melon Mojito",
-    description: "A refreshing blend of sweet red melon, mint, and lime with a fizzy twist.",
-    price: 250, badge: "Trending",
-    dietary: ["v", "vg", "gf"], allergens: [],
-    gradient: "food-photo-cocktail"
-  },
-  {
-    id: "s6", category: "shakes", course: "Mojitos & Coolers",
-    name: "Green Apple Mojito",
-    description: "A zesty mix of green apple, mint, and lemon for a crisp, cooling drink.",
-    price: 250, badge: null,
-    dietary: ["v", "vg", "gf"], allergens: [],
-    gradient: "food-photo-cocktail"
-  },
 
   // BURGERS
   {
