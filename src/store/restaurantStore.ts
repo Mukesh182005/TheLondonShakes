@@ -1075,7 +1075,8 @@ export const useCMSStore = create<CMSState>()(
                     ...item,
                     name: dbItem.name,
                     description: dbItem.description,
-                    price: dbItem.price,
+                    // Keep the local price — don't overwrite from DB on periodic sync.
+                    // Admin price edits already update the local store directly via updateMenuItem().
                     category: dbItem.category,
                     image: dbItem.imageUrl || item.image || null,
                     active: dbItem.active !== undefined ? dbItem.active : item.active,
