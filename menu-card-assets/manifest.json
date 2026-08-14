@@ -1,0 +1,389 @@
+[
+  {
+    "name": "Panner Cheese Burger",
+    "category": "burgers",
+    "price": 149,
+    "file": "dishes/burgers--panner-cheese-burger.jpg",
+    "kb": 25,
+    "w": 512,
+    "h": 512
+  },
+  {
+    "name": "Veg Burger",
+    "category": "burgers",
+    "price": 119,
+    "file": "dishes/burgers--veg-burger.jpg",
+    "kb": 61,
+    "w": 800,
+    "h": 600
+  },
+  {
+    "name": "Choco-Coffee",
+    "category": "cold-coffee",
+    "price": 99,
+    "file": "dishes/cold-coffee--choco-coffee.jpg",
+    "kb": 33,
+    "w": 596,
+    "h": 600
+  },
+  {
+    "name": "Cold Coffee",
+    "category": "cold-coffee",
+    "price": 99,
+    "file": "dishes/cold-coffee--cold-coffee.jpg",
+    "kb": 21,
+    "w": 400,
+    "h": 600
+  },
+  {
+    "name": "Mango ",
+    "category": "cold-coffee",
+    "price": 99,
+    "file": "dishes/cold-coffee--mango.jpg",
+    "kb": 38,
+    "w": 600,
+    "h": 600
+  },
+  {
+    "name": "Roasted Hazelnut coffee",
+    "category": "cold-coffee",
+    "price": 99,
+    "file": "dishes/cold-coffee--roasted-hazelnut-coffee.jpg",
+    "kb": 48,
+    "w": 600,
+    "h": 600
+  },
+  {
+    "name": "Chicken Maggi",
+    "category": "drinks",
+    "price": 149,
+    "file": "dishes/drinks--chicken-maggi.jpg",
+    "kb": 51,
+    "w": 400,
+    "h": 600
+  },
+  {
+    "name": "Egg Maggi",
+    "category": "drinks",
+    "price": 129,
+    "file": "dishes/drinks--egg-maggi.jpg",
+    "kb": 47,
+    "w": 554,
+    "h": 554
+  },
+  {
+    "name": "Panner Maggi",
+    "category": "drinks",
+    "price": 119,
+    "file": "dishes/drinks--panner-maggi.jpg",
+    "kb": 28,
+    "w": 420,
+    "h": 330
+  },
+  {
+    "name": "Tandoori Maggi",
+    "category": "drinks",
+    "price": 79,
+    "file": "dishes/drinks--tandoori-maggi.jpg",
+    "kb": 61,
+    "w": 800,
+    "h": 612
+  },
+  {
+    "name": "Veg Maggi",
+    "category": "drinks",
+    "price": 78,
+    "file": "dishes/drinks--veg-maggi.jpg",
+    "kb": 51,
+    "w": 600,
+    "h": 600
+  },
+  {
+    "name": "Banana Blast",
+    "category": "fruit-o-clock",
+    "price": 140,
+    "file": "dishes/fruit-o-clock--banana-blast.jpg",
+    "kb": 61,
+    "w": 596,
+    "h": 600
+  },
+  {
+    "name": "Banana Burst",
+    "category": "fruit-o-clock",
+    "price": 140,
+    "file": "dishes/fruit-o-clock--banana-burst.jpg",
+    "kb": 64,
+    "w": 596,
+    "h": 600
+  },
+  {
+    "name": "Blue Blast",
+    "category": "fruit-o-clock",
+    "price": 140,
+    "file": "dishes/fruit-o-clock--blue-blast.jpg",
+    "kb": 57,
+    "w": 596,
+    "h": 600
+  },
+  {
+    "name": "Kiwi Cuddle ",
+    "category": "fruit-o-clock",
+    "price": 140,
+    "file": "dishes/fruit-o-clock--kiwi-cuddle.jpg",
+    "kb": 77,
+    "w": 596,
+    "h": 600
+  },
+  {
+    "name": "Melting pan ",
+    "category": "fruit-o-clock",
+    "price": 140,
+    "file": "dishes/fruit-o-clock--melting-pan.jpg",
+    "kb": 65,
+    "w": 596,
+    "h": 600
+  },
+  {
+    "name": "Rasberry",
+    "category": "fruit-o-clock",
+    "price": 140,
+    "file": "dishes/fruit-o-clock--rasberry.jpg",
+    "kb": 65,
+    "w": 596,
+    "h": 600
+  },
+  {
+    "name": "Rose Rabdi",
+    "category": "fruit-o-clock",
+    "price": 140,
+    "file": "dishes/fruit-o-clock--rose-rabdi.jpg",
+    "kb": 69,
+    "w": 596,
+    "h": 600
+  },
+  {
+    "name": "Blue Magic",
+    "category": "mojito",
+    "price": 119,
+    "file": "dishes/mojito--blue-magic.jpg",
+    "kb": 33,
+    "w": 400,
+    "h": 600
+  },
+  {
+    "name": "Blueberry",
+    "category": "mojito",
+    "price": 129,
+    "file": "dishes/mojito--blueberry.jpg",
+    "kb": 34,
+    "w": 400,
+    "h": 600
+  },
+  {
+    "name": "Cojito",
+    "category": "mojito",
+    "price": 119,
+    "file": "dishes/mojito--cojito.jpg",
+    "kb": 28,
+    "w": 400,
+    "h": 600
+  },
+  {
+    "name": "Green Apple",
+    "category": "mojito",
+    "price": 119,
+    "file": "dishes/mojito--green-apple.jpg",
+    "kb": 34,
+    "w": 600,
+    "h": 600
+  },
+  {
+    "name": "Lichi",
+    "category": "mojito",
+    "price": 119,
+    "file": "dishes/mojito--lichi.jpg",
+    "kb": 33,
+    "w": 414,
+    "h": 600
+  },
+  {
+    "name": "Mango Lime",
+    "category": "mojito",
+    "price": 119,
+    "file": "dishes/mojito--mango-lime.jpg",
+    "kb": 35,
+    "w": 400,
+    "h": 600
+  },
+  {
+    "name": "Radusion",
+    "category": "mojito",
+    "price": 119,
+    "file": "dishes/mojito--radusion.jpg",
+    "kb": 10,
+    "w": 183,
+    "h": 275
+  },
+  {
+    "name": "Chicken Pasta",
+    "category": "pastas",
+    "price": 185,
+    "file": "dishes/pastas--chicken-pasta.jpg",
+    "kb": 80,
+    "w": 600,
+    "h": 600
+  },
+  {
+    "name": "Egg Pasta",
+    "category": "pastas",
+    "price": 175,
+    "file": "dishes/pastas--egg-pasta.jpg",
+    "kb": 63,
+    "w": 686,
+    "h": 386
+  },
+  {
+    "name": "Spice Masala Pasta",
+    "category": "pastas",
+    "price": 165,
+    "file": "dishes/pastas--spice-masala-pasta.jpg",
+    "kb": 62,
+    "w": 474,
+    "h": 600
+  },
+  {
+    "name": "BBQ Fries",
+    "category": "snacks",
+    "price": 139,
+    "file": "dishes/snacks--bbq-fries.jpg",
+    "kb": 35,
+    "w": 447,
+    "h": 447
+  },
+  {
+    "name": "Creamy Cheesy Fries",
+    "category": "snacks",
+    "price": 149,
+    "file": "dishes/snacks--creamy-cheesy-fries.jpg",
+    "kb": 32,
+    "w": 643,
+    "h": 360
+  },
+  {
+    "name": "Peri Peri Fries",
+    "category": "snacks",
+    "price": 139,
+    "file": "dishes/snacks--peri-peri-fries.jpg",
+    "kb": 21,
+    "w": 400,
+    "h": 400
+  },
+  {
+    "name": "Spice Fries",
+    "category": "snacks",
+    "price": 110,
+    "file": "dishes/snacks--spice-fries.jpg",
+    "kb": 49,
+    "w": 480,
+    "h": 600
+  },
+  {
+    "name": "Choco Kulfi",
+    "category": "the-funtastick-shakes",
+    "price": 120,
+    "file": "dishes/the-funtastick-shakes--choco-kulfi.jpg",
+    "kb": 38,
+    "w": 600,
+    "h": 600
+  },
+  {
+    "name": "Choco Strawberry",
+    "category": "the-funtastick-shakes",
+    "price": 120,
+    "file": "dishes/the-funtastick-shakes--choco-strawberry.jpg",
+    "kb": 32,
+    "w": 489,
+    "h": 600
+  },
+  {
+    "name": "Chocolate paan",
+    "category": "the-funtastick-shakes",
+    "price": 120,
+    "file": "dishes/the-funtastick-shakes--chocolate-paan.jpg",
+    "kb": 30,
+    "w": 390,
+    "h": 512
+  },
+  {
+    "name": "Kesar Badam",
+    "category": "the-funtastick-shakes",
+    "price": 120,
+    "file": "dishes/the-funtastick-shakes--kesar-badam.jpg",
+    "kb": 27,
+    "w": 400,
+    "h": 400
+  },
+  {
+    "name": "Choco Ice-sream Waffle",
+    "category": "waffle",
+    "price": 165,
+    "file": "dishes/waffle--choco-ice-sream-waffle.jpg",
+    "kb": 43,
+    "w": 480,
+    "h": 600
+  },
+  {
+    "name": "Choco loaded Waffle ",
+    "category": "waffle",
+    "price": 185,
+    "file": "dishes/waffle--choco-loaded-waffle.jpg",
+    "kb": 29,
+    "w": 335,
+    "h": 597
+  },
+  {
+    "name": "Ice-cream Waffle",
+    "category": "waffle",
+    "price": 165,
+    "file": "dishes/waffle--ice-cream-waffle.jpg",
+    "kb": 39,
+    "w": 400,
+    "h": 600
+  },
+  {
+    "name": "Kit-Kat Waffle",
+    "category": "waffle",
+    "price": 165,
+    "file": "dishes/waffle--kit-kat-waffle.jpg",
+    "kb": 21,
+    "w": 447,
+    "h": 447
+  },
+  {
+    "name": "Nutella Waffle",
+    "category": "waffle",
+    "price": 195,
+    "file": "dishes/waffle--nutella-waffle.jpg",
+    "kb": 36,
+    "w": 400,
+    "h": 400
+  },
+  {
+    "name": "Oreo Waffle",
+    "category": "waffle",
+    "price": 165,
+    "file": "dishes/waffle--oreo-waffle.jpg",
+    "kb": 36,
+    "w": 678,
+    "h": 452
+  },
+  {
+    "name": "Chicken Spaghetti",
+    "category": "waffles",
+    "price": 195,
+    "file": "dishes/waffles--chicken-spaghetti.jpg",
+    "kb": 51,
+    "w": 400,
+    "h": 600
+  }
+]
